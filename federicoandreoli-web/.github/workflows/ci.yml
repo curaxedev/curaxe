@@ -1,0 +1,26 @@
+# Build su ogni PR e push (senza deploy): verifica che il frontend compili.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+        env:
+          VITE_SITE_ORIGIN: https://federico.backsoftware.it
+          VITE_API_URL: https://apifedericoandreoli.backsoftware.it

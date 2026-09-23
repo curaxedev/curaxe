@@ -1,0 +1,40 @@
+# Curaxe monorepo
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+.cursor/
+.codex/
+.git-web-backup-pre-monorepo/
+
+# Env & secrets (mai commitare)
+.env
+.env.*
+!.env.example
+!.env.production.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.production.example
+*.pem
+*.p12
+auth.json
+
+# Dependencies & build
+**/node_modules/
+**/vendor/
+**/dist/
+**/dist-ssr/
+federicoandreoli-web/playwright-report/
+federicoandreoli-web/test-results/
+federicoandreoli-api/public/build/
+federicoandreoli-api/public/hot/
+federicoandreoli-api/public/storage/
+federicoandreoli-api/storage/*.key
+federicoandreoli-api/storage/pail/
+federicoandreoli-api/.phpunit.result.cache
+federicoandreoli-api/.phpunit.cache/
+
+# Laravel sqlite local
+federicoandreoli-api/database/database.sqlite

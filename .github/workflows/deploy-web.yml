@@ -1,0 +1,73 @@
+# Build SPA e pubblica dist/ sulla document root Hostinger via rsync/SSH.
+# Secrets: DEPLOY_SSH_HOST, DEPLOY_SSH_USER, DEPLOY_SSH_KEY, DEPLOY_WEB_PATH
+
+name: Deploy Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'federicoandreoli-web/**'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build & deploy SPA
+    runs-on: ubuntu-latest
+    # environment: production
+    defaults:
+      run:
+        working-directory: federicoandreoli-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require deploy secrets
+        env:
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          USER: ${{ secrets.DEPLOY_SSH_USER }}
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          WEB_PATH: ${{ secrets.DEPLOY_WEB_PATH }}
+        run: |
+          if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$KEY" ] || [ -z "$WEB_PATH" ]; then
+            echo "Secrets DEPLOY_SSH_* / DEPLOY_WEB_PATH non configurati. Vedi docs/GITHUB-DEPLOY-SECURE.md"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: federicoandreoli-web/package-lock.json
+
+      - name: Install & build
+        run: |
+          npm ci
+          npm run build
+        env:
+          VITE_USE_MOCKS: 'false'
+          VITE_API_URL: https://api.curaxe.it
+          VITE_SITE_ORIGIN: https://curaxe.it
+
+      - name: Start ssh-agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Rsync dist to Hostinger
+        env:
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          USER: ${{ secrets.DEPLOY_SSH_USER }}
+          WEB_PATH: ${{ secrets.DEPLOY_WEB_PATH }}
+        run: |
+          set -euo pipefail
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          rsync -az --delete \
+            -e "ssh -o StrictHostKeyChecking=accept-new" \
+            ./dist/ \
+            "${USER}@${HOST}:${WEB_PATH}/"
+          echo "Web deploy OK"

@@ -1,0 +1,38 @@
+/** Token JS — Care & Trust palette (sincronizzato con tokens.css) */
+export const tokens = {
+  color: {
+    page: '#F4F1EE',
+    surface: '#FDFCFB',
+    text: '#2D2A27',
+    textMuted: '#7A7268',
+    border: '#E5DDD5',
+    inkStrong: '#1E1C1A',
+    primary: '#2A5C82',
+    primaryHover: '#1E4A6A',
+    primarySoft: '#C8DEF0',
+    primarySofter: '#EBF4FB',
+    accent: '#E07A5F',
+    accentHover: '#C96347',
+    accentSoft: '#FAE8E3',
+    sage: '#81B29A',
+    sageSoft: '#E0EDE6',
+    success: '#81B29A',
+    successSoft: '#E0EDE6',
+    accentPurple: '#5B4BCC',
+  },
+  radius: { sm: 10, md: 16, lg: 24, card: 24, pill: 9999 },
+  space: { 1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64 },
+  font: {
+    heading: "Outfit, system-ui, -apple-system, sans-serif",
+    body: "Inter, system-ui, -apple-system, sans-serif",
+    sans: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+  },
+  contentMax: 1140,
+  glass: {
+    bg: 'rgba(255, 255, 255, 0.72)',
+    bgElevated: 'rgba(255, 255, 255, 0.82)',
+    border: 'rgba(255, 255, 255, 0.18)',
+    blur: 'blur(20px) saturate(180%)',
+    radius: { sm: 12, md: 16, lg: 20, xl: 24 },
+  },
+} as const

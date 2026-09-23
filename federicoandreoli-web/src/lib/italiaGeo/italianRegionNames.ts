@@ -1,0 +1,23 @@
+/** Nomi regioni come in `public/data/italia-comuni.json` (dakk/Italia.json). */
+export const ITALIAN_REGION_NAMES = [
+  'Abruzzo',
+  'Basilicata',
+  'Calabria',
+  'Campania',
+  'Emilia-Romagna',
+  'Friuli-Venezia Giulia',
+  'Lazio',
+  'Liguria',
+  'Lombardia',
+  'Marche',
+  'Molise',
+  'Piemonte',
+  'Puglia',
+  'Sardegna',
+  'Sicilia',
+  'Toscana',
+  'Trentino-Alto Adige',
+  'Umbria',
+  "Valle d'Aosta",
+  'Veneto',
+] as const

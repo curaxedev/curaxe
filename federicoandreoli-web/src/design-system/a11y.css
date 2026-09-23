@@ -1,0 +1,93 @@
+/**
+ * POLISH-06 — Accessibility utilities
+ * Skip link, extended focus-visible, reduced-motion for polish animations.
+ */
+
+/* ── Skip link ─────────────────────────────────────────────────── */
+.skip-link {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 10000;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--text-small);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: var(--shadow-md);
+  transform: translateY(calc(-100% - var(--space-6)));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    opacity var(--duration-normal) var(--ease-out);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  outline: none;
+  box-shadow: var(--shadow-md), var(--focus-ring-strong);
+}
+
+/* ── Focus-visible — auth funnel + public forms ─────────────────── */
+.auth-login-choice:focus-visible,
+.auth-role-card:focus-visible,
+.auth-account-card:focus-visible,
+.auth-account-row:focus-visible,
+.auth-change-email:focus-visible,
+.auth-link-resend:focus-visible,
+.auth-checkbox:focus-visible,
+.auth-demo-row__btn:focus-visible,
+.wz-card:focus-visible,
+.wz-chip:focus-visible,
+.wz-pill:focus-visible,
+.wz-toggle-row button:focus-visible,
+.wz-intent-card:focus-visible,
+.wz-btn-primary:focus-visible,
+.wz-btn-outline:focus-visible,
+.wz-btn-ghost:focus-visible,
+.wz-switch:focus-visible,
+.wz-avail button:focus-visible,
+.contatti-submit:focus-visible,
+.contatti-faq-link:focus-visible,
+.isl-btn:focus-visible,
+.legal-toc__item a:focus-visible,
+.contatti-breadcrumb a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.auth-otp-chain:focus-within {
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-md);
+}
+
+/* ── Contrast — form labels & secondary text ─────────────────────── */
+.auth-field__label,
+.contatti-field__label,
+.wz-field label {
+  color: var(--color-text);
+}
+
+.auth-channel-hint,
+.isl-hero__sub {
+  color: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
+
+  .auth-success-icon,
+  .wz-success-ring--pop,
+  .contatti-alert--success,
+  .auth-otp-chain:focus-within {
+    animation: none !important;
+  }
+}
