@@ -37,7 +37,6 @@ import {
   IconChevronRight,
   IconClose,
   IconCreditCard,
-  IconEye,
   IconHome,
   IconInbox,
   IconMail,
@@ -46,7 +45,6 @@ import {
   IconSend,
   IconSettings,
   IconStar,
-  IconTrendUp,
   IconUpload,
   IconWave,
 } from '../../../components/icons/DashboardIcons'
@@ -262,32 +260,16 @@ function SectionHome({
               </div>
             </>
           ) : (
-            <>
-              <div className="dash-home-hero__mini-stats" role="list">
-                <button type="button" className="dash-home-hero__mini-stat" role="listitem" onClick={() => onGoTo('profilo')}>
-                  <strong>{profileViewStats.profileViewsTotal}</strong>
-                  <span>Visualizzazioni</span>
-                </button>
-                <button type="button" className="dash-home-hero__mini-stat" role="listitem" onClick={() => onGoTo('messaggi')}>
-                  <strong>{contactThreads.length}</strong>
-                  <span>Conversazioni</span>
-                </button>
-                <button type="button" className="dash-home-hero__mini-stat" role="listitem" onClick={() => onGoTo('candidature')}>
-                  <strong>{applicationsSent}</strong>
-                  <span>Candidature</span>
-                </button>
-              </div>
-              <div className="dash-home-hero__actions">
-                <button type="button" className="dash-home-hero__cta" onClick={() => onGoTo('profilo')}>
-                  Gestisci profilo
-                  <IconChevronRight size={16} />
-                </button>
-                <button type="button" className="dash-home-hero__cta dash-home-hero__cta--ghost" onClick={() => onGoTo('messaggi')}>
-                  Messaggi
-                  {unreadMessages > 0 ? ` (${unreadMessages})` : ''}
-                </button>
-              </div>
-            </>
+            <div className="dash-home-hero__actions">
+              <button type="button" className="dash-home-hero__cta" onClick={() => onGoTo('profilo')}>
+                Gestisci profilo
+                <IconChevronRight size={16} />
+              </button>
+              <button type="button" className="dash-home-hero__cta dash-home-hero__cta--ghost" onClick={() => onGoTo('messaggi')}>
+                Messaggi
+                {unreadMessages > 0 ? ` (${unreadMessages})` : ''}
+              </button>
+            </div>
           )}
         </div>
 
@@ -303,46 +285,46 @@ function SectionHome({
         </div>
       </section>
 
-      {/* Stats */}
-      <div className="dash-stat-grid dash-stat-grid--home">
-        <div className="dash-stat-card">
-          <div className="dash-stat-card__icon" style={{ background: 'var(--color-primary-softer)', color: 'var(--color-primary)' }}>
-            <IconEye size={18} />
-          </div>
-          <div className="dash-stat-card__value">{profileViewStats.profileViewsTotal}</div>
-          <div className="dash-stat-card__label">Visualizzazioni profilo</div>
-          <div className="dash-stat-card__trend">
-            {profileViewStats.weekChangePercent !== null && profileViewStats.weekChangePercent > 0 ? (
-              <IconTrendUp size={14} />
-            ) : null}{' '}
-            {viewsTrend}
-          </div>
-        </div>
-        <div className="dash-stat-card">
-          <div className="dash-stat-card__icon" style={{ background: 'var(--color-sage-softer)', color: 'var(--color-sage)' }}>
-            <IconMail size={18} />
-          </div>
-          <div className="dash-stat-card__value">{contactThreads.length}</div>
-          <div className="dash-stat-card__label">Conversazioni aperte</div>
-          <div
-            className="dash-stat-card__trend"
+      <div className="dash-home-metrics" role="list" aria-label="Attività profilo">
+        <button
+          type="button"
+          className="dash-home-metrics__item"
+          role="listitem"
+          onClick={() => onGoTo('profilo')}
+        >
+          <span className="dash-home-metrics__value">{profileViewStats.profileViewsTotal}</span>
+          <span className="dash-home-metrics__label">Visualizzazioni</span>
+          <span className="dash-home-metrics__hint">{viewsTrend}</span>
+        </button>
+        <button
+          type="button"
+          className="dash-home-metrics__item"
+          role="listitem"
+          onClick={() => onGoTo('messaggi')}
+        >
+          <span className="dash-home-metrics__value">{contactThreads.length}</span>
+          <span className="dash-home-metrics__label">Conversazioni</span>
+          <span
+            className="dash-home-metrics__hint"
             style={{ color: unreadMessages > 0 ? 'var(--color-accent)' : undefined }}
           >
             {unreadMessages > 0
               ? `${unreadMessages} non lett${unreadMessages === 1 ? 'o' : 'i'}`
               : contactThreads.length === 0
-                ? 'Nessun messaggio ancora'
+                ? 'Nessun messaggio'
                 : 'Tutto letto'}
-          </div>
-        </div>
-        <div className="dash-stat-card">
-          <div className="dash-stat-card__icon" style={{ background: 'var(--color-accent-softer)', color: 'var(--color-accent)' }}>
-            <IconSend size={18} />
-          </div>
-          <div className="dash-stat-card__value">{applicationsSent}</div>
-          <div className="dash-stat-card__label">Candidature inviate</div>
-          <div className="dash-stat-card__trend">{applicationsTrend}</div>
-        </div>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="dash-home-metrics__item"
+          role="listitem"
+          onClick={() => onGoTo('candidature')}
+        >
+          <span className="dash-home-metrics__value">{applicationsSent}</span>
+          <span className="dash-home-metrics__label">Candidature</span>
+          <span className="dash-home-metrics__hint">{applicationsTrend}</span>
+        </button>
       </div>
 
       {/* Two column cards */}
