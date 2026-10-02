@@ -10,9 +10,8 @@ rsync -a --delete \
   --exclude '.git' \
   --exclude 'public_html.bak' \
   "${SRC}/" "${DEST}/"
-# ensure SPA rewrite
-if [[ ! -f "${DEST}/.htaccess" ]]; then
-  cat > "${DEST}/.htaccess" <<'HT'
+# ensure SPA rewrite + no-cache on HTML (evita chunk hash stale dopo deploy)
+cat > "${DEST}/.htaccess" <<'HT'
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
@@ -21,7 +20,19 @@ if [[ ! -f "${DEST}/.htaccess" ]]; then
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
 </IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  <FilesMatch "\.(js|css|woff2|png|jpg|jpeg|webp|svg|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
 HT
-fi
 echo "Published SPA → ${DEST}"
 ls -la "${DEST}" | head -20
+echo "index refs:"
+grep -oE 'assets/index-[^"]+\.js' "${DEST}/index.html" | head -3
