@@ -3346,11 +3346,17 @@
   justify-content: center;
   padding: 12px 18px;
   border-radius: var(--radius-pill);
+  font: inherit;
   font-weight: 800;
   font-size: var(--text-small);
   text-decoration: none;
   text-align: center;
+  cursor: pointer;
   transition: background 0.2s, transform 0.2s;
+}
+
+button.candidacy-auth-dialog__btn {
+  width: 100%;
 }
 
 .candidacy-auth-dialog__btn--primary {
