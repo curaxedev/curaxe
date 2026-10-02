@@ -252,32 +252,30 @@
   box-shadow: var(--glass-shadow);
 }
 
-/* ── Mobile tab bar ───────────────────────────────────────────── */
+/* ── Mobile dock (Backclub light) ─────────────────────────────── */
 .dash-shell--glass .dash-tab-bar {
-  background: var(--glass-bg-elevated);
-  backdrop-filter: var(--glass-blur-heavy);
-  -webkit-backdrop-filter: var(--glass-blur-heavy);
-  border-top: 1px solid var(--glass-border-muted);
+  display: none !important;
+}
+
+.dash-shell--glass .dash-dock__pill {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow:
-    0 -1px 0 rgba(255, 255, 255, 0.5) inset,
-    0 -8px 32px rgba(42, 92, 130, 0.08);
+    0 12px 32px rgba(18, 47, 67, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
 }
 
-.dash-shell--glass .dash-tab-bar__btn--active {
-  color: var(--color-primary);
-}
-
-.dash-shell--glass .dash-tab-bar__btn--active .dash-tab-bar__icon-wrap {
-  background: var(--glass-primary-tint-strong);
-  border-radius: var(--glass-radius-pill);
-  width: 44px;
-  height: 32px;
+.dash-shell--glass .dash-more__sheet {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
 }
 
 .dash-shell--glass .dash-sidebar-overlay {
-  background: rgba(30, 28, 26, 0.32);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  display: none !important;
 }
 
 /* ── Messaging — iMessage-inspired glass ────────────────────── */

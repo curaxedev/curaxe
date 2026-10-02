@@ -182,6 +182,16 @@ export function IconMenu(props: IconProps) {
   )
 }
 
+export function IconMoreDots(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="6" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="12" r="1.6" fill="currentColor" stroke="none" />
+    </Icon>
+  )
+}
+
 export function IconLogout(props: IconProps) {
   return (
     <Icon {...props}>

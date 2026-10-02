@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDashboardPathForRole } from '../../auth/roleDashboard'
 import { useAuth } from '../../auth/useAuth'
 import {
   IconBell,
+  IconClose,
   IconLogout,
-  IconMenu,
+  IconMoreDots,
   IconStar,
   IconSupport,
 } from '../../components/icons/DashboardIcons'
@@ -17,7 +18,7 @@ export type AccountType = 'professional' | 'family' | 'agency' | 'structure' | '
 export type NavItem = {
   id: string
   label: string
-  /** Etichetta breve per la tab bar mobile (opzionale; altrimenti si usa `label` con clamp a 2 righe in CSS) */
+  /** Etichetta breve per la tab bar mobile (opzionale; altrimenti si usa `label`) */
   tabLabel?: string
   icon: React.ReactNode
   badge?: number
@@ -45,7 +46,7 @@ const ACCOUNT_BADGE_LABELS: Record<AccountType, string> = {
   admin: 'Admin',
 }
 
-/** Azioni primary in tab bar (max 4) + voce Altro che apre la sidebar. */
+/** Azioni primary in tab bar (max 4) + voce Altro → bottom sheet. */
 const DEFAULT_MOBILE_TAB_IDS: Record<AccountType, string[]> = {
   family: ['home', 'richieste', 'nuova-richiesta', 'messaggi'],
   professional: ['home', 'profilo', 'messaggi', 'posizioni'],
@@ -66,11 +67,26 @@ export function DashboardLayout({
   planType,
   mobileTabIds,
 }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const navigate = useNavigate()
   const { signOut, user } = useAuth()
   const brandPath = user ? getDashboardPathForRole(user.role) : '/'
+  const sheetTitleId = useId()
+
+  useEffect(() => {
+    if (!moreOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
+  }, [moreOpen])
 
   async function handleLogout() {
     if (loggingOut) return
@@ -95,7 +111,7 @@ export function DashboardLayout({
 
   const handleNav = (id: string) => {
     onSectionChange(id)
-    setSidebarOpen(false)
+    setMoreOpen(false)
   }
 
   const preferredIds = mobileTabIds ?? DEFAULT_MOBILE_TAB_IDS[accountType]
@@ -104,22 +120,15 @@ export function DashboardLayout({
     .filter((item): item is NavItem => Boolean(item))
     .slice(0, 4)
 
+  const tabIdSet = new Set(tabItems.map((t) => t.id))
+  const moreItems = navItems.filter((item) => !tabIdSet.has(item.id))
   const activeInTabs = tabItems.some((item) => item.id === activeSection)
+  const moreActive = moreOpen || !activeInTabs
 
   return (
     <div className="dash-shell dash-shell--glass">
-      {/* Sidebar overlay (mobile) */}
-      {sidebarOpen && (
-        <div
-          className="dash-sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`dash-sidebar${sidebarOpen ? ' dash-sidebar--open' : ''}`}>
-        {/* Brand */}
+      {/* Sidebar — solo desktop */}
+      <aside className="dash-sidebar">
         <div className="dash-sidebar__brand">
           <button
             className="dash-sidebar__brand-link"
@@ -131,7 +140,6 @@ export function DashboardLayout({
           </button>
         </div>
 
-        {/* Professional profile section */}
         {accountType === 'professional' && (
           <div className="dash-sidebar__profile">
             <div className="dash-sidebar__profile-avatar">{initials}</div>
@@ -165,7 +173,6 @@ export function DashboardLayout({
           </div>
         )}
 
-        {/* Nav */}
         <nav className="dash-sidebar__nav" aria-label="Navigazione dashboard">
           {navItems.map((item) => (
             <button
@@ -182,7 +189,6 @@ export function DashboardLayout({
           ))}
         </nav>
 
-        {/* Footer */}
         <div className="dash-sidebar__footer">
           {accountType !== 'professional' && (
             <div className="dash-sidebar__user">
@@ -193,10 +199,7 @@ export function DashboardLayout({
               </div>
             </div>
           )}
-          <button
-            className="dash-sidebar__support"
-            onClick={() => navigate(contattiPath)}
-          >
+          <button className="dash-sidebar__support" onClick={() => navigate(contattiPath)}>
             <IconSupport size={14} />
             Supporto
           </button>
@@ -212,18 +215,9 @@ export function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main area */}
       <div className="dash-main">
-        {/* Top header */}
         <header className="dash-header">
           <div className="dash-header__left">
-            <button
-              className="dash-mobile-toggle"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Apri menu"
-            >
-              <IconMenu size={20} />
-            </button>
             <div className="dash-header__avatar">{initials}</div>
             <nav className="dash-breadcrumb" aria-label="Breadcrumb">
               <span>Dashboard</span>
@@ -236,6 +230,9 @@ export function DashboardLayout({
             <span className={`dash-account-badge dash-account-badge--${accountType}`}>
               {ACCOUNT_BADGE_LABELS[accountType]}
             </span>
+            {planType === 'free' ? (
+              <span className="dash-header__plan-chip">FREE</span>
+            ) : null}
             <button
               className="dash-notif-btn"
               aria-label="Notifiche"
@@ -247,7 +244,6 @@ export function DashboardLayout({
           </div>
         </header>
 
-        {/* Content */}
         <main className="dash-content">
           <div key={activeSection} className="polish-dash-section">
             {children}
@@ -255,34 +251,130 @@ export function DashboardLayout({
         </main>
       </div>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="dash-tab-bar" aria-label="Navigazione principale">
-        {tabItems.map((item) => (
+      {/* Mobile floating tab bar — Backclub light */}
+      <nav className="dash-dock" aria-label="Navigazione principale">
+        <div className="dash-dock__pill">
+          {tabItems.map((item) => {
+            const active = activeSection === item.id && !moreOpen
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`dash-dock__btn${active ? ' is-active' : ''}`}
+                onClick={() => handleNav(item.id)}
+                aria-label={item.label}
+                aria-current={active ? 'page' : undefined}
+              >
+                {typeof item.badge === 'number' && item.badge > 0 ? (
+                  <span className="dash-dock__badge">{item.badge > 9 ? '9+' : item.badge}</span>
+                ) : null}
+                <span className="dash-dock__icon" aria-hidden>
+                  {item.icon}
+                </span>
+                <span className="dash-dock__label">{item.tabLabel ?? item.label}</span>
+              </button>
+            )
+          })}
           <button
-            key={item.id}
-            className={`dash-tab-bar__btn${activeSection === item.id ? ' dash-tab-bar__btn--active' : ''}`}
-            onClick={() => handleNav(item.id)}
-            aria-label={item.label}
+            type="button"
+            className={`dash-dock__btn${moreActive ? ' is-active' : ''}`}
+            onClick={() => setMoreOpen(true)}
+            aria-label="Altre sezioni"
+            aria-expanded={moreOpen}
+            aria-controls="dash-more-sheet"
           >
-            {typeof item.badge === 'number' && item.badge > 0 && (
-              <span className="dash-tab-bar__badge">{item.badge}</span>
-            )}
-            <span className="dash-tab-bar__icon-wrap">{item.icon}</span>
-            <span className="dash-tab-bar__label">{item.tabLabel ?? item.label}</span>
+            <span className="dash-dock__icon" aria-hidden>
+              <IconMoreDots size={18} />
+            </span>
+            <span className="dash-dock__label">Altro</span>
           </button>
-        ))}
-        <button
-          type="button"
-          className={`dash-tab-bar__btn${!activeInTabs ? ' dash-tab-bar__btn--active' : ''}`}
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Altre sezioni"
-        >
-          <span className="dash-tab-bar__icon-wrap">
-            <IconMenu size={18} />
-          </span>
-          <span className="dash-tab-bar__label">Altro</span>
-        </button>
+        </div>
       </nav>
+
+      {/* Bottom sheet “Altro” — sostituisce la sidebar mobile */}
+      {moreOpen ? (
+        <div className="dash-more" role="presentation">
+          <button
+            type="button"
+            className="dash-more__backdrop"
+            aria-label="Chiudi menu"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div
+            id="dash-more-sheet"
+            className="dash-more__sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={sheetTitleId}
+          >
+            <div className="dash-more__handle" aria-hidden />
+            <div className="dash-more__head">
+              <h2 id={sheetTitleId} className="dash-more__title">
+                Altro
+              </h2>
+              <button
+                type="button"
+                className="dash-more__close"
+                aria-label="Chiudi"
+                onClick={() => setMoreOpen(false)}
+              >
+                <IconClose size={18} />
+              </button>
+            </div>
+
+            <div className="dash-more__profile">
+              <div className="dash-more__avatar">{initials}</div>
+              <div className="dash-more__profile-text">
+                <strong>{userName}</strong>
+                <span>{userRole || ACCOUNT_BADGE_LABELS[accountType]}</span>
+              </div>
+            </div>
+
+            <ul className="dash-more__list">
+              {moreItems.map((item) => {
+                const active = activeSection === item.id
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className={`dash-more__item${active ? ' is-active' : ''}`}
+                      onClick={() => handleNav(item.id)}
+                    >
+                      <span className="dash-more__item-icon" aria-hidden>
+                        {item.icon}
+                      </span>
+                      <span className="dash-more__item-label">{item.label}</span>
+                      {typeof item.badge === 'number' && item.badge > 0 ? (
+                        <span className="dash-more__item-badge">{item.badge}</span>
+                      ) : (
+                        <span className="dash-more__chevron" aria-hidden>
+                          ›
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+
+            <div className="dash-more__footer">
+              <button type="button" className="dash-more__footer-btn" onClick={() => navigate(contattiPath)}>
+                <IconSupport size={16} />
+                Supporto
+              </button>
+              <button
+                type="button"
+                className="dash-more__footer-btn dash-more__footer-btn--danger"
+                onClick={() => void handleLogout()}
+                disabled={loggingOut}
+              >
+                <IconLogout size={16} />
+                {loggingOut ? 'Uscita…' : 'Esci'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
