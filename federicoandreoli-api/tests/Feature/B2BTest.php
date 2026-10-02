@@ -80,7 +80,7 @@ class B2BTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('email', 'recruiter@auracare.it');
 
-        Mail::assertQueued(TeamInviteMail::class);
+        Mail::assertSent(TeamInviteMail::class);
     }
 
     public function test_structure_staff_crud(): void

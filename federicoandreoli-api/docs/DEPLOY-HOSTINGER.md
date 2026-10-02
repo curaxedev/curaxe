@@ -84,9 +84,11 @@ QUEUE_CONNECTION=database
 CACHE_STORE=database
 ```
 
-## 4. Coda e cron (obbligatori)
+## 4. Coda e cron
 
-Su Hostinger **non affidarti a `nohup` + `pgrep`**: il cron del pannello spesso non lascia processi lunghi vivi, e `php` senza path assoluto può fallire in silenzio.
+Le **email transazionali partono in sincrono** (Resend nella stessa request): OTP/welcome non dipendono dal worker.
+
+Il cron coda resta opzionale (job futuri non-mail). Setup consigliato Hostinger:
 
 ### Setup consigliato (2 cron, ogni minuto)
 
@@ -98,7 +100,7 @@ which php
 ls /opt/alt/php*/usr/bin/php
 ```
 
-2. Nel pannello **Cron Job**, elimina il cron con `pgrep`/`nohup` e crea **solo** questi due (sostituisci `PHP` col path trovato, es. `/usr/bin/php`):
+2. Nel pannello **Cron Job** (path assoluto PHP, es. `/usr/bin/php`):
 
 **A — Scheduler Laravel**
 
@@ -110,7 +112,7 @@ ls /opt/alt/php*/usr/bin/php
 cd /home/u641205820/curaxe/federicoandreoli-api && /usr/bin/php artisan schedule:run >> storage/logs/cron-schedule.log 2>&1
 ```
 
-**B — Coda email (svuota e termina)**
+**B — Coda (opzionale, job non-mail)**
 
 ```
 * * * * *
@@ -120,18 +122,7 @@ cd /home/u641205820/curaxe/federicoandreoli-api && /usr/bin/php artisan schedule
 cd /home/u641205820/curaxe/federicoandreoli-api && /usr/bin/php artisan queue:work database --stop-when-empty --max-time=50 --tries=3 >> storage/logs/queue.log 2>&1
 ```
 
-Così ogni minuto processa le mail in attesa e chiude: affidabile su shared/cloud.
-
-### Svuota subito la coda (una tantum da SSH)
-
-```bash
-cd ~/curaxe/federicoandreoli-api
-php artisan queue:work database --stop-when-empty --tries=3
-php -r 'require "vendor/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo "jobs=".DB::table("jobs")->count().PHP_EOL;'
-```
-
-Se `jobs=0` e Resend mostra Delivered, le email funzionano.
-## 5. Stripe post-deploy (landlord)
+Evita `nohup`/`pgrep` sul shared Hostinger: i processi lunghi vengono uccisi.## 5. Stripe post-deploy (landlord)
 
 1. Login admin su `https://curaxe.it` (password+TOTP o passkey)
 2. Dashboard → **Abbonamenti** → procedura guidata Stripe

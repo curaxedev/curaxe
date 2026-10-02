@@ -2,18 +2,20 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Base per tutte le email transazionali della piattaforma.
+ * Base per le email transazionali della piattaforma.
  *
- * - Sempre in coda (`ShouldQueue`, connessione database) per non bloccare le richieste HTTP.
- * - Le view estendono `emails.layout` (brand Care & Trust).
+ * Invio **sincrono** verso Resend (niente coda): su Hostinger il worker
+ * cron è fragile e OTP/welcome non possono aspettare. Le view estendono
+ * `emails.layout` (brand Care & Trust).
+ *
+ * Se in futuro serve una coda affidabile (Supervisor/VPS), si può
+ * reintrodurre `ShouldQueue` solo per mail non urgenti.
  */
-abstract class BaseMailable extends Mailable implements ShouldQueue
+abstract class BaseMailable extends Mailable
 {
-    use Queueable, SerializesModels;
+    use SerializesModels;
 }

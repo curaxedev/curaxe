@@ -37,7 +37,7 @@ class MessagingBillingTest extends TestCase
             ->assertCreated()
             ->json();
 
-        Mail::assertQueued(NewMessageMail::class);
+        Mail::assertSent(NewMessageMail::class);
 
         $this->getJson('/api/v1/messaging/threads')->assertOk()->assertJsonCount(1);
         $this->getJson('/api/v1/messaging/threads/'.$thread['id'].'/messages')

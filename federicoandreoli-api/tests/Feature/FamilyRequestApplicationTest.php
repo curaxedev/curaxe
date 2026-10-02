@@ -86,14 +86,14 @@ class FamilyRequestApplicationTest extends TestCase
             ->assertJsonPath('status', 'submitted')
             ->json();
 
-        Mail::assertQueued(ApplicationReceivedMail::class);
+        Mail::assertSent(ApplicationReceivedMail::class);
 
         Sanctum::actingAs($agency);
         $this->patchJson('/api/v1/applications/'.$created['id'], ['status' => 'viewed'])
             ->assertOk()
             ->assertJsonPath('status', 'viewed');
 
-        Mail::assertQueued(ApplicationStatusChangedMail::class);
+        Mail::assertSent(ApplicationStatusChangedMail::class);
 
         $this->patchJson('/api/v1/applications/'.$created['id'], ['status' => 'hired'])
             ->assertUnprocessable();
@@ -124,7 +124,7 @@ class FamilyRequestApplicationTest extends TestCase
             ->assertJsonPath('targetType', 'family_request');
 
         $this->assertDatabaseCount('applications', 1);
-        Mail::assertQueued(ApplicationReceivedMail::class);
+        Mail::assertSent(ApplicationReceivedMail::class);
     }
 
     public function test_duplicate_application_rejected(): void

@@ -32,7 +32,7 @@ class AuthOtpTest extends TestCase
             ->assertStatus(202);
 
         $code = null;
-        Mail::assertQueued(LoginOtpMail::class, function (LoginOtpMail $mail) use (&$code) {
+        Mail::assertSent(LoginOtpMail::class, function (LoginOtpMail $mail) use (&$code) {
             $code = $mail->code;
 
             return true;

@@ -116,6 +116,6 @@ class GdprTest extends TestCase
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
         $this->assertDatabaseMissing('consent_records', ['user_id' => $user->id]);
 
-        Mail::assertQueued(AccountDeletedMail::class);
+        Mail::assertSent(AccountDeletedMail::class);
     }
 }

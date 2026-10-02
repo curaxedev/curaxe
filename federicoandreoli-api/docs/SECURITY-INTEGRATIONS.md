@@ -54,4 +54,4 @@ Review effettuata sul codice Curaxe (API Laravel + SPA). Aggiornare dopo cambi r
 - [ ] Turnstile ON + widget login (quando chiavi pronte)
 - [ ] Stripe test end-to-end (checkout + webhook + portal)
 - [ ] Passkey admin registrata su device landlord
-- [ ] Coda `queue:work` e cron `schedule:run` attivi
+- [ ] Cron `schedule:run` attivo (email OTP/welcome sono sincrone, non richiedono queue)

@@ -84,7 +84,7 @@ class RegistrationTest extends TestCase
         ]);
         $this->assertDatabaseHas('registrations', ['user_id' => $user->id, 'intent' => 'offer']);
 
-        Mail::assertQueued(WelcomeProfessionalMail::class, function (WelcomeProfessionalMail $mail) {
+        Mail::assertSent(WelcomeProfessionalMail::class, function (WelcomeProfessionalMail $mail) {
             return strlen($mail->code) === 6 && ctype_digit($mail->code);
         });
     }
@@ -103,7 +103,7 @@ class RegistrationTest extends TestCase
         $this->assertSame(UserRole::PublicUser, $user->role);
         $this->assertNull($user->email_verified_at);
 
-        Mail::assertQueued(WelcomeSeekerMail::class, function (WelcomeSeekerMail $mail) {
+        Mail::assertSent(WelcomeSeekerMail::class, function (WelcomeSeekerMail $mail) {
             return strlen($mail->code) === 6 && ctype_digit($mail->code);
         });
     }
@@ -143,7 +143,7 @@ class RegistrationTest extends TestCase
         $this->postJson('/api/v1/registrations/professional', $this->professionalPayload())->assertCreated();
 
         $code = null;
-        Mail::assertQueued(WelcomeProfessionalMail::class, function (WelcomeProfessionalMail $mail) use (&$code) {
+        Mail::assertSent(WelcomeProfessionalMail::class, function (WelcomeProfessionalMail $mail) use (&$code) {
             $code = $mail->code;
 
             return true;
@@ -164,7 +164,7 @@ class RegistrationTest extends TestCase
         $this->postJson('/api/v1/registrations/seeker', $this->seekerPayload())->assertCreated();
 
         $code = null;
-        Mail::assertQueued(WelcomeSeekerMail::class, function (WelcomeSeekerMail $mail) use (&$code) {
+        Mail::assertSent(WelcomeSeekerMail::class, function (WelcomeSeekerMail $mail) use (&$code) {
             $code = $mail->code;
 
             return true;
@@ -221,7 +221,7 @@ class RegistrationTest extends TestCase
             ->assertStatus(202);
 
         $code = null;
-        Mail::assertQueued(LoginOtpMail::class, function (LoginOtpMail $mail) use (&$code) {
+        Mail::assertSent(LoginOtpMail::class, function (LoginOtpMail $mail) use (&$code) {
             $code = $mail->code;
 
             return true;

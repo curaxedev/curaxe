@@ -60,14 +60,13 @@ php artisan tinker
 
 Oppure login OTP su staging e controlla la casella + dashboard Resend → Emails.
 
-### 6. Coda (obbligatoria)
+### 6. Invio email (sincrono)
 
-Le mail usano `BaseMailable` in coda (`QUEUE_CONNECTION=database`). Assicurati che giri:
+Le mail transazionali (OTP, welcome, reset, ecc.) partono **subito** via Resend nella stessa richiesta HTTP: non dipendono dal cron/`queue:work`.
 
-```bash
-php artisan queue:work database --sleep=1 --tries=3
-```
+Il cron `queue:work` resta utile per eventuali job non-mail in futuro, ma **non è più obbligatorio** per ricevere OTP.
 
+Tempo tipico Resend: ~150–300 ms per messaggio.
 ## Comportamento applicativo
 
 | Situazione | Mailer effettivo |

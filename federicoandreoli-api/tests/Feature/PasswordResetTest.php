@@ -31,7 +31,7 @@ class PasswordResetTest extends TestCase
             ->assertStatus(202);
 
         $url = null;
-        Mail::assertQueued(PasswordResetMail::class, function (PasswordResetMail $mail) use (&$url) {
+        Mail::assertSent(PasswordResetMail::class, function (PasswordResetMail $mail) use (&$url) {
             $url = $mail->resetUrl;
 
             return true;
