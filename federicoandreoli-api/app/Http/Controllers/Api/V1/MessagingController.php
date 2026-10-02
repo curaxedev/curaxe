@@ -97,15 +97,24 @@ class MessagingController
         $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
         $user = $request->user();
 
-        $message = Message::query()->create([
-            'thread_id' => $thread->id,
-            'sender_id' => $user->id,
-            'sender_name' => $user->name,
-            'body' => $data['body'],
-        ]);
+        try {
+            $message = Message::query()->create([
+                'thread_id' => $thread->id,
+                'sender_id' => $user->id,
+                'sender_name' => $user->name,
+                'body' => $data['body'],
+            ]);
+        } catch (QueryException) {
+            return ApiResponse::error(
+                'Messaggi temporaneamente non disponibili. Riprova tra poco.',
+                503,
+                [],
+                'messaging_unavailable',
+            );
+        }
 
         $unread = $thread->unread_by_user_id ?? [];
-        foreach ($thread->participant_ids as $pid) {
+        foreach ($thread->participant_ids ?? [] as $pid) {
             $key = (string) $pid;
             if ($key === (string) $user->id) {
                 $unread[$key] = 0;
@@ -119,7 +128,7 @@ class MessagingController
         $thread->unread_by_user_id = $unread;
         $thread->save();
 
-        foreach ($thread->participant_ids as $pid) {
+        foreach ($thread->participant_ids ?? [] as $pid) {
             if ((string) $pid === (string) $user->id) {
                 continue;
             }
@@ -127,14 +136,26 @@ class MessagingController
             if ($recipient === null) {
                 continue;
             }
-            AppNotification::query()->create([
-                'user_id' => $recipient->id,
-                'audience' => $this->audience($recipient->role),
-                'text' => 'Nuovo messaggio da '.$user->name,
-                'type' => 'info',
-                'read' => false,
-            ]);
-            Mail::to($recipient->email)->send(new NewMessageMail($thread, $message));
+
+            try {
+                if (Schema::hasTable('app_notifications')) {
+                    AppNotification::query()->create([
+                        'user_id' => $recipient->id,
+                        'audience' => $this->audience($recipient->role),
+                        'text' => 'Nuovo messaggio da '.$user->name,
+                        'type' => 'info',
+                        'read' => false,
+                    ]);
+                }
+            } catch (\Throwable) {
+                // La conversazione resta valida anche se la notifica in-app fallisce.
+            }
+
+            try {
+                Mail::to($recipient->email)->send(new NewMessageMail($thread, $message));
+            } catch (\Throwable) {
+                // Non bloccare Contatta/invio se Resend/SMTP fallisce.
+            }
         }
 
         return response()->json([
@@ -185,6 +206,15 @@ class MessagingController
             return ApiResponse::error('Professionista non trovato.', 404, [], 'not_found');
         }
 
+        if ((string) $user->id === (string) $pro->id) {
+            return ApiResponse::error(
+                'Non puoi contattare il tuo stesso profilo.',
+                422,
+                [],
+                'validation',
+            );
+        }
+
         try {
             $existing = MessageThread::query()
                 ->where('link_type', 'direct_contact')
@@ -206,7 +236,10 @@ class MessagingController
             if ($existing !== null) {
                 if (! empty($data['initialMessage'])) {
                     $request->merge(['body' => $data['initialMessage']]);
-                    $this->send($request, $existing->id);
+                    $sendResult = $this->send($request, $existing->id);
+                    if ($sendResult->getStatusCode() >= 400) {
+                        // Thread già esistente: restituiamo comunque la conversazione.
+                    }
                 }
 
                 return response()->json($this->threadPayload($existing->fresh()));
@@ -243,6 +276,13 @@ class MessagingController
                 503,
                 [],
                 'messaging_unavailable',
+            );
+        } catch (\Throwable) {
+            return ApiResponse::error(
+                'Impossibile avviare la conversazione. Riprova tra poco.',
+                500,
+                [],
+                'messaging_failed',
             );
         }
     }
