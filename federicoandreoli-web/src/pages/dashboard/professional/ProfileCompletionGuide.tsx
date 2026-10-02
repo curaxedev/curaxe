@@ -44,6 +44,8 @@ export function ProfileCompletionGuide({
     )
   }
 
+  const visibleItems = pending.length > 0 ? pending : checklist
+
   return (
     <div className="dash-card dash-completion-guide">
       <div className="dash-card__title">
@@ -53,10 +55,11 @@ export function ProfileCompletionGuide({
         </span>
       </div>
       <p className="dash-section__subtitle" style={{ marginTop: 0 }}>
-        Dopo la registrazione rapida, completa queste sezioni per comparire meglio nelle ricerche.
+        Tocca una voce per andare subito alla sezione. Completa queste parti per comparire meglio
+        nelle ricerche.
       </p>
       <ul className="dash-completion-guide__list">
-        {checklist.map((item) => (
+        {visibleItems.map((item) => (
           <li key={`${item.id}-${item.label}`}>
             <button
               type="button"

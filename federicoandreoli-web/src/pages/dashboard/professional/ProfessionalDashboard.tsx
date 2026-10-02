@@ -471,6 +471,14 @@ function formatCoverageLabel(place: ItaliaGeoRow): string {
   return `${place.comune} (${place.siglaProvincia})`
 }
 
+function formatProvinceLabel(place: ItaliaGeoRow): string {
+  return `Provincia di ${place.provincia}`
+}
+
+function formatRegionLabel(place: ItaliaGeoRow): string {
+  return place.regione
+}
+
 function SectionProfile({
   profile,
   loading,
@@ -518,6 +526,7 @@ function SectionProfile({
   const [primaryPlace, setPrimaryPlace] = useState<ItaliaGeoRow | null>(null)
   const [availableFrom, setAvailableFrom] = useState('')
   const [coverageSearchKey, setCoverageSearchKey] = useState(0)
+  const [coveragePick, setCoveragePick] = useState<ItaliaGeoRow | null>(null)
   const [formReady, setFormReady] = useState(false)
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -607,11 +616,24 @@ function SectionProfile({
     toastTimeout.current = setTimeout(() => setSaved(false), 3000)
   }
 
+  const addCoverageLabel = (label: string) => {
+    const trimmed = label.trim()
+    if (!trimmed) return
+    setZones((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]))
+  }
+
   const addCoveragePlace = (place: ItaliaGeoRow | null) => {
     if (!place) return
-    const label = formatCoverageLabel(place)
-    setZones((prev) => (prev.includes(label) ? prev : [...prev, label]))
+    setCoveragePick(place)
     setCoverageSearchKey((k) => k + 1)
+  }
+
+  const confirmCoverageScope = (scope: 'comune' | 'provincia' | 'regione') => {
+    if (!coveragePick) return
+    if (scope === 'comune') addCoverageLabel(formatCoverageLabel(coveragePick))
+    if (scope === 'provincia') addCoverageLabel(formatProvinceLabel(coveragePick))
+    if (scope === 'regione') addCoverageLabel(formatRegionLabel(coveragePick))
+    setCoveragePick(null)
   }
 
   if (loading) {
@@ -924,7 +946,7 @@ function SectionProfile({
         </div>
         <div className="dash-prof-cols">
           <div>
-            <div className="dash-prof-section" id="prof-section-zone">
+            <div className="dash-prof-section">
               <div className="dash-form-field">
                 <span className="dash-form-label">Zona di lavoro principale</span>
                 {primaryZone && !primaryPlace ? (
@@ -955,9 +977,9 @@ function SectionProfile({
               </div>
             </div>
             <div className="dash-prof-section">
-              <div className="dash-prof-section__title">Aree coperte</div>
+              <div className="dash-prof-section__title">Province / regioni coperte</div>
               <p className="dash-form-hint" style={{ marginTop: 0 }}>
-                Aggiungi comuni o province con la stessa ricerca della home.
+                Cerca come in home, poi scegli comune, provincia o regione.
               </p>
               <div className="dash-chip-group">
                 {zones.map((z) => (
@@ -981,6 +1003,43 @@ function SectionProfile({
                   onSelectedPlaceChange={addCoveragePlace}
                 />
               </div>
+              {coveragePick ? (
+                <div className="dash-prof-geo-pick" role="group" aria-label="Aggiungi area coperta">
+                  <p className="dash-form-hint" style={{ marginTop: 0 }}>
+                    Aggiungi da <strong>{coveragePick.comune}</strong>:
+                  </p>
+                  <div className="dash-prof-geo-pick__actions">
+                    <button
+                      type="button"
+                      className="dash-btn dash-btn--ghost dash-btn--sm"
+                      onClick={() => confirmCoverageScope('comune')}
+                    >
+                      {formatCoverageLabel(coveragePick)}
+                    </button>
+                    <button
+                      type="button"
+                      className="dash-btn dash-btn--ghost dash-btn--sm"
+                      onClick={() => confirmCoverageScope('provincia')}
+                    >
+                      {formatProvinceLabel(coveragePick)}
+                    </button>
+                    <button
+                      type="button"
+                      className="dash-btn dash-btn--ghost dash-btn--sm"
+                      onClick={() => confirmCoverageScope('regione')}
+                    >
+                      {formatRegionLabel(coveragePick)}
+                    </button>
+                    <button
+                      type="button"
+                      className="dash-btn dash-btn--ghost dash-btn--sm"
+                      onClick={() => setCoveragePick(null)}
+                    >
+                      Annulla
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
             <Toggle checked={availableToMove} onChange={setAvailableToMove} label="Disponibile a spostarsi" />
           </div>

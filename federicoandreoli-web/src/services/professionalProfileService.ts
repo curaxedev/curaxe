@@ -139,8 +139,8 @@ const COMPLETION_ITEMS: CompletionItem[] = [
   },
   {
     id: 'zone',
-    label: 'Zone di lavoro',
-    hint: 'Comune o zone dove operi',
+    label: 'Province / regioni coperte',
+    hint: 'Cerca comune, provincia o regione',
     weight: 10,
     ok: (p) => (p.zones?.length ?? 0) > 0 || textLen(p.primaryZone) > 0,
   },

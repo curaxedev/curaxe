@@ -8336,6 +8336,20 @@
   z-index: 40;
 }
 
+.dash-prof-geo-pick {
+  margin-top: var(--space-3);
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 58, 82, 0.1);
+  background: rgba(240, 247, 252, 0.7);
+}
+
+.dash-prof-geo-pick__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .dash-prof-save-desktop {
   display: inline-flex;
 }
@@ -9075,6 +9089,16 @@
 
   .dash-prof-wrap {
     padding-bottom: 1rem;
+  }
+
+  .dash-completion-guide__item {
+    min-height: 52px;
+    padding: 12px 14px;
+  }
+
+  .dash-prof-geo-pick__actions .dash-btn {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
   }
 
   /* App card: wrap */
