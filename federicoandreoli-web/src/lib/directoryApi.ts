@@ -18,6 +18,7 @@ import {
 } from '../services/directoryService'
 import type {
   DirectoryProfessionalDetail,
+  DirectoryProfileSummary,
   DirectorySearchParams,
   DirectorySearchResult,
   MockOpenPosition,
@@ -59,12 +60,33 @@ function toDirectoryError(err: unknown, fallback: string): DirectoryError {
   return new DirectoryError('server', fallback)
 }
 
+/** Laravel / cache a volte serializzano `data` come oggetto invece che array. */
+function asProfileList(raw: unknown): DirectoryProfileSummary[] {
+  if (Array.isArray(raw)) return raw as DirectoryProfileSummary[]
+  if (raw && typeof raw === 'object') return Object.values(raw) as DirectoryProfileSummary[]
+  return []
+}
+
+function normalizeSearchResult(raw: DirectorySearchResult | Record<string, unknown>): DirectorySearchResult {
+  const metaRaw = (raw as DirectorySearchResult).meta
+  const data = asProfileList((raw as DirectorySearchResult).data)
+  return {
+    data,
+    meta: {
+      total: Number(metaRaw?.total ?? data.length) || 0,
+      page: Number(metaRaw?.page ?? 1) || 1,
+      pageSize: Number(metaRaw?.pageSize ?? 12) || 12,
+      totalPages: Number(metaRaw?.totalPages ?? 1) || 1,
+    },
+  }
+}
+
 export async function searchDirectoryProfiles(
   params: DirectorySearchParams,
 ): Promise<DirectorySearchResult> {
   if (isMockApiEnabled()) return fetchDirectorySearch(params)
   try {
-    return await httpGet<DirectorySearchResult>('/api/v1/profiles', {
+    const raw = await httpGet<DirectorySearchResult>('/api/v1/profiles', {
       anonymous: true,
       query: {
         intent: params.intent,
@@ -74,6 +96,7 @@ export async function searchDirectoryProfiles(
         pageSize: params.pageSize ?? 12,
       },
     })
+    return normalizeSearchResult(raw)
   } catch (err) {
     throw toDirectoryError(err, 'Ricerca profili non riuscita.')
   }
@@ -119,7 +142,7 @@ export async function getDirectoryOpenPositionsForHome(
         pageSize: 50,
       },
     })
-    return result.data
+    return Array.isArray(result.data) ? result.data : []
   } catch (err) {
     throw toDirectoryError(err, 'Caricamento posizioni non riuscito.')
   }
@@ -139,7 +162,7 @@ export async function getDirectoryNearbyOpenPositions(
         pageSize: limit ?? 6,
       },
     })
-    return result.data.filter((item) => item.id !== job.id)
+    return (Array.isArray(result.data) ? result.data : []).filter((item) => item.id !== job.id)
   } catch (err) {
     throw toDirectoryError(err, 'Caricamento posizioni vicine non riuscito.')
   }

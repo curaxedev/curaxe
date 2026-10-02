@@ -78,7 +78,7 @@ class DirectoryController
             $slice = $merged->slice(($safePage - 1) * $pageSize, $pageSize)->values();
 
             return [
-                'data' => $slice,
+                'data' => $slice->all(),
                 'meta' => [
                     'total' => $total,
                     'page' => $safePage,
@@ -87,6 +87,14 @@ class DirectoryController
                 ],
             ];
         });
+
+        if (isset($payload['data'])) {
+            $payload['data'] = array_values(
+                $payload['data'] instanceof \Illuminate\Support\Collection
+                    ? $payload['data']->all()
+                    : (array) $payload['data']
+            );
+        }
 
         return response()->json($payload);
     }

@@ -43,10 +43,11 @@ export function useDirectorySearch({ intent, place }: UseDirectorySearchOptions)
           page: targetPage,
           pageSize: PAGE_SIZE,
         })
-        setTotal(result.meta.total)
-        setPage(result.meta.page)
-        setTotalPages(result.meta.totalPages)
-        setItems((prev) => (append ? [...prev, ...result.data] : result.data))
+        const rows = Array.isArray(result.data) ? result.data : []
+        setTotal(result.meta?.total ?? rows.length)
+        setPage(result.meta?.page ?? targetPage)
+        setTotalPages(result.meta?.totalPages ?? 1)
+        setItems((prev) => (append ? [...prev, ...rows] : rows))
         setError(null)
       } catch (err) {
         if (!append) {

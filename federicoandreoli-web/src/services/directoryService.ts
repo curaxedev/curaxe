@@ -63,16 +63,17 @@ export function filterAndSortDirectoryProfiles(
   rows: DirectoryProfileSummary[],
   place: ItaliaGeoRow | null,
 ): DirectoryProfileSummary[] {
+  if (!Array.isArray(rows)) return []
   if (!place) return rows
 
   const regionNorm = normalizeGeoPart(place.regione)
-  const inRegion = rows.filter((r) => normalizeGeoPart(r.match.regione) === regionNorm)
+  const inRegion = rows.filter((r) => normalizeGeoPart(r.match?.regione ?? '') === regionNorm)
 
   const comuneNorm = normalizeGeoPart(place.comune)
   const scored = inRegion.map((p, index) => {
     let rank = 2
-    if (p.match.istat === place.id) rank = 0
-    else if (normalizeGeoPart(p.match.comune) === comuneNorm) rank = 1
+    if (p.match?.istat === place.id) rank = 0
+    else if (normalizeGeoPart(p.match?.comune ?? '') === comuneNorm) rank = 1
     return { p, rank, index }
   })
   scored.sort((a, b) => a.rank - b.rank || a.index - b.index)
