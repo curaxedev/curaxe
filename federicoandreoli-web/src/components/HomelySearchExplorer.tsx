@@ -453,27 +453,89 @@ export function HomelySearchExplorer({
 
           {open === 'mode' ? (
             <div className="cx-explorer__pop cx-explorer__pop--mode" onClick={(e) => e.stopPropagation()}>
-              <p className="cx-explorer__pop-title">Come vuoi usare la piattaforma?</p>
+              <p className="cx-explorer__pop-title">Come vuoi usare Curaxe?</p>
+              <p className="cx-explorer__pop-sub">Scegli il percorso più adatto a te</p>
               <div className="cx-explorer__mode-grid" role="listbox" aria-label="Modalità ricerca">
                 <button
                   type="button"
                   role="option"
                   aria-selected={mode === 'cerco'}
-                  className={`cx-explorer__mode-card${mode === 'cerco' ? ' is-selected' : ''}`}
+                  className={`cx-explorer__mode-card cx-explorer__mode-card--cerco${mode === 'cerco' ? ' is-selected' : ''}`}
                   onClick={() => pickMode('cerco')}
                 >
-                  <strong>Cerco assistenza</strong>
-                  <small>Famiglie e strutture che cercano professionisti</small>
+                  <span className="cx-explorer__mode-icon" aria-hidden>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M4 20V9.5L12 4l8 5.5V20"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinejoin="round"
+                      />
+                      <path d="M9 20v-5.5h6V20" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <span className="cx-explorer__mode-copy">
+                    <strong>Cerco assistenza</strong>
+                    <small>Famiglie e strutture che cercano professionisti affidabili</small>
+                  </span>
+                  <span className="cx-explorer__mode-check" aria-hidden>
+                    {mode === 'cerco' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M5 12.5 10 17.5 19 7.5"
+                          stroke="currentColor"
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
                 </button>
                 <button
                   type="button"
                   role="option"
                   aria-selected={mode === 'offro'}
-                  className={`cx-explorer__mode-card${mode === 'offro' ? ' is-selected' : ''}`}
+                  className={`cx-explorer__mode-card cx-explorer__mode-card--offro${mode === 'offro' ? ' is-selected' : ''}`}
                   onClick={() => pickMode('offro')}
                 >
-                  <strong>Offro assistenza</strong>
-                  <small>Professionisti che cercano posizioni e contatti</small>
+                  <span className="cx-explorer__mode-icon" aria-hidden>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M8 7V5.8A1.8 1.8 0 0 1 9.8 4h4.4A1.8 1.8 0 0 1 16 5.8V7"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                      />
+                      <rect
+                        x="4"
+                        y="7"
+                        width="16"
+                        height="13"
+                        rx="2.2"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                      />
+                      <path d="M4 12h16" stroke="currentColor" strokeWidth="1.8" />
+                    </svg>
+                  </span>
+                  <span className="cx-explorer__mode-copy">
+                    <strong>Offro assistenza</strong>
+                    <small>Professionisti che cercano posizioni e nuovi contatti</small>
+                  </span>
+                  <span className="cx-explorer__mode-check" aria-hidden>
+                    {mode === 'offro' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M5 12.5 10 17.5 19 7.5"
+                          stroke="currentColor"
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
                 </button>
               </div>
             </div>
