@@ -14,7 +14,10 @@ import {
   SectionOpenPositions,
 } from './ProfessionalApplicationsSections'
 import { ProfileCompletionGuide } from './ProfileCompletionGuide'
-import type { ProfileCompletionSectionId } from '../../../services/professionalProfileService'
+import {
+  getProfileCompletionChecklist,
+  type ProfileCompletionSectionId,
+} from '../../../services/professionalProfileService'
 import type { MessageThread, MessagingParticipantRole } from '../../../lib/messagingTypes'
 import { showBillingDemoCopy } from '../../../lib/billingFeatures'
 import { BILLING_PRODUCTS, formatBillingAmount, formatBillingDate } from '../../../lib/billingApi'
@@ -151,9 +154,7 @@ function SectionHome({
   onGoTo,
   profile,
   completionPercent,
-  missingFields,
   firstName,
-  lastName,
   loading,
   isPremium,
   unreadNotifications,
@@ -167,9 +168,7 @@ function SectionHome({
   onGoTo: (s: string) => void
   profile: ProfessionalProfile | null
   completionPercent: number
-  missingFields: string[]
   firstName: string
-  lastName: string
   loading: boolean
   isPremium: boolean
   unreadNotifications: number
@@ -192,6 +191,9 @@ function SectionHome({
     (sum, t) => sum + (t.unreadByUserId[userId] ?? 0),
     0,
   )
+  const checklist = getProfileCompletionChecklist(profile)
+  const pendingItems = checklist.filter((item) => !item.done)
+  const profileComplete = completionPercent >= 100
 
   const viewsTrend =
     profileViewStats.weekChangePercent === null
@@ -213,65 +215,116 @@ function SectionHome({
 
   return (
     <div className="dash-home">
-      {completionPercent < 100 ? (
-        <ProfileCompletionGuide
-          profile={profile}
-          completionPercent={completionPercent}
-          variant="banner"
-          onGoToProfile={() => onGoTo('profilo')}
-        />
-      ) : null}
+      <section
+        className={`dash-home-hero${profileComplete ? ' dash-home-hero--complete' : ''}`}
+        aria-label={profileComplete ? 'Profilo completo' : 'Completamento profilo'}
+      >
+        <div className="dash-home-hero__content">
+          <div className="dash-home-hero__pills">
+            <span className="dash-home-hero__pill">
+              <IconWave size={14} aria-hidden />
+              Bentornat{firstName.toLowerCase().endsWith('a') ? 'a' : 'o'}
+            </span>
+            {profileComplete ? (
+              <span className="dash-home-hero__pill dash-home-hero__pill--ok">Profilo completo</span>
+            ) : (
+              <span className="dash-home-hero__pill dash-home-hero__pill--warn">
+                {pendingItems.length} {pendingItems.length === 1 ? 'voce mancante' : 'voci mancanti'}
+              </span>
+            )}
+          </div>
 
-      {/* Welcome card */}
-      <div className="dash-home-welcome">
-        <div className="dash-home-welcome__left">
-          <div className="dash-home-welcome__eyebrow">
-            <span className="dash-home-welcome__eyebrow-icon"><IconWave size={16} /></span>
-            Bentornata
-          </div>
-          <h1 className="dash-home-welcome__title">
+          <h1 className="dash-home-hero__title">
             Ciao {firstName}
-            {completionPercent < 100 ? ', completa il tuo profilo' : ', il tuo profilo è completo'}
+            {profileComplete ? '' : ', completa il tuo profilo'}
           </h1>
-          <p className="dash-home-welcome__sub">
-            {completionPercent < 100
-              ? 'Ti sei iscritto in 2 passi: completa le sezioni sotto per aumentare la visibilità.'
-              : 'Il profilo è completo. Resta aggiornato su disponibilità e tariffe.'}
+          <p className="dash-home-hero__sub">
+            {profileComplete
+              ? 'Il profilo è pronto. Controlla le statistiche e gestisci disponibilità o tariffe quando vuoi.'
+              : 'Iscriviti in 2 passi è fatto: completa le voci sotto per comparire meglio nelle ricerche.'}
           </p>
-          <div className="dash-home-progress">
-            <div className="dash-home-progress__header">
-              <span className="dash-home-progress__label">Completamento profilo</span>
-              <span className="dash-home-progress__pct">{barWidth}%</span>
-            </div>
-            <div className="dash-progress-track">
-              <div className="dash-progress-bar" style={{ width: `${barWidth}%` }} />
-            </div>
-          </div>
-          {missingFields.length > 0 ? (
-            <ul className="dash-home-checklist">
-              {missingFields.slice(0, 5).map((item) => (
-                <li key={item} className="dash-home-checklist__item">
-                  <span className="dash-home-checklist__dot" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <button className="dash-btn dash-btn--primary" onClick={() => onGoTo('profilo')}>
-            {completionPercent < 100 ? 'Completa profilo' : 'Modifica profilo'}
-            <IconChevronRight size={16} />
-          </button>
+
+          {!profileComplete ? (
+            <>
+              <div className="dash-home-hero__progress-row">
+                <div className="dash-home-hero__progress-meta">
+                  <span>Completamento</span>
+                  <strong>{barWidth}%</strong>
+                </div>
+                <div className="dash-home-hero__progress-track" aria-hidden>
+                  <div className="dash-home-hero__progress-fill" style={{ width: `${barWidth}%` }} />
+                </div>
+              </div>
+
+              <ul className="dash-home-hero__tasks">
+                {checklist.slice(0, 6).map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className={`dash-home-hero__task${item.done ? ' is-done' : ''}`}
+                      onClick={() => onGoTo('profilo')}
+                      disabled={item.done}
+                    >
+                      <span className="dash-home-hero__task-mark" aria-hidden>
+                        {item.done ? <IconCheckMark size={12} /> : null}
+                      </span>
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="dash-home-hero__actions">
+                <button type="button" className="dash-home-hero__cta" onClick={() => onGoTo('profilo')}>
+                  Completa profilo
+                  <IconChevronRight size={16} />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="dash-home-hero__mini-stats" role="list">
+                <button type="button" className="dash-home-hero__mini-stat" role="listitem" onClick={() => onGoTo('profilo')}>
+                  <strong>{profileViewStats.profileViewsTotal}</strong>
+                  <span>Visualizzazioni</span>
+                </button>
+                <button type="button" className="dash-home-hero__mini-stat" role="listitem" onClick={() => onGoTo('messaggi')}>
+                  <strong>{contactThreads.length}</strong>
+                  <span>Conversazioni</span>
+                </button>
+                <button type="button" className="dash-home-hero__mini-stat" role="listitem" onClick={() => onGoTo('candidature')}>
+                  <strong>{applicationsSent}</strong>
+                  <span>Candidature</span>
+                </button>
+              </div>
+              <div className="dash-home-hero__actions">
+                <button type="button" className="dash-home-hero__cta" onClick={() => onGoTo('profilo')}>
+                  Gestisci profilo
+                  <IconChevronRight size={16} />
+                </button>
+                <button type="button" className="dash-home-hero__cta dash-home-hero__cta--ghost" onClick={() => onGoTo('messaggi')}>
+                  Messaggi
+                  {unreadMessages > 0 ? ` (${unreadMessages})` : ''}
+                </button>
+              </div>
+            </>
+          )}
         </div>
+
         <div
-          className="dash-home-welcome__avatar-ring"
+          className="dash-home-hero__ring"
           style={{ '--dash-completion': barWidth } as CSSProperties}
+          aria-hidden
         >
-          <div className="dash-home-welcome__avatar">{initialsFromName(firstName, lastName)}</div>
+          <div className="dash-home-hero__ring-inner">
+            <span className="dash-home-hero__ring-pct">{barWidth}%</span>
+            <span className="dash-home-hero__ring-label">{profileComplete ? 'Pronto' : 'Profilo'}</span>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Stats */}
-      <div className="dash-stat-grid">
+      <div className="dash-stat-grid dash-stat-grid--home">
         <div className="dash-stat-card">
           <div className="dash-stat-card__icon" style={{ background: 'var(--color-primary-softer)', color: 'var(--color-primary)' }}>
             <IconEye size={18} />
@@ -1543,9 +1596,7 @@ export function ProfessionalDashboard() {
             onGoTo={setActiveSection}
             profile={profile}
             completionPercent={completionPercent}
-            missingFields={missingFields}
             firstName={firstName}
-            lastName={lastName}
             loading={profileLoading}
             isPremium={billing.isPremium}
             unreadNotifications={notifications.unreadCount}
