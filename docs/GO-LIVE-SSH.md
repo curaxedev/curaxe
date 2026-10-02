@@ -55,7 +55,8 @@ Per clonare un repo **privato** sul server serve una delle due:
 1. Sul server (dopo il primo login SSH):  
    `ssh-keygen -t ed25519 -C "curaxe-server-clone" -f ~/.ssh/curaxe_github -N ""`
 2. `cat ~/.ssh/curaxe_github.pub` → copia
-3. GitHub → repo → Settings → Deploy keys → Add → read-only
+3. GitHub → repo **BackSoftwareJR/bk-curaxe** → Settings → Deploy keys → Add → read-only  
+   (su `curaxedev/curaxe` non basta WRITE: senza Admin non vedi Deploy keys)
 4. Configura SSH GitHub sul server:
 
 ```bash
@@ -104,7 +105,7 @@ Layout consigliato (monorepo fuori dal web root pubblico dove possibile):
 
 ```bash
 cd ~
-git clone git@github.com:curaxedev/curaxe.git curaxe
+git clone git@github.com:BackSoftwareJR/bk-curaxe.git curaxe
 cd ~/curaxe
 git status
 ```
