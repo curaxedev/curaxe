@@ -2,6 +2,7 @@
  * Client HTTP centrale verso l'API Laravel (`/api/v1/...`).
  *
  * - Base URL da `VITE_API_URL` (vuota in dev: passa dal proxy Vite).
+ * - Cookie + CSRF Sanctum (stateful SPA su curaxe.it → api.curaxe.it).
  * - Bearer token Sanctum letto dalla sessione auth corrente.
  * - Errori normalizzati nel formato Laravel `{ message, errors }` -> `HttpError`.
  * - Timeout con AbortController; 401 invalida la sessione locale.
@@ -10,6 +11,9 @@ import { getAuthSessionSnapshot, setAuthSession } from '../auth/authSessionStore
 import { getApiBaseUrl } from './runtimeConfig'
 
 const DEFAULT_TIMEOUT_MS = 20_000
+
+/** Evita di battere /sanctum/csrf-cookie a ogni richiesta. */
+let csrfReady: Promise<void> | null = null
 
 export type HttpErrorKind =
   | 'network'
@@ -86,6 +90,40 @@ function kindForStatus(status: number): HttpErrorKind {
   return 'server'
 }
 
+function readXsrfToken(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)
+  if (!match?.[1]) return null
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return match[1]
+  }
+}
+
+function isMutatingMethod(method: string): boolean {
+  const m = method.toUpperCase()
+  return m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS'
+}
+
+/** Prime Sanctum CSRF cookie (necessario con `statefulApi` + Origin frontend). */
+async function ensureCsrfCookie(): Promise<void> {
+  if (typeof document === 'undefined') return
+  if (readXsrfToken()) return
+  if (!csrfReady) {
+    csrfReady = fetch(buildUrl('/sanctum/csrf-cookie'), {
+      method: 'GET',
+      credentials: 'include',
+      headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(() => undefined)
+      .catch(() => {
+        csrfReady = null
+      })
+  }
+  await csrfReady
+}
+
 async function parseErrorBody(
   res: Response
 ): Promise<{ message: string; errors?: Record<string, string[]>; code?: string }> {
@@ -108,7 +146,17 @@ async function parseErrorBody(
 export async function httpRequest<T>(method: string, path: string, options: HttpRequestOptions = {}): Promise<T> {
   const { query, body, formData, timeoutMs = DEFAULT_TIMEOUT_MS, signal, anonymous = false } = options
 
-  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (isMutatingMethod(method)) {
+    await ensureCsrfCookie()
+  }
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+  }
+  const xsrf = readXsrfToken()
+  if (xsrf) headers['X-XSRF-TOKEN'] = xsrf
+
   if (!anonymous) {
     const token = getAuthSessionSnapshot()?.token
     if (token) headers.Authorization = `Bearer ${token}`
@@ -133,6 +181,7 @@ export async function httpRequest<T>(method: string, path: string, options: Http
       method,
       headers,
       body: requestBody,
+      credentials: 'include',
       signal: controller.signal,
     })
   } catch (err) {
@@ -144,6 +193,27 @@ export async function httpRequest<T>(method: string, path: string, options: Http
   } finally {
     clearTimeout(timeoutId)
     signal?.removeEventListener('abort', onOuterAbort)
+  }
+
+  // CSRF scaduto: rinnova cookie e riprova una volta.
+  if (res.status === 419 && isMutatingMethod(method)) {
+    csrfReady = null
+    await fetch(buildUrl('/sanctum/csrf-cookie'), {
+      method: 'GET',
+      credentials: 'include',
+      headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    }).catch(() => undefined)
+    const retryHeaders = { ...headers }
+    const retryXsrf = readXsrfToken()
+    if (retryXsrf) retryHeaders['X-XSRF-TOKEN'] = retryXsrf
+    else delete retryHeaders['X-XSRF-TOKEN']
+    res = await fetch(buildUrl(path, query), {
+      method,
+      headers: retryHeaders,
+      body: requestBody,
+      credentials: 'include',
+      signal: controller.signal,
+    })
   }
 
   if ((res.status === 401 || res.status === 419) && !anonymous) {

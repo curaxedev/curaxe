@@ -50,9 +50,15 @@ function toRegistrationError(err: unknown): RegistrationError {
     if (err.kind === 'network' || err.kind === 'timeout') {
       return new RegistrationError('network', 'Impossibile contattare il server. Riprova.')
     }
+    if (err.kind === 'unauthorized' || err.status === 419) {
+      return new RegistrationError(
+        'server',
+        'Sessione scaduta. Ricarica la pagina e riprova.'
+      )
+    }
     return new RegistrationError(
       'server',
-      'Servizio temporaneamente non disponibile. Riprova tra poco.'
+      err.message || 'Servizio temporaneamente non disponibile. Riprova tra poco.'
     )
   }
   return new RegistrationError('network', 'Impossibile contattare il server. Riprova.')
