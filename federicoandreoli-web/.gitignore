@@ -33,3 +33,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Production build snapshot for Hostinger deploy (no Node on server)
+!dist-prod/
+!dist-prod/**
