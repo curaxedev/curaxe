@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useItaliaGeo } from '../context/ItaliaGeoProvider'
 import type { AssistenzaHeroMode } from '../lib/assistenzaHeroMode'
@@ -93,7 +94,25 @@ export function HomelySearchExplorer({
   const [activeIndex, setActiveIndex] = useState(0)
   const [nearBusy, setNearBusy] = useState(false)
   const [nearHint, setNearHint] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 720px)')
+    const sync = () => setIsMobile(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    if (!isMobile || !open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [isMobile, open])
 
   useEffect(() => {
     setRecents(readRecentPlaces())
@@ -101,6 +120,8 @@ export function HomelySearchExplorer({
 
   useEffect(() => {
     if (!open) return
+    // Su mobile lo sheet è un portal fuori dal root: non chiudere su click document.
+    if (isMobile) return
     const onDoc = (e: Event) => {
       const target = e.target as Node | null
       if (!rootRef.current?.contains(target)) {
@@ -120,7 +141,7 @@ export function HomelySearchExplorer({
       document.removeEventListener('mousedown', onDoc)
       document.removeEventListener('keydown', onKey)
     }
-  }, [open, onFocusChange])
+  }, [open, onFocusChange, isMobile])
 
   useEffect(() => {
     if (open === 'dove') {
@@ -282,25 +303,287 @@ export function HomelySearchExplorer({
   const doveIsPlaceholder = !place?.label
   const modeLabel = mode === 'offro' ? 'Offro assistenza' : 'Cerco assistenza'
   const isOpen = open !== null
+  const showDesktopPop = !isMobile
 
   const showTypedSuggestions = open === 'dove' && query.trim().length > 0 && suggestions.length > 0
   const showBrowse = open === 'dove' && query.trim().length === 0
 
+  const closeSheet = () => {
+    setOpen(null)
+    onFocusChange?.(false)
+  }
+
+  const doveList = (
+    <>
+      {showTypedSuggestions ? (
+        <ul className="cx-explorer__list" role="listbox" aria-label="Suggerimenti">
+          {suggestions.map((row, i) => (
+            <li key={row.id} role="presentation">
+              <button
+                type="button"
+                role="option"
+                aria-selected={i === activeIndex}
+                className={`cx-explorer__row${i === activeIndex ? ' is-active' : ''}`}
+                onMouseEnter={() => setActiveIndex(i)}
+                onClick={() =>
+                  selectPlace({
+                    label: formatPlacePrimary(row),
+                    sublabel: formatPlaceSecondary(row),
+                    istat: row.id,
+                    q: row.comune,
+                  })
+                }
+              >
+                <PlaceRowIcon label={row.comune} />
+                <span className="cx-explorer__row-copy">
+                  <strong>{formatPlacePrimary(row)}</strong>
+                  <small>{formatPlaceSecondary(row)}</small>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {showBrowse ? (
+        <>
+          {recents.length > 0 ? (
+            <div className="cx-explorer__section">
+              <p className="cx-explorer__section-title">Ricerche recenti</p>
+              <ul className="cx-explorer__list">
+                {recents.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      className="cx-explorer__row"
+                      onClick={() =>
+                        selectPlace({
+                          label: r.label,
+                          sublabel: r.sublabel,
+                          istat: r.istat,
+                          q: r.q ?? r.label,
+                        })
+                      }
+                    >
+                      <PlaceRowIcon label={r.label} kind="recent" />
+                      <span className="cx-explorer__row-copy">
+                        <strong>{r.label}</strong>
+                        <small>{r.sublabel ?? 'Intorno a te'}</small>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="cx-explorer__section">
+            <p className="cx-explorer__section-title">Destinazioni suggerite</p>
+            <ul className="cx-explorer__list">
+              <li>
+                <button type="button" className="cx-explorer__row" onClick={requestNearMe} disabled={nearBusy}>
+                  <PlaceRowIcon label="Vicino a me" kind="near" />
+                  <span className="cx-explorer__row-copy">
+                    <strong>Vicino a me</strong>
+                    <small>
+                      {nearBusy
+                        ? 'Rilevamento posizione e comune…'
+                        : nearHint
+                          ? nearHint
+                          : 'Attiva la posizione per vedere intorno a te'}
+                    </small>
+                  </span>
+                </button>
+              </li>
+              {SUGGESTED_DESTINATIONS.map((d) => (
+                <li key={d.q}>
+                  <button
+                    type="button"
+                    className="cx-explorer__row"
+                    onClick={() => selectPlace({ label: d.label, sublabel: d.sublabel, q: d.q })}
+                  >
+                    <PlaceRowIcon label={d.label} />
+                    <span className="cx-explorer__row-copy">
+                      <strong>{d.label}</strong>
+                      <small>{d.sublabel}</small>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : null}
+
+      {open === 'dove' && query.trim() && !suggestions.length && status === 'ready' ? (
+        <p className="cx-explorer__empty">Nessun comune trovato — premi Cerca per usare il testo inserito</p>
+      ) : null}
+    </>
+  )
+
+  const modeCards = (
+    <div className="cx-explorer__mode-grid" role="listbox" aria-label="Modalità ricerca">
+      <button
+        type="button"
+        role="option"
+        aria-selected={mode === 'cerco'}
+        className={`cx-explorer__mode-card cx-explorer__mode-card--cerco${mode === 'cerco' ? ' is-selected' : ''}`}
+        onClick={() => pickMode('cerco')}
+      >
+        <span className="cx-explorer__mode-icon" aria-hidden>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M4 20V9.5L12 4l8 5.5V20"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path d="M9 20v-5.5h6V20" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+          </svg>
+        </span>
+        <span className="cx-explorer__mode-copy">
+          <strong>Cerco assistenza</strong>
+          <small>Famiglie e strutture che cercano professionisti affidabili</small>
+        </span>
+        <span className="cx-explorer__mode-check" aria-hidden>
+          {mode === 'cerco' ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M5 12.5 10 17.5 19 7.5"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : null}
+        </span>
+      </button>
+      <button
+        type="button"
+        role="option"
+        aria-selected={mode === 'offro'}
+        className={`cx-explorer__mode-card cx-explorer__mode-card--offro${mode === 'offro' ? ' is-selected' : ''}`}
+        onClick={() => pickMode('offro')}
+      >
+        <span className="cx-explorer__mode-icon" aria-hidden>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M8 7V5.8A1.8 1.8 0 0 1 9.8 4h4.4A1.8 1.8 0 0 1 16 5.8V7"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+            <rect x="4" y="7" width="16" height="13" rx="2.2" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M4 12h16" stroke="currentColor" strokeWidth="1.8" />
+          </svg>
+        </span>
+        <span className="cx-explorer__mode-copy">
+          <strong>Offro assistenza</strong>
+          <small>Professionisti che cercano posizioni e nuovi contatti</small>
+        </span>
+        <span className="cx-explorer__mode-check" aria-hidden>
+          {mode === 'offro' ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M5 12.5 10 17.5 19 7.5"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : null}
+        </span>
+      </button>
+    </div>
+  )
+
+  const mobileSheet =
+    isMobile && open
+      ? createPortal(
+          <div className="cx-explorer-sheet" role="dialog" aria-modal="true">
+            <div className="cx-explorer-sheet__inner">
+              <div className="cx-explorer-sheet__top">
+                <button type="button" className="cx-explorer-sheet__back" onClick={closeSheet}>
+                  <span aria-hidden>‹</span> Indietro
+                </button>
+              </div>
+
+              {open === 'dove' ? (
+                <>
+                  <div className="cx-explorer-sheet__search">
+                    <input
+                      ref={inputRef}
+                      className="cx-explorer-sheet__input"
+                      value={query}
+                      placeholder="Scopri destinazioni"
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="Comune, CAP o zona"
+                      onChange={(ev) => {
+                        setQuery(ev.target.value)
+                        onCityChange(ev.target.value)
+                      }}
+                      onKeyDown={onInputKeyDown}
+                    />
+                  </div>
+                  <div className="cx-explorer-sheet__body">{doveList}</div>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="cx-explorer-sheet__summary"
+                    onClick={() => openDove()}
+                  >
+                    <span>Dove</span>
+                    <strong className={doveIsPlaceholder ? 'is-placeholder' : undefined}>
+                      {doveDisplay}
+                    </strong>
+                  </button>
+                  <div className="cx-explorer-sheet__body">
+                    <p className="cx-explorer__pop-title">Come vuoi usare Curaxe?</p>
+                    <p className="cx-explorer__pop-sub">Se non scegli, resta il percorso attuale</p>
+                    {modeCards}
+                  </div>
+                  <div className="cx-explorer-sheet__footer">
+                    <button
+                      type="button"
+                      className="cx-explorer-sheet__reset"
+                      onClick={() => {
+                        clearPlace()
+                        closeSheet()
+                      }}
+                    >
+                      Cancella tutto
+                    </button>
+                    <button type="button" className="cx-explorer-sheet__search-btn" onClick={() => runSearch()}>
+                      <IconSearch /> Cerca
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
+
   return (
     <div
       ref={rootRef}
-      className={`cx-explorer${isOpen ? ' is-open' : ''}`}
+      className={`cx-explorer${isOpen ? ' is-open' : ''}${isMobile ? ' is-mobile' : ''}`}
       id="search"
     >
       <form className="cx-explorer__pill" onSubmit={onSubmit} role="search">
-        {/* Dove */}
         <div
-          className={`cx-explorer__seg cx-explorer__seg--dove${open === 'dove' ? ' is-active' : ''}${open && open !== 'dove' ? ' is-idle' : ''}`}
+          className={`cx-explorer__seg cx-explorer__seg--dove${open === 'dove' && showDesktopPop ? ' is-active' : ''}${open && open !== 'dove' ? ' is-idle' : ''}`}
           onClick={() => openDove()}
         >
           <button type="button" className="cx-explorer__seg-btn" aria-expanded={open === 'dove'}>
-            <span className="cx-explorer__kicker">Dove</span>
-            {open === 'dove' ? (
+            <span className="cx-explorer__kicker">{isMobile ? 'Dove cerchi?' : 'Dove'}</span>
+            {open === 'dove' && showDesktopPop ? (
               <input
                 ref={inputRef}
                 className="cx-explorer__input"
@@ -320,7 +603,7 @@ export function HomelySearchExplorer({
               />
             ) : (
               <span className={`cx-explorer__value${doveIsPlaceholder ? ' is-placeholder' : ''}`}>
-                {doveDisplay}
+                {isMobile && doveIsPlaceholder ? 'es. Milano, Torino…' : doveDisplay}
               </span>
             )}
           </button>
@@ -330,214 +613,27 @@ export function HomelySearchExplorer({
             </button>
           ) : null}
 
-          {open === 'dove' ? (
+          {open === 'dove' && showDesktopPop ? (
             <div className="cx-explorer__pop cx-explorer__pop--dove" id={listId} onClick={(e) => e.stopPropagation()}>
-              {showTypedSuggestions ? (
-                <ul className="cx-explorer__list" role="listbox" aria-label="Suggerimenti">
-                  {suggestions.map((row, i) => (
-                    <li key={row.id} role="presentation">
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={i === activeIndex}
-                        className={`cx-explorer__row${i === activeIndex ? ' is-active' : ''}`}
-                        onMouseEnter={() => setActiveIndex(i)}
-                        onClick={() =>
-                          selectPlace({
-                            label: formatPlacePrimary(row),
-                            sublabel: formatPlaceSecondary(row),
-                            istat: row.id,
-                            q: row.comune,
-                          })
-                        }
-                      >
-                        <PlaceRowIcon label={row.comune} />
-                        <span className="cx-explorer__row-copy">
-                          <strong>{formatPlacePrimary(row)}</strong>
-                          <small>{formatPlaceSecondary(row)}</small>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-
-              {showBrowse ? (
-                <>
-                  {recents.length > 0 ? (
-                    <div className="cx-explorer__section">
-                      <p className="cx-explorer__section-title">Ricerche recenti</p>
-                      <ul className="cx-explorer__list">
-                        {recents.map((r) => (
-                          <li key={r.id}>
-                            <button
-                              type="button"
-                              className="cx-explorer__row"
-                              onClick={() =>
-                                selectPlace({
-                                  label: r.label,
-                                  sublabel: r.sublabel,
-                                  istat: r.istat,
-                                  q: r.q ?? r.label,
-                                })
-                              }
-                            >
-                              <PlaceRowIcon label={r.label} kind="recent" />
-                              <span className="cx-explorer__row-copy">
-                                <strong>{r.label}</strong>
-                                <small>{r.sublabel ?? 'Intorno a te'}</small>
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-
-                  <div className="cx-explorer__section">
-                    <p className="cx-explorer__section-title">Destinazioni suggerite</p>
-                    <ul className="cx-explorer__list">
-                      <li>
-                        <button type="button" className="cx-explorer__row" onClick={requestNearMe} disabled={nearBusy}>
-                          <PlaceRowIcon label="Vicino a me" kind="near" />
-                          <span className="cx-explorer__row-copy">
-                            <strong>Vicino a me</strong>
-                            <small>
-                              {nearBusy
-                                ? 'Rilevamento posizione e comune…'
-                                : nearHint
-                                  ? nearHint
-                                  : 'Usa la tua posizione per impostare il comune'}
-                            </small>
-                          </span>
-                        </button>
-                      </li>
-                      {SUGGESTED_DESTINATIONS.map((d) => (
-                        <li key={d.q}>
-                          <button
-                            type="button"
-                            className="cx-explorer__row"
-                            onClick={() =>
-                              selectPlace({ label: d.label, sublabel: d.sublabel, q: d.q })
-                            }
-                          >
-                            <PlaceRowIcon label={d.label} />
-                            <span className="cx-explorer__row-copy">
-                              <strong>{d.label}</strong>
-                              <small>{d.sublabel}</small>
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </>
-              ) : null}
-
-              {open === 'dove' && query.trim() && !suggestions.length && status === 'ready' ? (
-                <p className="cx-explorer__empty">Nessun comune trovato — premi Cerca per usare il testo inserito</p>
-              ) : null}
+              {doveList}
             </div>
           ) : null}
         </div>
 
-        {/* Modalità (al posto di Quando) */}
         <div
-          className={`cx-explorer__seg cx-explorer__seg--mode${open === 'mode' ? ' is-active' : ''}${open && open !== 'mode' ? ' is-idle' : ''}`}
+          className={`cx-explorer__seg cx-explorer__seg--mode${open === 'mode' && showDesktopPop ? ' is-active' : ''}${open && open !== 'mode' ? ' is-idle' : ''}`}
           onClick={() => openMode()}
         >
           <button type="button" className="cx-explorer__seg-btn" aria-expanded={open === 'mode'}>
-            <span className="cx-explorer__kicker">Modalità</span>
+            <span className="cx-explorer__kicker">{isMobile ? 'Cosa cerchi?' : 'Modalità'}</span>
             <span className="cx-explorer__value">{modeLabel}</span>
           </button>
 
-          {open === 'mode' ? (
+          {open === 'mode' && showDesktopPop ? (
             <div className="cx-explorer__pop cx-explorer__pop--mode" onClick={(e) => e.stopPropagation()}>
               <p className="cx-explorer__pop-title">Come vuoi usare Curaxe?</p>
               <p className="cx-explorer__pop-sub">Scegli il percorso più adatto a te</p>
-              <div className="cx-explorer__mode-grid" role="listbox" aria-label="Modalità ricerca">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={mode === 'cerco'}
-                  className={`cx-explorer__mode-card cx-explorer__mode-card--cerco${mode === 'cerco' ? ' is-selected' : ''}`}
-                  onClick={() => pickMode('cerco')}
-                >
-                  <span className="cx-explorer__mode-icon" aria-hidden>
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M4 20V9.5L12 4l8 5.5V20"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinejoin="round"
-                      />
-                      <path d="M9 20v-5.5h6V20" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                  <span className="cx-explorer__mode-copy">
-                    <strong>Cerco assistenza</strong>
-                    <small>Famiglie e strutture che cercano professionisti affidabili</small>
-                  </span>
-                  <span className="cx-explorer__mode-check" aria-hidden>
-                    {mode === 'cerco' ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <path
-                          d="M5 12.5 10 17.5 19 7.5"
-                          stroke="currentColor"
-                          strokeWidth="2.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : null}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={mode === 'offro'}
-                  className={`cx-explorer__mode-card cx-explorer__mode-card--offro${mode === 'offro' ? ' is-selected' : ''}`}
-                  onClick={() => pickMode('offro')}
-                >
-                  <span className="cx-explorer__mode-icon" aria-hidden>
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M8 7V5.8A1.8 1.8 0 0 1 9.8 4h4.4A1.8 1.8 0 0 1 16 5.8V7"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                      />
-                      <rect
-                        x="4"
-                        y="7"
-                        width="16"
-                        height="13"
-                        rx="2.2"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                      />
-                      <path d="M4 12h16" stroke="currentColor" strokeWidth="1.8" />
-                    </svg>
-                  </span>
-                  <span className="cx-explorer__mode-copy">
-                    <strong>Offro assistenza</strong>
-                    <small>Professionisti che cercano posizioni e nuovi contatti</small>
-                  </span>
-                  <span className="cx-explorer__mode-check" aria-hidden>
-                    {mode === 'offro' ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <path
-                          d="M5 12.5 10 17.5 19 7.5"
-                          stroke="currentColor"
-                          strokeWidth="2.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : null}
-                  </span>
-                </button>
-              </div>
+              {modeCards}
             </div>
           ) : null}
         </div>
@@ -546,6 +642,7 @@ export function HomelySearchExplorer({
           <IconSearch />
         </button>
       </form>
+      {mobileSheet}
     </div>
   )
 }

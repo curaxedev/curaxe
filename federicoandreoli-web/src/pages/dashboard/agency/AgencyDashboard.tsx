@@ -482,9 +482,21 @@ export function AgencyDashboard() {
   const [activeSection, setActiveSection] = useState(sectionParam === 'messaggi' ? 'messaggi' : 'overview')
   const [contactingId, setContactingId] = useState<string | null>(null)
 
+  const AGENCY_SECTIONS = new Set([
+    'overview',
+    'annunci',
+    'candidature',
+    'messaggi',
+    'notifiche',
+    'profilo-agenzia',
+    'team',
+    'abbonamento',
+    'impostazioni',
+  ])
+
   useEffect(() => {
-    if (sectionParam === 'messaggi') {
-      setActiveSection('messaggi')
+    if (sectionParam && AGENCY_SECTIONS.has(sectionParam)) {
+      setActiveSection(sectionParam)
     }
     if (threadParam) {
       messaging.selectThread(threadParam)

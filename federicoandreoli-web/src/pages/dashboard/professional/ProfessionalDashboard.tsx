@@ -788,14 +788,35 @@ export function ProfessionalDashboard() {
   const billingSectionParam = searchParams.get('section')
   const sectionParam = searchParams.get('section')
 
+  const PROF_SECTIONS = new Set([
+    'home',
+    'profilo',
+    'richieste',
+    'messaggi',
+    'posizioni',
+    'candidature',
+    'piano',
+    'notifiche',
+    'impostazioni',
+  ])
+
   useEffect(() => {
-    if (sectionParam === 'messaggi') {
-      setActiveSection('messaggi')
+    if (sectionParam && PROF_SECTIONS.has(sectionParam)) {
+      setActiveSection(sectionParam)
     }
     if (threadParam) {
       messaging.selectThread(threadParam)
     }
   }, [sectionParam, threadParam, messaging.selectThread])
+
+  const goToSection = (section: string) => {
+    setActiveSection(section)
+    if (section === 'messaggi') {
+      setSearchParams({ section: 'messaggi' }, { replace: true })
+      return
+    }
+    setSearchParams({ section }, { replace: true })
+  }
 
   useEffect(() => {
     if (!billingParam) return
@@ -893,7 +914,7 @@ export function ProfessionalDashboard() {
         return (
           <SectionHome
             onUpgrade={() => void handleUpgrade()}
-            onGoTo={setActiveSection}
+            onGoTo={goToSection}
             profile={profile}
             completionPercent={completionPercent}
             firstName={firstName}
@@ -1004,7 +1025,7 @@ export function ProfessionalDashboard() {
         userRole={profile ? `${profile.professional.category} · ${profile.primaryZone.split(',')[0]?.trim() ?? 'Italia'}` : 'Badante · Milano'}
         navItems={navItems}
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={goToSection}
         profileCompletion={profileLoading ? PROFILE_COMPLETION_FALLBACK : completionPercent}
         planType={billing.planType}
       >

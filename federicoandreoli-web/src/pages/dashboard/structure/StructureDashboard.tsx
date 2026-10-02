@@ -494,9 +494,22 @@ export function StructureDashboard() {
   const [activeSection, setActiveSection] = useState(sectionParam === 'messaggi' ? 'messaggi' : 'overview')
   const [contactingId, setContactingId] = useState<string | null>(null)
 
+  const STRUCTURE_SECTIONS = new Set([
+    'overview',
+    'turni',
+    'candidature',
+    'messaggi',
+    'notifiche',
+    'profilo-struttura',
+    'staff',
+    'team',
+    'abbonamento',
+    'impostazioni',
+  ])
+
   useEffect(() => {
-    if (sectionParam === 'messaggi') {
-      setActiveSection('messaggi')
+    if (sectionParam && STRUCTURE_SECTIONS.has(sectionParam)) {
+      setActiveSection(sectionParam)
     }
     if (threadParam) {
       messaging.selectThread(threadParam)

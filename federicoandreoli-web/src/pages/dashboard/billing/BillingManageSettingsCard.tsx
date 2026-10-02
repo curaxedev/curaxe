@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth/useAuth'
 import type { UserRole } from '../../../auth/types'
 import {
@@ -88,7 +88,7 @@ function billingErrorMessage(err: unknown): string {
  */
 export function BillingManageSettingsCard() {
   const { user } = useAuth()
-  const [, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const audience = user ? audienceFromRole(user.role) : null
 
   const [subscription, setSubscription] = useState<UserSubscription | null>(null)
@@ -162,8 +162,9 @@ export function BillingManageSettingsCard() {
   }
 
   function goToPlan() {
-    if (!audience) return
-    setSearchParams({ section: planSectionId(audience) })
+    if (!user || !audience) return
+    const dash = getDashboardPathForRole(user.role)
+    navigate(`${dash}?section=${planSectionId(audience)}`)
   }
 
   return (
