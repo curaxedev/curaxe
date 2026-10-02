@@ -224,7 +224,7 @@ function createDefaultProfile(userId: string): ProfessionalProfile {
     zones: ['Milano Nord'],
     primaryZone: 'Milano, zona Nord',
     availableToMove: false,
-    certifications: ['OSS certificato', 'Primo soccorso', 'Patente di guida'],
+    certifications: ['Qualifica OSS', 'Primo soccorso (BLS / BLSD)'],
   }
 
   return withCompletion(seed)

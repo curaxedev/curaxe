@@ -334,27 +334,28 @@
   color: var(--color-text-muted);
 }
 
-/* ── OTP: sei caselle distinte ───────────────────────────────────── */
+/* ── OTP: sei caselle distinte (grid responsive, niente clip) ────── */
 .auth-otp-boxes {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(6px, 2.4vw, 10px);
   width: 100%;
-  max-width: 100%;
-  margin-top: 4px;
-  overflow: hidden;
+  max-width: 22rem;
+  margin: 4px auto 0;
+  padding: 4px 2px;
+  overflow: visible;
+  box-sizing: border-box;
 }
 
 .auth-field .auth-otp-box,
 .auth-otp-box {
   box-sizing: border-box;
-  flex: 0 0 48px;
-  width: 48px !important;
-  max-width: 48px !important;
-  min-width: 48px;
-  height: 56px;
-  min-height: 56px !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  flex: none;
+  height: 52px;
+  min-height: 52px !important;
   padding: 0 !important;
   border: 1.5px solid color-mix(in srgb, var(--color-border) 85%, var(--home-ink-band) 15%);
   border-radius: 12px;
@@ -362,7 +363,7 @@
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
   text-align: center;
   font-family: var(--font-heading, inherit);
-  font-size: 1.45rem !important;
+  font-size: clamp(1.15rem, 4.8vw, 1.4rem) !important;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -386,6 +387,8 @@
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
   background: #fff;
+  z-index: 1;
+  position: relative;
 }
 
 .auth-otp-box:disabled {
@@ -393,20 +396,16 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 420px) {
+@media (max-width: 360px) {
   .auth-otp-boxes {
-    gap: 6px;
+    gap: 5px;
+    padding: 3px 1px;
   }
 
   .auth-field .auth-otp-box,
   .auth-otp-box {
-    flex-basis: 42px;
-    width: 42px !important;
-    max-width: 42px !important;
-    min-width: 42px;
-    height: 50px;
-    min-height: 50px !important;
-    font-size: 1.3rem !important;
+    height: 46px;
+    min-height: 46px !important;
     border-radius: 10px;
   }
 }

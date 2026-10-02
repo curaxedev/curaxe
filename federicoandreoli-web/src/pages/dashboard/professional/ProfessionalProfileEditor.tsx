@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { ItaliaGeoSearchCombobox } from '../../../components/ItaliaGeoSearchCombobox'
+import { MultiSelectSearchPicker } from '../../../components/MultiSelectSearchPicker'
 import {
   IconCheckMark,
   IconChevronRight,
@@ -10,6 +11,12 @@ import {
   IconUpload,
 } from '../../../components/icons/DashboardIcons'
 import type { ItaliaGeoRow } from '../../../lib/italiaGeo/italiaComuniTypes'
+import {
+  CERTIFICATION_OPTIONS,
+  normalizeCertifications,
+  normalizeSpecializations,
+  SPECIALIZATION_OPTIONS,
+} from '../../../lib/professionalCompetences'
 import type {
   ProfessionalProfile,
   ProfessionalProfilePatch,
@@ -29,26 +36,9 @@ const STEPS: Array<{ id: ProfileStepId; label: string; short: string }> = [
 ]
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
-const SPECIALIZATIONS = [
-  'Anziani autosufficienti',
-  'Alzheimer/Demenze',
-  'Patologie gravi',
-  'Post-operatorio',
-  'Disabilità',
-  'Pediatrico',
-]
 const LANGUAGES = ['Italiano', 'Inglese', 'Francese', 'Spagnolo', 'Rumeno', 'Ucraino', 'Filippino']
 const EMPLOYMENT_TYPES = ['Convivente', 'A ore', 'Part-time', 'Weekend', 'Notte']
 const SHIFTS = ['Mattina 7–13', 'Pomeriggio 13–19', 'Sera 19–23', 'Notte 23–7']
-const CERTIFICATIONS_LIST = [
-  'OSS certificato',
-  'Assistente familiare',
-  'Primo soccorso',
-  'Patente di guida',
-  'Diploma infermieristico',
-  'Corso Alzheimer',
-  'Corso badante professionale',
-]
 const NATIONALITIES = ['Italiana', 'Rumena', 'Ucraina', 'Filippina', 'Altra']
 const CATEGORIES = ['Badante', 'OSS', 'Infermiere', 'Assistente familiare', 'Fisioterapista']
 const EXPERIENCE_OPTIONS = ['Meno di 1 anno', '1-2 anni', '3-5 anni', '6-9 anni', '10+ anni']
@@ -218,9 +208,10 @@ export function ProfessionalProfileEditor({
     setBio(profile.identity.bio)
     setCategory(profile.professional.category)
     setExperienceYears(profile.professional.experienceYears)
-    setSpecializations(profile.professional.specializations)
+    setSpecializations(normalizeSpecializations(profile.professional.specializations))
     setLanguages(profile.professional.languages)
-    setHasLicense(profile.professional.hasLicense)
+    const certNorm = normalizeCertifications(profile.certifications)
+    setHasLicense(profile.professional.hasLicense || certNorm.hadDriverLicense)
     setHasCar(profile.professional.hasCar)
     setEmploymentTypes(profile.availability.employmentTypes)
     setSelectedDays(profile.availability.days)
@@ -232,7 +223,7 @@ export function ProfessionalProfileEditor({
     setPrimaryZone(profile.primaryZone)
     setPrimaryPlace(null)
     setAvailableToMove(profile.availableToMove)
-    setCertifications(profile.certifications)
+    setCertifications(certNorm.certifications)
     setFormReady(true)
   }, [profile])
 
@@ -823,34 +814,34 @@ export function ProfessionalProfileEditor({
 
               <div className="dash-prof-panel__block" id="prof-section-specializzazioni">
                 <div className="dash-prof-section__title">Specializzazioni</div>
-                <div className="dash-checkbox-group">
-                  {SPECIALIZATIONS.map((s) => (
-                    <label key={s} className="dash-checkbox-item">
-                      <input
-                        type="checkbox"
-                        checked={specializations.includes(s)}
-                        onChange={() => toggle(specializations, setSpecializations, s)}
-                      />
-                      <span className="dash-checkbox-item__label">{s}</span>
-                    </label>
-                  ))}
-                </div>
+                <p className="dash-prof-section__hint">
+                  Ambiti di cura e tipologie di assistiti in cui hai esperienza.
+                </p>
+                <MultiSelectSearchPicker
+                  title="Seleziona specializzazioni"
+                  description="Cerca e seleziona gli ambiti in cui sei operativo. Puoi sceglierne più di uno."
+                  options={SPECIALIZATION_OPTIONS}
+                  value={specializations}
+                  onChange={setSpecializations}
+                  emptyLabel="Nessuna specializzazione selezionata"
+                  triggerLabel="Seleziona specializzazioni"
+                />
               </div>
 
               <div className="dash-prof-panel__block">
-                <div className="dash-prof-section__title">Certificazioni</div>
-                <div className="dash-checkbox-group">
-                  {CERTIFICATIONS_LIST.map((c) => (
-                    <label key={c} className="dash-checkbox-item">
-                      <input
-                        type="checkbox"
-                        checked={certifications.includes(c)}
-                        onChange={() => toggle(certifications, setCertifications, c)}
-                      />
-                      <span className="dash-checkbox-item__label">{c}</span>
-                    </label>
-                  ))}
-                </div>
+                <div className="dash-prof-section__title">Certificazioni e corsi</div>
+                <p className="dash-prof-section__hint">
+                  Titoli e corsi formali. La patente resta nel toggle «Patente B» nei dati personali.
+                </p>
+                <MultiSelectSearchPicker
+                  title="Seleziona certificazioni"
+                  description="Cerca e seleziona titoli o corsi. Niente patente qui: usala nel passo Dati personali."
+                  options={CERTIFICATION_OPTIONS}
+                  value={certifications}
+                  onChange={setCertifications}
+                  emptyLabel="Nessuna certificazione selezionata"
+                  triggerLabel="Seleziona certificazioni"
+                />
               </div>
             </section>
           ) : null}
