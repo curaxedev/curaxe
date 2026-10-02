@@ -48,6 +48,42 @@ const BIO_SUGGESTIONS = [
   'Supporto emotivo quotidiano',
   'Preparazione pasti',
 ]
+const PRIMARY_RADIUS_KM = [5, 10, 15, 20, 30, 50] as const
+const DEFAULT_PRIMARY_RADIUS_KM = 10
+
+function RadiusRingVisual({ km, placeLabel }: { km: number; placeLabel: string }) {
+  const max = PRIMARY_RADIUS_KM[PRIMARY_RADIUS_KM.length - 1]!
+  const scale = Math.max(0.22, Math.min(1, km / max))
+  const rings = PRIMARY_RADIUS_KM.map((option) => option / max)
+
+  return (
+    <div className="dash-prof-radius" aria-live="polite">
+      <div className="dash-prof-radius__visual" aria-hidden>
+        <svg viewBox="0 0 200 200" className="dash-prof-radius__svg">
+          {rings.map((ratio) => (
+            <circle
+              key={ratio}
+              cx="100"
+              cy="100"
+              r={18 + ratio * 72}
+              fill="none"
+              stroke={Math.abs(ratio - scale) < 0.02 ? 'var(--color-primary)' : 'rgba(22, 58, 82, 0.14)'}
+              strokeWidth={Math.abs(ratio - scale) < 0.02 ? 2.5 : 1}
+            />
+          ))}
+          <circle cx="100" cy="100" r={18 + scale * 72} fill="rgba(42, 92, 130, 0.12)" stroke="var(--color-primary)" strokeWidth="2" />
+          <circle cx="100" cy="100" r="7" fill="var(--color-primary)" />
+        </svg>
+      </div>
+      <div className="dash-prof-radius__copy">
+        <strong>Raggio effettivo: {km} km</strong>
+        <span>
+          Operi entro circa {km} km da <em>{placeLabel}</em>
+        </span>
+      </div>
+    </div>
+  )
+}
 
 function formatCoverageLabel(place: ItaliaGeoRow): string {
   return `${place.comune} (${place.siglaProvincia})`
@@ -190,6 +226,7 @@ export function ProfessionalProfileEditor({
   const [certifications, setCertifications] = useState<string[]>([])
   const [zones, setZones] = useState<string[]>([])
   const [primaryZone, setPrimaryZone] = useState('')
+  const [radiusKm, setRadiusKm] = useState<number | null>(null)
   const [primaryPlace, setPrimaryPlace] = useState<ItaliaGeoRow | null>(null)
   const [availableFrom, setAvailableFrom] = useState('')
   const [coverageSearchKey, setCoverageSearchKey] = useState(0)
@@ -221,6 +258,7 @@ export function ProfessionalProfileEditor({
     setMonthlyRate(profile.rates.monthlyLiveIn)
     setZones(profile.zones)
     setPrimaryZone(profile.primaryZone)
+    setRadiusKm(profile.radiusKm ?? null)
     setPrimaryPlace(null)
     setAvailableToMove(profile.availableToMove)
     setCertifications(certNorm.certifications)
@@ -261,6 +299,7 @@ export function ProfessionalProfileEditor({
       },
       zones,
       primaryZone,
+      radiusKm,
       availableToMove,
       certifications,
     }
@@ -286,6 +325,7 @@ export function ProfessionalProfileEditor({
     monthlyRate,
     zones,
     primaryZone,
+    radiusKm,
     availableToMove,
     certifications,
   ])
@@ -357,6 +397,7 @@ export function ProfessionalProfileEditor({
     },
     zones,
     primaryZone,
+    radiusKm,
     availableToMove,
     certifications,
   })
@@ -431,7 +472,11 @@ export function ProfessionalProfileEditor({
   if (!profile || !formReady || !draftProfile) return null
 
   const displayName = `${firstName || 'Nome'} ${lastName || ''}`.trim()
-  const locationHint = primaryZone || zones[0] || 'Zona non impostata'
+  const locationHint = primaryZone
+    ? radiusKm
+      ? `${primaryZone} · ${radiusKm} km`
+      : primaryZone
+    : zones[0] || 'Zona non impostata'
   const publicHref = `/profili/${profile.id}`
 
   const previewPanel = (
@@ -933,7 +978,11 @@ export function ProfessionalProfileEditor({
                         <button
                           type="button"
                           className="dash-chip__remove"
-                          onClick={() => setPrimaryZone('')}
+                          onClick={() => {
+                            setPrimaryZone('')
+                            setPrimaryPlace(null)
+                            setRadiusKm(null)
+                          }}
                           aria-label="Rimuovi zona principale"
                         >
                           <IconClose size={12} />
@@ -947,11 +996,46 @@ export function ProfessionalProfileEditor({
                       onSelectedPlaceChange={(place) => {
                         setPrimaryPlace(place)
                         setPrimaryZone(place ? formatCoverageLabel(place) : '')
+                        if (place) {
+                          setRadiusKm((prev) => prev ?? DEFAULT_PRIMARY_RADIUS_KM)
+                        } else {
+                          setRadiusKm(null)
+                        }
                       }}
                     />
                   </div>
                   <p className="dash-form-hint">Cerca comune, CAP, provincia o regione</p>
                 </div>
+
+                {primaryZone ? (
+                  <div className="dash-prof-panel__block dash-prof-panel__block--nested">
+                    <div className="dash-prof-section__title">Raggio operativo</div>
+                    <p className="dash-form-hint" style={{ marginTop: 0 }}>
+                      Dopo la città, indica entro quanti km sei disponibile a lavorare.
+                    </p>
+                    <div className="dash-prof-radius__chips" role="group" aria-label="Raggio in chilometri">
+                      {PRIMARY_RADIUS_KM.map((km) => {
+                        const on = radiusKm === km
+                        return (
+                          <button
+                            key={km}
+                            type="button"
+                            className={`dash-prof-lang__chip${on ? ' is-on' : ''}`}
+                            aria-pressed={on}
+                            onClick={() => setRadiusKm(km)}
+                          >
+                            {km} km
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {radiusKm ? (
+                      <RadiusRingVisual km={radiusKm} placeLabel={primaryZone} />
+                    ) : (
+                      <p className="dash-form-hint">Seleziona un raggio per vedere l’area effettiva.</p>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               <div className="dash-prof-panel__block">

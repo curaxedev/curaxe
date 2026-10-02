@@ -78,6 +78,7 @@ export function useProfessionalProfile() {
           rates: { ...profile.rates, ...patch.rates },
           zones: patch.zones ?? profile.zones,
           primaryZone: patch.primaryZone ?? profile.primaryZone,
+          radiusKm: patch.radiusKm !== undefined ? patch.radiusKm : profile.radiusKm,
           availableToMove: patch.availableToMove ?? profile.availableToMove,
           certifications: patch.certifications ?? profile.certifications,
         })

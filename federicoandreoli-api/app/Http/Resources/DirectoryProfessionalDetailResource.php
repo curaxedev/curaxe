@@ -70,7 +70,11 @@ class DirectoryProfessionalDetailResource extends JsonResource
             'availableFor' => $this->employment_types ?? [],
             'references' => [],
             'coverageHint' => $this->primary_zone !== ''
-                ? 'Copertura: '.$this->primary_zone
+                ? (
+                    $this->radius_km
+                        ? 'Entro '.$this->radius_km.' km da '.$this->primary_zone
+                        : 'Copertura: '.$this->primary_zone
+                )
                 : 'Zona da concordare',
             'verified' => (bool) $this->is_verified,
         ]);

@@ -56,6 +56,7 @@ class ProfessionalProfileResource extends JsonResource
             ],
             'zones' => $this->zones ?? [],
             'primaryZone' => $this->primary_zone,
+            'radiusKm' => $this->radius_km,
             'availableToMove' => $this->available_to_move,
             'certifications' => $this->certifications ?? [],
         ];

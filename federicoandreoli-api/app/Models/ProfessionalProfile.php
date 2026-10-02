@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'user_id', 'first_name', 'last_name', 'professional_title', 'birth_year', 'nationality',
     'bio', 'photo_path', 'category', 'experience_years', 'specializations', 'languages',
     'has_license', 'has_car', 'employment_types', 'days', 'shifts', 'available_from',
-    'hourly_rate', 'monthly_live_in_rate', 'zones', 'primary_zone', 'available_to_move',
+    'hourly_rate', 'monthly_live_in_rate', 'zones', 'primary_zone', 'radius_km', 'available_to_move',
     'certifications', 'is_published', 'is_verified', 'is_online', 'rating_avg', 'review_count',
     'comune', 'cap', 'regione', 'istat',
 ])]
@@ -33,6 +33,7 @@ class ProfessionalProfile extends Model
             'hourly_rate' => 'float',
             'monthly_live_in_rate' => 'float',
             'zones' => 'array',
+            'radius_km' => 'integer',
             'available_to_move' => 'boolean',
             'certifications' => 'array',
             'is_published' => 'boolean',

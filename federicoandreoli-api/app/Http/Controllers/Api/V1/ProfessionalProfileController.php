@@ -105,6 +105,7 @@ class ProfessionalProfileController
             'zones' => ['nullable', 'array'],
             'zones.*' => ['string', 'max:100'],
             'primaryZone' => ['nullable', 'string', 'max:255'],
+            'radiusKm' => ['nullable', 'integer', 'min:1', 'max:200'],
             'availableToMove' => ['nullable', 'boolean'],
             'certifications' => ['nullable', 'array'],
             'certifications.*' => ['string', 'max:100'],
@@ -133,15 +134,21 @@ class ProfessionalProfileController
             'rates.monthlyLiveIn' => 'monthly_live_in_rate',
             'zones' => 'zones',
             'primaryZone' => 'primary_zone',
+            'radiusKm' => 'radius_km',
             'availableToMove' => 'available_to_move',
             'certifications' => 'certifications',
         ];
 
         foreach ($map as $inputKey => $column) {
             $value = data_get($data, $inputKey, '__missing__');
-            if ($value !== '__missing__' && $value !== null) {
-                $profile->{$column} = $value;
+            if ($value === '__missing__') {
+                continue;
             }
+            // Permetti di azzerare il raggio (null); per gli altri campi resta lo skip dei null.
+            if ($value === null && $column !== 'radius_km') {
+                continue;
+            }
+            $profile->{$column} = $value;
         }
 
         $profile->save();

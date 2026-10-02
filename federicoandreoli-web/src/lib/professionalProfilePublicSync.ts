@@ -78,7 +78,11 @@ function buildPublicProfileFromProfessional(profile: ProfessionalProfile): MockP
     },
     availableFor: profile.availability.employmentTypes,
     references: [],
-    coverageHint: profile.zones.join(', ') || profile.primaryZone,
+    coverageHint: profile.radiusKm
+      ? `Entro ${profile.radiusKm} km da ${profile.primaryZone || 'zona principale'}${
+          profile.zones.length ? ` · anche ${profile.zones.join(', ')}` : ''
+        }`
+      : profile.zones.join(', ') || profile.primaryZone,
   }
 }
 

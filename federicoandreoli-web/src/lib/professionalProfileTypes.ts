@@ -41,6 +41,8 @@ export type ProfessionalProfile = {
   rates: ProfessionalProfileRates
   zones: string[]
   primaryZone: string
+  /** Raggio operativo in km dalla zona principale (null = non impostato). */
+  radiusKm: number | null
   availableToMove: boolean
   certifications: string[]
 }
@@ -52,6 +54,7 @@ export type ProfessionalProfilePatch = {
   rates?: Partial<ProfessionalProfileRates>
   zones?: string[]
   primaryZone?: string
+  radiusKm?: number | null
   availableToMove?: boolean
   certifications?: string[]
 }
