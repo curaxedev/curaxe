@@ -3,31 +3,6 @@ import { AssistenzaGeoSearchForm } from './AssistenzaGeoSearchForm'
 import { useHeroSearchParams } from '../hooks/useHeroSearchParams'
 import type { AssistenzaHeroMode } from '../lib/assistenzaHeroMode'
 
-function IconPin() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M12 21s-8-4.5-8-11a8 8 0 0 1 16 0c0 6.5-8 11-8 11z" />
-      <circle cx="12" cy="10" r="2.5" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
-
-function IconShield() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  )
-}
-
-function IconCheck() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
 export type HeroAssistenzaBlockProps = {
   assistenzaMode: AssistenzaHeroMode
   heroSearch: ReturnType<typeof useHeroSearchParams>
@@ -106,51 +81,6 @@ export function HeroAssistenzaBlock({
       </h1>
     )
 
-  const trustRow =
-    mode === 'offro' ? (
-      <div className="hero-sitly__trust-row" role="list" aria-label="Garanzie della piattaforma">
-        <span className="hero-trust-badge" role="listitem">
-          <span className="hero-trust-badge__icon hero-trust-badge__icon--sage">
-            <IconCheck />
-          </span>
-          12.000+ professionisti verificati
-        </span>
-        <span className="hero-trust-badge" role="listitem">
-          <span className="hero-trust-badge__icon hero-trust-badge__icon--primary">
-            <IconShield />
-          </span>
-          Privacy garantita
-        </span>
-        <span className="hero-trust-badge" role="listitem">
-          <span className="hero-trust-badge__icon hero-trust-badge__icon--accent">
-            <IconPin />
-          </span>
-          Copertura nazionale
-        </span>
-      </div>
-    ) : (
-      <div className="hero-sitly__trust-row" role="list" aria-label="Garanzie della piattaforma">
-        <span className="hero-trust-badge" role="listitem">
-          <span className="hero-trust-badge__icon hero-trust-badge__icon--sage">
-            <IconCheck />
-          </span>
-          12.000+ Profili Verificati
-        </span>
-        <span className="hero-trust-badge" role="listitem">
-          <span className="hero-trust-badge__icon hero-trust-badge__icon--primary">
-            <IconShield />
-          </span>
-          Privacy Garantita
-        </span>
-        <span className="hero-trust-badge" role="listitem">
-          <span className="hero-trust-badge__icon hero-trust-badge__icon--accent">
-            <IconPin />
-          </span>
-          Copertura Nazionale
-        </span>
-      </div>
-    )
-
   return (
     <>
       {eyebrow}
@@ -216,7 +146,6 @@ export function HeroAssistenzaBlock({
           />
         </div>
       </div>
-      {trustRow}
     </>
   )
 }

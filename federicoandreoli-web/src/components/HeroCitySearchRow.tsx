@@ -62,9 +62,6 @@ export function HeroCitySearchRow({
           Città o zona
         </label>
         <div className={`hero-search__compose${showTypewriter ? ' hero-search__compose--tw' : ''}`}>
-          <span className="hero-search__cerca-mark" aria-hidden="true">
-            <span className="hero-search__cerca-mark-inner">Cerca</span>
-          </span>
           <div className="hero-search__input-slot">
             <input
               id={cityInputId}
