@@ -47,10 +47,11 @@ export function pushRecentPlace(place: Omit<RecentPlace, 'at' | 'id'> & { id?: s
 }
 
 export const SUGGESTED_DESTINATIONS: Array<{ label: string; sublabel: string; q: string }> = [
-  { label: 'Milano', sublabel: 'Lombardia', q: 'Milano' },
-  { label: 'Torino', sublabel: 'Piemonte', q: 'Torino' },
-  { label: 'Roma', sublabel: 'Lazio', q: 'Roma' },
-  { label: 'Firenze', sublabel: 'Toscana', q: 'Firenze' },
-  { label: 'Napoli', sublabel: 'Campania', q: 'Napoli' },
-  { label: 'Bologna', sublabel: 'Emilia-Romagna', q: 'Bologna' },
+  { label: 'Milano', sublabel: 'Hub di assistenza e strutture in Lombardia', q: 'Milano' },
+  { label: 'Torino', sublabel: 'Professionisti e famiglie in Piemonte', q: 'Torino' },
+  { label: 'Roma', sublabel: 'Assistenza a domicilio e strutture nel Lazio', q: 'Roma' },
+  { label: 'Firenze', sublabel: 'Cura e supporto in Toscana', q: 'Firenze' },
+  { label: 'Napoli', sublabel: 'Reti di assistenza in Campania', q: 'Napoli' },
+  { label: 'Bologna', sublabel: 'Professionisti in Emilia-Romagna', q: 'Bologna' },
+  { label: 'Modena', sublabel: 'Assistenza e strutture nel Modenese', q: 'Modena' },
 ]

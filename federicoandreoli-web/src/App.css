@@ -1322,6 +1322,7 @@
 .hero-sitly {
   position: relative;
   isolation: isolate;
+  z-index: 5;
   background:
     radial-gradient(ellipse 100% 80% at 12% 8%, color-mix(in srgb, var(--color-primary-soft) 55%, transparent) 0%, transparent 58%),
     radial-gradient(ellipse 70% 55% at 88% 18%, color-mix(in srgb, var(--color-accent-purple-soft) 70%, transparent) 0%, transparent 55%),
@@ -1334,7 +1335,8 @@
       var(--color-page) 100%
     );
   padding: clamp(2rem, 4vw, 3rem) var(--space-5) clamp(2.75rem, 5.5vw, 4.25rem);
-  overflow: hidden;
+  /* visible: il menu Dove (cx-explorer__pop) non deve essere tagliato sotto */
+  overflow: visible;
   text-align: center;
 }
 
@@ -2414,6 +2416,8 @@
 
 /* ── Results ─────────────────────────────────────────────────── */
 .home-results {
+  position: relative;
+  z-index: 1;
   padding: var(--space-7) var(--space-5) var(--space-8);
   /* Top band picks up hero sky tones so the seam reads as one continuous wash. */
   background:
@@ -9935,6 +9939,10 @@
   z-index: 30;
 }
 
+.cx-explorer.is-open {
+  z-index: 60;
+}
+
 .cx-explorer__pill {
   position: relative;
   display: grid;
@@ -10129,10 +10137,14 @@
   position: absolute;
   top: calc(100% + 0.65rem);
   left: 0;
-  z-index: 40;
+  z-index: 50;
   min-width: min(100vw - 2rem, 24rem);
   max-width: 26rem;
-  padding: 1.15rem 1.1rem 1.2rem;
+  max-height: min(70vh, 28rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.15rem 1.1rem 1.35rem;
   background: #fff;
   border-radius: 1.75rem;
   box-shadow:
@@ -10177,8 +10189,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  max-height: 18rem;
-  overflow: auto;
+  /* scroll sul pop, non tagliare le righe sotto */
+  max-height: none;
+  overflow: visible;
 }
 
 .cx-explorer__row {
@@ -10201,13 +10214,40 @@
   background: #f3f4f3;
 }
 
+/* Airbnb-style rounded square place icons */
+.cx-place-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 0.85rem;
+  background: #f0f1ef;
+  color: #5f6b66;
+}
+
+.cx-place-icon--generic {
+  background: #eef1ef;
+  color: #6b7c75;
+}
+
+.cx-place-icon--near {
+  background: color-mix(in srgb, var(--color-primary, #1b4d5c) 12%, #fff);
+  color: var(--color-primary, #1b4d5c);
+}
+
+.cx-place-icon--recent {
+  background: #f0f0f0;
+  color: #6b7280;
+}
+
 .cx-explorer__row-icon {
   display: grid;
   place-items: center;
   width: 2.65rem;
   height: 2.65rem;
   flex-shrink: 0;
-  border-radius: 999px;
+  border-radius: 0.85rem;
   background: #ebebeb;
   color: #444;
 }

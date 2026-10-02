@@ -22,6 +22,7 @@ import {
   SUGGESTED_DESTINATIONS,
   type RecentPlace,
 } from '../lib/recentPlaces'
+import { PlaceRowIcon } from './icons/CityPlaceIcons'
 
 type Panel = 'dove' | 'mode' | null
 
@@ -45,33 +46,6 @@ function IconSearch() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <circle cx="11" cy="11" r="6.2" stroke="currentColor" strokeWidth="2.2" />
       <path d="M16.2 16.2 21 21" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function IconClock() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 8v4l2.5 1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function IconNear() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" />
-      <circle cx="12" cy="10" r="2.2" />
-    </svg>
-  )
-}
-
-function IconCity() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <path d="M4 20V9l8-5 8 5v11" strokeLinejoin="round" />
-      <path d="M9 20v-6h6v6" />
     </svg>
   )
 }
@@ -376,9 +350,7 @@ export function HomelySearchExplorer({
                           })
                         }
                       >
-                        <span className="cx-explorer__row-icon">
-                          <IconCity />
-                        </span>
+                        <PlaceRowIcon label={row.comune} />
                         <span className="cx-explorer__row-copy">
                           <strong>{formatPlacePrimary(row)}</strong>
                           <small>{formatPlaceSecondary(row)}</small>
@@ -409,9 +381,7 @@ export function HomelySearchExplorer({
                                 })
                               }
                             >
-                              <span className="cx-explorer__row-icon">
-                                <IconClock />
-                              </span>
+                              <PlaceRowIcon label={r.label} kind="recent" />
                               <span className="cx-explorer__row-copy">
                                 <strong>{r.label}</strong>
                                 <small>{r.sublabel ?? 'Intorno a te'}</small>
@@ -428,9 +398,7 @@ export function HomelySearchExplorer({
                     <ul className="cx-explorer__list">
                       <li>
                         <button type="button" className="cx-explorer__row" onClick={requestNearMe} disabled={nearBusy}>
-                          <span className="cx-explorer__row-icon cx-explorer__row-icon--near">
-                            <IconNear />
-                          </span>
+                          <PlaceRowIcon label="Vicino a me" kind="near" />
                           <span className="cx-explorer__row-copy">
                             <strong>Vicino a me</strong>
                             <small>
@@ -448,9 +416,7 @@ export function HomelySearchExplorer({
                               selectPlace({ label: d.label, sublabel: d.sublabel, q: d.q })
                             }
                           >
-                            <span className="cx-explorer__row-icon">
-                              <IconCity />
-                            </span>
+                            <PlaceRowIcon label={d.label} />
                             <span className="cx-explorer__row-copy">
                               <strong>{d.label}</strong>
                               <small>{d.sublabel}</small>
