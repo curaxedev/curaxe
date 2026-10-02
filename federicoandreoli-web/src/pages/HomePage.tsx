@@ -22,7 +22,8 @@ import { useCityTypewriter } from '../hooks/useCityTypewriter'
 import { useHeroSearchParams } from '../hooks/useHeroSearchParams'
 import { useHeroStickySearchVisible } from '../hooks/useHeroStickySearchVisible'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
-import { MOCK_PROFILES, toCarouselCard } from '../lib/mockProfiles'
+import { searchDirectoryProfiles } from '../lib/directoryApi'
+import { toCarouselCard, type MockProfile } from '../lib/mockProfiles'
 import { listingIntentFromAssistenzaMode, buildProfilesDirectoryHref } from '../lib/profilesDirectoryNav'
 import { comeFunzionaPath, profilesDirectoryPath } from '../lib/siteRoutes'
 
@@ -36,59 +37,102 @@ const homeCercoPeopleCategories = [
 
 type PreviewCard = HomeProfileCarouselCard
 
-/**
- * Card per il carosello home, derivate dalla sorgente unica MOCK_PROFILES.
- * Le agenzie e le strutture restano nel dataset (visualizzate nelle schede a tendina con badge dedicato),
- * ma sulla home corrente filtriamo per categoria attiva (badanti / OSS / infermieri / assistenti).
- */
-const previewCards: PreviewCard[] = MOCK_PROFILES
-  .filter((p) => p.listingIntent === 'cerco' && p.type === 'professional' && p.category !== 'agency')
-  .map(toCarouselCard)
+function summaryToCarouselCard(row: {
+  id: string
+  category: PreviewCard['category']
+  type: PreviewCard['type']
+  name: string
+  role: string
+  stars?: number
+  locationLabel?: string
+  online?: boolean
+  shift?: string
+  imageUrl?: string
+  viaAgencyName?: string
+  age?: number
+  rateLabel?: string
+  experienceLabel?: string
+}): PreviewCard {
+  // Adapter leggero: i summary directory hanno lo stesso shape card della home
+  return toCarouselCard({
+    id: row.id,
+    listingIntent: 'cerco',
+    category: row.category as MockProfile['category'],
+    type: row.type,
+    name: row.name,
+    role: row.role,
+    stars: row.stars ?? 0,
+    reviewCount: 0,
+    locationLabel: row.locationLabel ?? '',
+    online: row.online ?? false,
+    imageUrl: row.imageUrl ?? '',
+    shift: row.shift,
+    viaAgencyName: row.viaAgencyName,
+    age: row.age,
+    rateLabel: row.rateLabel,
+    experienceLabel: row.experienceLabel,
+    match: { istat: '', comune: '', cap: '', regione: '' },
+    bio: '',
+    traits: [],
+    competences: [],
+    experiences: [],
+    servicesCanDo: [],
+    servicesCanHelpWith: [],
+    availability: {
+      morning: [false, false, false, false, false, false, false],
+      afternoon: [false, false, false, false, false, false, false],
+      evening: [false, false, false, false, false, false, false],
+    },
+    availableFor: [],
+    references: [],
+    coverageHint: '',
+  } satisfies MockProfile)
+}
 
 /** Foto città in `public/images/citta/`. */
 const citySpotlights = [
   {
     label: 'Assistenza a Milano',
-    count: '18.200+ profili',
+    count: 'Professionisti in Lombardia',
     geoSearchQuery: 'Milano',
     image: '/images/citta/Milano.webp',
   },
   {
     label: 'Assistenza a Roma',
-    count: '22.400+ profili',
+    count: 'Professionisti nel Lazio',
     geoSearchQuery: 'Roma',
     image: '/images/citta/Roma.webp',
   },
   {
     label: 'Assistenza a Torino',
-    count: '9.100+ profili',
+    count: 'Professionisti in Piemonte',
     geoSearchQuery: 'Torino',
     image: '/images/citta/Torino.webp',
   },
   {
     label: 'Assistenza a Bologna',
-    count: '6.800+ profili',
+    count: 'Professionisti in Emilia-Romagna',
     geoSearchQuery: 'Bologna',
     image: '/images/citta/Bologna.webp',
   },
   {
     label: 'Assistenza a Napoli',
-    count: '7.300+ profili',
+    count: 'Professionisti in Campania',
     geoSearchQuery: 'Napoli',
     image: '/images/citta/Napoli.webp',
   },
   {
     label: 'Assistenza a Firenze',
-    count: '5.200+ profili',
+    count: 'Professionisti in Toscana',
     geoSearchQuery: 'Firenze',
     image: '/images/citta/Firenze.webp',
   },
 ] as const
 
 const homeFaqIntroStats: HomeFaqIntroStat[] = [
-  { figure: '12.000+', caption: 'profili in piattaforma' },
+  { figure: 'Gratis', caption: 'per aprire un account' },
   { figure: '4', caption: 'risposte rapide qui' },
-  { figure: '0€', caption: 'per aprire un account' },
+  { figure: 'IT', caption: 'comuni e zone cercabili' },
 ]
 
 const faqs = [
@@ -128,6 +172,7 @@ export function HomePage() {
   const cityQuery = heroSearch.cityInUrl
 
   const [activeCategory, setActiveCategory] = useState<string>('caregiver')
+  const [previewCards, setPreviewCards] = useState<PreviewCard[]>([])
   const [heroCityFocused, setHeroCityFocused] = useState(false)
   const [stickyCityFocused, setStickyCityFocused] = useState(false)
   const prefersReducedMotion = usePrefersReducedMotion()
@@ -138,6 +183,24 @@ export function HomePage() {
     !prefersReducedMotion
   const typewriterText = useCityTypewriter(typewriterActive)
   const stickySearchVisible = useHeroStickySearchVisible()
+
+  useEffect(() => {
+    let cancelled = false
+    void searchDirectoryProfiles({ intent: 'cerco', page: 1, pageSize: 48 })
+      .then((result) => {
+        if (cancelled) return
+        const cards = result.data
+          .filter((p) => p.type === 'professional' && p.category !== 'agency')
+          .map((p) => summaryToCarouselCard(p))
+        setPreviewCards(cards)
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewCards([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const els = document.querySelectorAll<HTMLElement>('.home-reveal')
@@ -170,7 +233,7 @@ export function HomePage() {
 
   const cardsToShow = useMemo(
     () => previewCards.filter((card) => card.category === activeCategory),
-    [activeCategory]
+    [activeCategory, previewCards],
   )
 
   const directoryIntent = listingIntentFromAssistenzaMode(assistenzaMode)
@@ -258,12 +321,19 @@ export function HomePage() {
                 </div>
                 <span className="home-results__count">
                   <IconUsers size={16} aria-hidden />
-                  12.000+ profili in piattaforma
+                  {cardsToShow.length > 0
+                    ? `${cardsToShow.length} profili in questa categoria`
+                    : 'Nessun profilo pubblicato ancora'}
                 </span>
               </div>
 
-              <HomeProfileCarousel key={activeCategory} cards={cardsToShow} categoryLabel={activeCategoryLabel} />
-
+              {cardsToShow.length > 0 ? (
+                <HomeProfileCarousel key={activeCategory} cards={cardsToShow} categoryLabel={activeCategoryLabel} />
+              ) : (
+                <p className="home-results__empty" style={{ margin: '1.5rem 0', color: 'var(--color-text-muted)' }}>
+                  Non ci sono ancora profili pubblici in questa categoria. Registrati o torna più tardi.
+                </p>
+              )}
               <div className="home-results__foot">
                 <Link to={profilesDirectoryPath} className="home-results__link">
                   Vedi tutti i profili

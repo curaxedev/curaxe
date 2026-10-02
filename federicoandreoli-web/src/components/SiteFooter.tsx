@@ -46,7 +46,7 @@ export function SiteFooter() {
     { label: 'Cerca nella tua zona', href: searchHref },
     { label: 'Come funziona', href: ecosistemaHref },
     { label: 'Domande frequenti', href: faqHref },
-    { label: 'Profili di esempio', href: onHome ? '#professionisti' : '/#professionisti' },
+    { label: 'Profili disponibili', href: onHome ? '#professionisti' : '/#professionisti' },
   ]
 
   const colOffer: FooterLink[] = [
