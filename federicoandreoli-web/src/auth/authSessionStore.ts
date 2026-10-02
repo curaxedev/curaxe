@@ -10,7 +10,17 @@ function emit() {
 
 function readRaw(): string | null {
   try {
-    return sessionStorage.getItem(STORAGE_KEY)
+    const fromLocal = localStorage.getItem(STORAGE_KEY)
+    if (fromLocal) return fromLocal
+
+    // Migrazione one-shot: le sessioni vivevano in sessionStorage (perse a ogni tab).
+    const fromSession = sessionStorage.getItem(STORAGE_KEY)
+    if (fromSession) {
+      localStorage.setItem(STORAGE_KEY, fromSession)
+      sessionStorage.removeItem(STORAGE_KEY)
+      return fromSession
+    }
+    return null
   } catch {
     return null
   }
@@ -18,8 +28,9 @@ function readRaw(): string | null {
 
 function writeRaw(value: string | null) {
   try {
-    if (value) sessionStorage.setItem(STORAGE_KEY, value)
-    else sessionStorage.removeItem(STORAGE_KEY)
+    if (value) localStorage.setItem(STORAGE_KEY, value)
+    else localStorage.removeItem(STORAGE_KEY)
+    sessionStorage.removeItem(STORAGE_KEY)
   } catch {
     /* quota / private mode */
   }
@@ -75,4 +86,14 @@ export function subscribeAuthSession(cb: () => void) {
   return () => {
     listeners.delete(cb)
   }
+}
+
+/** Sincronizza login/logout tra tab (localStorage). */
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key !== STORAGE_KEY) return
+    cachedRaw = undefined
+    cachedSession = null
+    emit()
+  })
 }

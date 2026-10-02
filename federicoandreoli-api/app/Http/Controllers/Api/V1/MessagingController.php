@@ -164,6 +164,15 @@ class MessagingController
 
     public function directContact(Request $request): JsonResponse
     {
+        if (! Schema::hasTable('message_threads') || ! Schema::hasTable('messages')) {
+            return ApiResponse::error(
+                'Messaggi temporaneamente non disponibili. Riprova tra poco.',
+                503,
+                [],
+                'messaging_unavailable',
+            );
+        }
+
         $data = $request->validate([
             'professionalId' => ['required', 'string'],
             'professionalName' => ['required', 'string', 'max:120'],
@@ -176,48 +185,66 @@ class MessagingController
             return ApiResponse::error('Professionista non trovato.', 404, [], 'not_found');
         }
 
-        $existing = MessageThread::query()->get()->first(function (MessageThread $t) use ($user, $pro) {
-            $ids = array_map('strval', $t->participant_ids ?? []);
+        try {
+            $existing = MessageThread::query()
+                ->where('link_type', 'direct_contact')
+                ->where(function ($query) use ($user): void {
+                    $uid = (string) $user->id;
+                    $query->whereJsonContains('participant_ids', $uid);
+                    if (ctype_digit($uid)) {
+                        $query->orWhereJsonContains('participant_ids', (int) $uid);
+                    }
+                })
+                ->get()
+                ->first(function (MessageThread $t) use ($user, $pro) {
+                    $ids = array_map('strval', $t->participant_ids ?? []);
 
-            return in_array((string) $user->id, $ids, true)
-                && in_array((string) $pro->id, $ids, true)
-                && $t->link_type === 'direct_contact';
-        });
+                    return in_array((string) $user->id, $ids, true)
+                        && in_array((string) $pro->id, $ids, true);
+                });
 
-        if ($existing !== null) {
-            if (! empty($data['initialMessage'])) {
-                $request->merge(['body' => $data['initialMessage']]);
-                $this->send($request, $existing->id);
+            if ($existing !== null) {
+                if (! empty($data['initialMessage'])) {
+                    $request->merge(['body' => $data['initialMessage']]);
+                    $this->send($request, $existing->id);
+                }
+
+                return response()->json($this->threadPayload($existing->fresh()));
             }
 
-            return response()->json($this->threadPayload($existing->fresh()));
+            $thread = MessageThread::query()->create([
+                'participant_ids' => [(string) $user->id, (string) $pro->id],
+                'participant_names' => [
+                    (string) $user->id => $user->name,
+                    (string) $pro->id => $data['professionalName'],
+                ],
+                'participant_roles' => [
+                    (string) $user->id => $this->messagingRole($user->role),
+                    (string) $pro->id => 'professional',
+                ],
+                'subject' => 'Contatto con '.$data['professionalName'],
+                'link_type' => 'direct_contact',
+                'link_id' => null,
+                'link_label' => null,
+                'last_message_at' => now(),
+                'last_message_preview' => '',
+                'unread_by_user_id' => [(string) $user->id => 0, (string) $pro->id => 0],
+            ]);
+
+            if (! empty($data['initialMessage'])) {
+                $request->merge(['body' => $data['initialMessage']]);
+                $this->send($request, $thread->id);
+            }
+
+            return response()->json($this->threadPayload($thread->fresh()), 201);
+        } catch (QueryException) {
+            return ApiResponse::error(
+                'Messaggi temporaneamente non disponibili. Riprova tra poco.',
+                503,
+                [],
+                'messaging_unavailable',
+            );
         }
-
-        $thread = MessageThread::query()->create([
-            'participant_ids' => [(string) $user->id, (string) $pro->id],
-            'participant_names' => [
-                (string) $user->id => $user->name,
-                (string) $pro->id => $data['professionalName'],
-            ],
-            'participant_roles' => [
-                (string) $user->id => $this->messagingRole($user->role),
-                (string) $pro->id => 'professional',
-            ],
-            'subject' => 'Contatto con '.$data['professionalName'],
-            'link_type' => 'direct_contact',
-            'link_id' => null,
-            'link_label' => null,
-            'last_message_at' => now(),
-            'last_message_preview' => '',
-            'unread_by_user_id' => [(string) $user->id => 0, (string) $pro->id => 0],
-        ]);
-
-        if (! empty($data['initialMessage'])) {
-            $request->merge(['body' => $data['initialMessage']]);
-            $this->send($request, $thread->id);
-        }
-
-        return response()->json($this->threadPayload($thread->fresh()), 201);
     }
 
     public function applicationContact(Request $request): JsonResponse

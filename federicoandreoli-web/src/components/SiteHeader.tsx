@@ -1,21 +1,39 @@
-import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useId, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { getDashboardPathForRole } from '../auth/roleDashboard'
+import { useAuth } from '../auth/useAuth'
 import { BrandLogo } from './BrandLogo'
-import { IconClose, IconInfo, IconMenu } from './icons/DashboardIcons'
+import { IconClose, IconInfo, IconLogout, IconMenu } from './icons/DashboardIcons'
 import { assistenzaHeroCercoLink, assistenzaHeroOffroLink } from '../lib/assistenzaHeroMode'
 import { comeFunzionaPath, profilesDirectoryPath } from '../lib/siteRoutes'
 import { registerWorkerProfileHref } from '../pages/auth/registerQuery'
 
+function initialsFromName(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || '?'
+}
+
 export function SiteHeader() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const { user, isAuthenticated, isLoading, signOut } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const accountMenuId = useId()
+  const accountWrapRef = useRef<HTMLDivElement>(null)
 
   const onIscriviti = pathname === '/iscriviti'
   const onLogin = pathname === '/accedi'
   const onRegister = pathname.startsWith('/registrazione')
   const registerStartHref = onIscriviti ? registerWorkerProfileHref : '/registrazione/intent'
   const onComeFunziona = pathname === comeFunzionaPath
+  const dashboardPath = user ? getDashboardPathForRole(user.role) : '/dashboard'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16)
@@ -26,6 +44,7 @@ export function SiteHeader() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- chiudi menu alla navigazione
     setMobileOpen(false)
+    setAccountOpen(false)
   }, [pathname])
 
   useEffect(() => {
@@ -38,19 +57,28 @@ export function SiteHeader() {
   }, [mobileOpen])
 
   useEffect(() => {
-    if (!mobileOpen) return
+    if (!mobileOpen && !accountOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileOpen(false)
+      if (e.key === 'Escape') {
+        setMobileOpen(false)
+        setAccountOpen(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [mobileOpen])
+  }, [mobileOpen, accountOpen])
 
-  /**
-   * I link «Cerca/Offri assistenza» devono sempre atterrare in cima alla home.
-   * Se siamo già su `/` il pathname non cambia e `<ScrollToTop />` non si attiverebbe:
-   * forziamo lo scroll qui per coprire anche quel caso.
-   */
+  useEffect(() => {
+    if (!accountOpen) return
+    function onPointerDown(e: MouseEvent) {
+      if (!accountWrapRef.current?.contains(e.target as Node)) {
+        setAccountOpen(false)
+      }
+    }
+    window.addEventListener('mousedown', onPointerDown)
+    return () => window.removeEventListener('mousedown', onPointerDown)
+  }, [accountOpen])
+
   function scrollToTopOfPage() {
     if (typeof window === 'undefined') return
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
@@ -59,6 +87,22 @@ export function SiteHeader() {
   function closeDrawer() {
     setMobileOpen(false)
   }
+
+  async function handleSignOut() {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      await signOut()
+      setAccountOpen(false)
+      closeDrawer()
+      navigate('/')
+    } finally {
+      setSigningOut(false)
+    }
+  }
+
+  const showGuestAuth = !isLoading && !isAuthenticated
+  const showAccount = !isLoading && isAuthenticated && user
 
   return (
     <header className={`topbar${scrolled ? ' topbar--scrolled' : ''}${mobileOpen ? ' topbar--drawer-open' : ''}`}>
@@ -90,7 +134,7 @@ export function SiteHeader() {
         )}
 
         <div className="topbar__actions">
-          {!onRegister && (
+          {!onRegister && showGuestAuth ? (
             <div className="topbar__auth" role="group" aria-label="Accesso account">
               <Link
                 to="/accedi"
@@ -103,7 +147,47 @@ export function SiteHeader() {
                 Registrati
               </Link>
             </div>
-          )}
+          ) : null}
+
+          {!onRegister && showAccount ? (
+            <div className="topbar__account" ref={accountWrapRef}>
+              <button
+                type="button"
+                className={`topbar__account-trigger${accountOpen ? ' is-open' : ''}`}
+                aria-expanded={accountOpen}
+                aria-controls={accountMenuId}
+                aria-haspopup="menu"
+                onClick={() => setAccountOpen((v) => !v)}
+              >
+                <span className="topbar__account-avatar" aria-hidden>
+                  {initialsFromName(user.name)}
+                </span>
+                <span className="topbar__account-name">{user.name}</span>
+              </button>
+              {accountOpen ? (
+                <div id={accountMenuId} className="topbar__account-menu" role="menu">
+                  <Link
+                    role="menuitem"
+                    className="topbar__account-item"
+                    to={dashboardPath}
+                    onClick={() => setAccountOpen(false)}
+                  >
+                    Area riservata
+                  </Link>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="topbar__account-item topbar__account-item--danger"
+                    disabled={signingOut}
+                    onClick={() => void handleSignOut()}
+                  >
+                    <IconLogout size={16} aria-hidden />
+                    {signingOut ? 'Uscita…' : 'Esci'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {!onRegister && (
@@ -134,7 +218,11 @@ export function SiteHeader() {
               <p id="topbar-drawer-title" className="topbar__drawer-head-title">
                 Menu
               </p>
-              <p className="topbar__drawer-head-sub">Scegli una sezione o accedi al tuo account.</p>
+              <p className="topbar__drawer-head-sub">
+                {showAccount
+                  ? `Ciao ${user.name.split(' ')[0]}, gestisci il tuo account.`
+                  : 'Scegli una sezione o accedi al tuo account.'}
+              </p>
             </div>
 
             <nav className="topbar__drawer-body" aria-label="Menu mobile">
@@ -174,19 +262,51 @@ export function SiteHeader() {
               </Link>
 
               <p className="topbar__drawer-kicker">Il tuo account</p>
-              <div className="topbar__drawer-actions" role="group" aria-label="Accesso account">
-                <Link
-                  to="/accedi"
-                  className={`topbar__drawer-btn topbar__drawer-btn--ghost${onLogin ? ' is-active' : ''}`}
-                  onClick={closeDrawer}
-                  aria-current={onLogin ? 'page' : undefined}
-                >
-                  Accedi
-                </Link>
-                <Link to={registerStartHref} className="topbar__drawer-btn topbar__drawer-btn--primary" onClick={closeDrawer}>
-                  Registrati
-                </Link>
-              </div>
+              {showGuestAuth ? (
+                <div className="topbar__drawer-actions" role="group" aria-label="Accesso account">
+                  <Link
+                    to="/accedi"
+                    className={`topbar__drawer-btn topbar__drawer-btn--ghost${onLogin ? ' is-active' : ''}`}
+                    onClick={closeDrawer}
+                    aria-current={onLogin ? 'page' : undefined}
+                  >
+                    Accedi
+                  </Link>
+                  <Link
+                    to={registerStartHref}
+                    className="topbar__drawer-btn topbar__drawer-btn--primary"
+                    onClick={closeDrawer}
+                  >
+                    Registrati
+                  </Link>
+                </div>
+              ) : null}
+
+              {showAccount ? (
+                <div className="topbar__drawer-actions topbar__drawer-actions--account" role="group">
+                  <div className="topbar__drawer-user">
+                    <span className="topbar__account-avatar" aria-hidden>
+                      {initialsFromName(user.name)}
+                    </span>
+                    <span className="topbar__drawer-user-name">{user.name}</span>
+                  </div>
+                  <Link
+                    to={dashboardPath}
+                    className="topbar__drawer-btn topbar__drawer-btn--primary"
+                    onClick={closeDrawer}
+                  >
+                    Area riservata
+                  </Link>
+                  <button
+                    type="button"
+                    className="topbar__drawer-btn topbar__drawer-btn--ghost"
+                    disabled={signingOut}
+                    onClick={() => void handleSignOut()}
+                  >
+                    {signingOut ? 'Uscita…' : 'Esci'}
+                  </button>
+                </div>
+              ) : null}
             </nav>
           </div>
         </>

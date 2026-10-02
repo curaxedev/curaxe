@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { getDashboardPathForRole } from '../auth/roleDashboard'
+import type { AuthUser } from '../auth/types'
 import { useAuth } from '../auth/useAuth'
 import { ContactAuthDialog } from '../components/ContactAuthDialog'
 import { HomeProfileCarousel } from '../components/HomeProfileCarousel'
@@ -20,7 +22,7 @@ import {
   type HelpServiceIconKey,
   type MockProfile,
 } from '../lib/mockProfiles'
-import { openDirectContactThread } from '../lib/messagingApi'
+import { MessagingError, openDirectContactThread } from '../lib/messagingApi'
 import {
   createSavedProfile,
   deleteSavedProfile,
@@ -370,6 +372,10 @@ export function ProfileDetailPage() {
     if (!wantsContact || !isAuthenticated || !profile || !id || !user?.id || contactSent || contactLoading) {
       return
     }
+    if (user.role !== 'public_user') {
+      setShowContactAuth(true)
+      return
+    }
 
     let cancelled = false
 
@@ -384,9 +390,17 @@ export function ProfileDetailPage() {
         })
         if (cancelled) return
         setContactSent(true)
-        navigate(`/dashboard/famiglia?section=messaggi&thread=${encodeURIComponent(thread.id)}`)
-      } catch {
-        if (!cancelled) setContactError('Impossibile avviare la conversazione. Riprova tra poco.')
+        navigate(
+          `${getDashboardPathForRole('public_user')}?section=messaggi&thread=${encodeURIComponent(thread.id)}`,
+        )
+      } catch (err) {
+        if (!cancelled) {
+          setContactError(
+            err instanceof MessagingError
+              ? err.message
+              : 'Impossibile avviare la conversazione. Riprova tra poco.',
+          )
+        }
       } finally {
         if (!cancelled) setContactLoading(false)
       }
@@ -456,20 +470,32 @@ export function ProfileDetailPage() {
   const otherReferences = profile.references.slice(1)
   const cityShort = profile.match.comune
 
-  async function startContactThread() {
-    if (!user?.id || !profile || !id) return
+  async function startContactThread(actor?: AuthUser) {
+    const who = actor ?? user
+    if (!who?.id || !profile || !id) return
+    if (who.role !== 'public_user') {
+      setContactError('Per contattare un professionista accedi con un account famiglia.')
+      setShowContactAuth(true)
+      return
+    }
     setContactLoading(true)
     setContactError(null)
     try {
-      const thread = await openDirectContactThread(user.id, user.name, {
+      const thread = await openDirectContactThread(who.id, who.name, {
         professionalId: id,
         professionalName: profile.name,
         initialMessage: `Buongiorno, sono interessato/a al profilo di ${profile.name.split(' ')[0]}. Vorrei maggiori informazioni sulla disponibilità.`,
       })
       setContactSent(true)
-      navigate(`/dashboard/famiglia?section=messaggi&thread=${encodeURIComponent(thread.id)}`)
-    } catch {
-      setContactError('Impossibile avviare la conversazione. Riprova tra poco.')
+      navigate(
+        `${getDashboardPathForRole('public_user')}?section=messaggi&thread=${encodeURIComponent(thread.id)}`,
+      )
+    } catch (err) {
+      setContactError(
+        err instanceof MessagingError
+          ? err.message
+          : 'Impossibile avviare la conversazione. Riprova tra poco.',
+      )
     } finally {
       setContactLoading(false)
     }
@@ -477,6 +503,11 @@ export function ProfileDetailPage() {
 
   function handleContact() {
     if (!isAuthenticated) {
+      setShowContactAuth(true)
+      return
+    }
+    if (user?.role !== 'public_user') {
+      setContactError('Per contattare un professionista accedi con un account famiglia.')
       setShowContactAuth(true)
       return
     }
@@ -1014,6 +1045,9 @@ export function ProfileDetailPage() {
         onClose={() => setShowContactAuth(false)}
         returnTo={`${returnTo}${returnTo.includes('?') ? '&' : '?'}contact=1`}
         professionalName={profile.name}
+        onAuthenticated={(authedUser) => {
+          void startContactThread(authedUser)
+        }}
       />
     </SiteShell>
   )
