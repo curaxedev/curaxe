@@ -1468,7 +1468,6 @@ export function ProfessionalDashboard() {
     uploadDocument: uploadProfileDocument,
     removeDocument: removeProfileDocument,
     completionPercent,
-    missingFields,
   } = useProfessionalProfile()
   const [activeSection, setActiveSection] = useState('home')
   const [showUpgrade, setShowUpgrade] = useState(false)
@@ -1561,7 +1560,6 @@ export function ProfessionalDashboard() {
     : null
 
   const firstName = profile?.identity.firstName ?? user?.name.split(' ')[0] ?? 'Professionista'
-  const lastName = profile?.identity.lastName ?? user?.name.split(' ').slice(1).join(' ') ?? ''
 
   const navItems = [
     { id: 'home', label: 'Home', icon: <IconHome size={18} /> },
