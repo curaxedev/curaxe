@@ -202,7 +202,7 @@ textarea:focus-visible,
   transition: var(--transition-surface);
 }
 
-.auth-field input:not(.auth-input-wrap input),
+.auth-field input:not(.auth-input-wrap input):not(.auth-otp-box),
 .auth-field select {
   min-height: var(--input-height);
 }

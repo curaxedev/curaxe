@@ -338,23 +338,31 @@
 .auth-otp-boxes {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 10px;
   width: 100%;
+  max-width: 100%;
   margin-top: 4px;
+  overflow: hidden;
 }
 
+.auth-field .auth-otp-box,
 .auth-otp-box {
-  flex: 0 0 auto;
-  width: 48px;
+  box-sizing: border-box;
+  flex: 0 0 48px;
+  width: 48px !important;
+  max-width: 48px !important;
+  min-width: 48px;
   height: 56px;
-  padding: 0;
+  min-height: 56px !important;
+  padding: 0 !important;
   border: 1.5px solid color-mix(in srgb, var(--color-border) 85%, var(--home-ink-band) 15%);
   border-radius: 12px;
   background: var(--color-surface, #fff);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
   text-align: center;
   font-family: var(--font-heading, inherit);
-  font-size: 1.45rem;
+  font-size: 1.45rem !important;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -370,6 +378,8 @@
   border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
 }
 
+.auth-field .auth-otp-box:focus,
+.auth-field .auth-otp-box:focus-visible,
 .auth-otp-box:focus,
 .auth-otp-box:focus-visible {
   outline: none;
@@ -388,10 +398,15 @@
     gap: 6px;
   }
 
+  .auth-field .auth-otp-box,
   .auth-otp-box {
-    width: 42px;
+    flex-basis: 42px;
+    width: 42px !important;
+    max-width: 42px !important;
+    min-width: 42px;
     height: 50px;
-    font-size: 1.3rem;
+    min-height: 50px !important;
+    font-size: 1.3rem !important;
     border-radius: 10px;
   }
 }
@@ -918,7 +933,7 @@
 
 .auth-input-suffix:hover { color: var(--color-text); }
 
-.auth-field input:not(.auth-input-wrap input),
+.auth-field input:not(.auth-input-wrap input):not(.auth-otp-box),
 .auth-field select,
 .auth-field textarea {
   width: 100%;
@@ -932,7 +947,7 @@
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.auth-field input:focus-visible,
+.auth-field input:not(.auth-otp-box):focus-visible,
 .auth-field select:focus-visible,
 .auth-field textarea:focus-visible {
   outline: none;

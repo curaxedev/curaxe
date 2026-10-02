@@ -2253,7 +2253,7 @@
     0 1px 0 rgba(255, 255, 255, 0.5) inset;
 }
 
-.auth-shell--glass .auth-field input:not(.auth-input-wrap input),
+.auth-shell--glass .auth-field input:not(.auth-input-wrap input):not(.auth-otp-box),
 .auth-shell--glass .auth-field select,
 .auth-shell--glass .auth-field textarea {
   background: var(--glass-auth-input-bg);
@@ -2263,7 +2263,7 @@
   border-radius: var(--glass-radius-md);
 }
 
-.auth-shell--glass .auth-field input:focus-visible,
+.auth-shell--glass .auth-field input:not(.auth-otp-box):focus-visible,
 .auth-shell--glass .auth-field select:focus-visible,
 .auth-shell--glass .auth-field textarea:focus-visible {
   border-color: rgba(42, 92, 130, 0.35);
