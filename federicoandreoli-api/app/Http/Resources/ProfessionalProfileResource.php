@@ -6,6 +6,7 @@ use App\Domains\Professionals\ProfileCompletion;
 use App\Models\ProfessionalProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -33,6 +34,7 @@ class ProfessionalProfileResource extends JsonResource
                 'professionalTitle' => $this->professional_title,
                 'birthYear' => $this->birth_year ?? 0,
                 'nationality' => $this->nationality,
+                'phone' => Schema::hasColumn('professional_profiles', 'phone') ? $this->phone : null,
                 'bio' => (string) $this->bio,
                 'photoUrl' => $this->photo_path !== null ? Storage::disk('public')->url($this->photo_path) : null,
             ],

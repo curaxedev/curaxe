@@ -12157,6 +12157,151 @@ button.candidacy-auth-dialog__btn {
   background: color-mix(in srgb, #fff 88%, transparent);
 }
 
+.dash-msg-compose--templates {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+
+.dash-msg-compose__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.dash-msg-templates {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+}
+
+.dash-msg-template {
+  width: 100%;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-page) 45%, #fff);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.dash-msg-template:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background: #fff;
+}
+
+.dash-msg-template.is-active {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary-softer) 70%, #fff);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.dash-msg-template:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dash-msg-compose__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dash-msg-compose__send-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-msg-panel__contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.dash-msg-contact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: #fff;
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dash-msg-contact-btn--wa {
+  background: #25d366;
+  border-color: transparent;
+  color: #fff;
+}
+
+.dash-msg-contact-btn--wa:hover {
+  filter: brightness(1.05);
+}
+
+.dash-form-label__badge {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--color-accent) 14%, #fff);
+  color: var(--color-accent-hover);
+  vertical-align: middle;
+}
+
+.dash-prof-phone-lock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px dashed color-mix(in srgb, var(--color-border) 90%, transparent);
+  background: color-mix(in srgb, var(--color-page) 55%, #fff);
+}
+
+.dash-prof-phone-lock__row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--color-text);
+}
+
+@media (max-width: 860px) {
+  .dash-msg-panel__contact {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 4px;
+  }
+
+  .dash-msg-templates {
+    max-height: 140px;
+  }
+}
+
 .dash-msg-compose__shell {
   display: flex;
   align-items: flex-end;

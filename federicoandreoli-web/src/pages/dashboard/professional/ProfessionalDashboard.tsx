@@ -399,6 +399,8 @@ function SectionProfile(props: {
   saving: boolean
   saveError: string | null
   uploadBusy: boolean
+  isPremium: boolean
+  onUpgrade: () => void
   onReload: () => void
   onSave: (patch: ProfessionalProfilePatch) => Promise<boolean>
   onUploadPhoto: (file: File) => Promise<boolean>
@@ -957,6 +959,8 @@ export function ProfessionalDashboard() {
             saving={profileSaving}
             saveError={profileSaveError}
             uploadBusy={profileUploadBusy}
+            isPremium={billing.isPremium}
+            onUpgrade={() => setActiveSection('piano')}
             onReload={() => void reloadProfile()}
             onSave={saveProfile}
             onUploadPhoto={uploadProfilePhoto}
@@ -976,6 +980,7 @@ export function ProfessionalDashboard() {
             title="Messaggi"
             subtitle="Rispondi a famiglie, strutture e agenzie"
             userId={user?.id ?? ''}
+            templateRole="professional"
             threads={messaging.threads}
             messages={messaging.messages}
             selectedThread={messaging.selectedThread}

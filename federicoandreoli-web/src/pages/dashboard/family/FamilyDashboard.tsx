@@ -23,6 +23,7 @@ import { useFamilyRequests } from '../../../hooks/useFamilyRequests'
 import { useMessaging } from '../../../hooks/useMessaging'
 import { useNotifications } from '../../../hooks/useNotifications'
 import { openDirectContactThread } from '../../../lib/messagingApi'
+import { DEFAULT_FAMILY_CONTACT_MESSAGE } from '../../../lib/messageTemplates'
 import {
   IconAlert,
   IconBell,
@@ -787,7 +788,7 @@ export function FamilyDashboard() {
       const thread = await openDirectContactThread(user.id, user.name, {
         professionalId,
         professionalName,
-        initialMessage,
+        initialMessage: initialMessage ?? DEFAULT_FAMILY_CONTACT_MESSAGE,
       })
       await messaging.reloadThreads({ silent: true })
       openMessaging(thread.id)
@@ -844,6 +845,7 @@ export function FamilyDashboard() {
             title="Messaggi"
             subtitle="Conversazioni con i professionisti che hai contattato o che si sono candidati"
             userId={user?.id ?? ''}
+            templateRole="family"
             threads={messaging.threads}
             messages={messaging.messages}
             selectedThread={messaging.selectedThread}

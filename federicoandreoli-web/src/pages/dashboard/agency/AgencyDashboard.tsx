@@ -576,6 +576,7 @@ export function AgencyDashboard() {
             title="Messaggi"
             subtitle="Conversazioni con i professionisti candidati ai tuoi annunci"
             userId={user?.id ?? ''}
+            templateRole="agency"
             threads={messaging.threads}
             messages={messaging.messages}
             selectedThread={messaging.selectedThread}

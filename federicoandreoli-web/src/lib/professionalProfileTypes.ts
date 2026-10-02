@@ -6,6 +6,8 @@ export type ProfessionalProfileIdentity = {
   professionalTitle: string
   birthYear: number
   nationality: string
+  /** Solo Premium: visibile in chat + WhatsApp. */
+  phone: string | null
   bio: string
   photoUrl: string | null
 }

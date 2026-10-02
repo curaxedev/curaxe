@@ -8,6 +8,7 @@ import type {
   SendMessageInput,
 } from '../lib/messagingTypes'
 import { MessagingError } from '../lib/messagingTypes'
+import { isAllowedMessageTemplate } from '../lib/messageTemplates'
 import {
   getApplicationById,
   markApplicationContacted,
@@ -265,6 +266,9 @@ export async function postMessage(
   await delay(200)
   const body = input.body.trim()
   if (!body) throw new MessagingError('validation', 'Il messaggio non può essere vuoto.')
+  if (!isAllowedMessageTemplate(body)) {
+    throw new MessagingError('validation', 'Puoi inviare solo messaggi preimpostati dalla lista disponibile.')
+  }
   if (!userId) throw new MessagingError('not_found', 'Sessione non valida.')
 
   const store = ensureStore()

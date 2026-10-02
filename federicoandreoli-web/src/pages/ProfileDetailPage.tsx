@@ -23,6 +23,7 @@ import {
   type MockProfile,
 } from '../lib/mockProfiles'
 import { MessagingError, getThreads, openDirectContactThread } from '../lib/messagingApi'
+import { DEFAULT_FAMILY_CONTACT_MESSAGE } from '../lib/messageTemplates'
 import {
   createSavedProfile,
   deleteSavedProfile,
@@ -431,7 +432,7 @@ export function ProfileDetailPage() {
         const thread = await openDirectContactThread(user!.id, user!.name, {
           professionalId: id!,
           professionalName: profile!.name,
-          initialMessage: `Buongiorno, sono interessato/a al profilo di ${profile!.name.split(' ')[0]}. Vorrei maggiori informazioni sulla disponibilità.`,
+          initialMessage: DEFAULT_FAMILY_CONTACT_MESSAGE,
         })
         if (cancelled) return
         setContactSent(true)
@@ -531,7 +532,7 @@ export function ProfileDetailPage() {
       const thread = await openDirectContactThread(who.id, who.name, {
         professionalId: id,
         professionalName: profile.name,
-        initialMessage: `Buongiorno, sono interessato/a al profilo di ${profile.name.split(' ')[0]}. Vorrei maggiori informazioni sulla disponibilità.`,
+        initialMessage: DEFAULT_FAMILY_CONTACT_MESSAGE,
       })
       setContactSent(true)
       setContactThreadId(thread.id)

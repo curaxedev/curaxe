@@ -1,18 +1,28 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
   IconAlert,
   IconChevronLeft,
   IconInbox,
   IconMessages,
+  IconPhone,
   IconSend,
+  IconWhatsApp,
 } from '../../components/icons/DashboardIcons'
-import type { Message, MessageThread } from '../../lib/messagingTypes'
+import type { Message, MessageThread, MessagingParticipantRole } from '../../lib/messagingTypes'
 import { formatMessageTime, threadCounterparty } from '../../lib/messagingApi'
+import {
+  formatPhoneDisplay,
+  templatesForRole,
+  toTelHref,
+  toWhatsAppUrl,
+} from '../../lib/messageTemplates'
 
 type DashboardMessagingSectionProps = {
   title?: string
   subtitle?: string
   userId: string
+  /** Ruolo messaggi per scegliere i template ammessi. */
+  templateRole: MessagingParticipantRole
   threads: MessageThread[]
   messages: Message[]
   selectedThread: MessageThread | null
@@ -73,6 +83,7 @@ export function DashboardMessagingSection({
   title = 'Messaggi',
   subtitle = 'Conversazioni con i professionisti che hai contattato o che si sono candidati.',
   userId,
+  templateRole,
   threads,
   messages,
   selectedThread,
@@ -86,13 +97,18 @@ export function DashboardMessagingSection({
   onSelectThread,
   onSendMessage,
 }: DashboardMessagingSectionProps) {
-  const [draft, setDraft] = useState('')
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const composeId = useId()
+  const templates = useMemo(() => templatesForRole(templateRole), [templateRole])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, selectedThreadId])
+
+  useEffect(() => {
+    setSelectedTemplate('')
+  }, [selectedThreadId])
 
   if (loading) {
     return (
@@ -100,6 +116,7 @@ export function DashboardMessagingSection({
         <div className="dash-section-header dash-msg-page__header">
           <div>
             <h2 className="dash-section__title">{title}</h2>
+            <p className="dash-section__subtitle">{subtitle}</p>
           </div>
         </div>
         <MessagingSkeleton />
@@ -130,14 +147,22 @@ export function DashboardMessagingSection({
   }
 
   const handleSend = async () => {
-    if (!draft.trim() || sending) return
-    const ok = await onSendMessage(draft)
-    if (ok) setDraft('')
+    if (!selectedTemplate || sending) return
+    const ok = await onSendMessage(selectedTemplate)
+    if (ok) setSelectedTemplate('')
   }
 
   const selectedName = selectedThread
     ? (threadCounterparty(selectedThread, userId)?.name ?? selectedThread.subject)
     : null
+
+  const counterparty = selectedThread ? threadCounterparty(selectedThread, userId) : null
+  const counterpartyPhone =
+    selectedThread && counterparty
+      ? selectedThread.participantPhones?.[counterparty.id] ?? null
+      : null
+  const telHref = counterpartyPhone ? toTelHref(counterpartyPhone) : null
+  const waHref = counterpartyPhone ? toWhatsAppUrl(counterpartyPhone) : null
 
   return (
     <div className="dash-msg-page">
@@ -166,11 +191,10 @@ export function DashboardMessagingSection({
             <div className="dash-msg-sidebar__label">Inbox</div>
             <div className="dash-msg-sidebar__list" role="list">
               {threads.map((thread) => {
-                const counterparty = threadCounterparty(thread, userId)
-                const displayName = counterparty?.name ?? thread.subject
-                const unread = thread.unreadByUserId[userId] ?? 0
+                const other = threadCounterparty(thread, userId)
+                const displayName = other?.name ?? thread.subject
                 const isActive = thread.id === selectedThreadId
-
+                const unread = thread.unreadByUserId[userId] ?? 0
                 return (
                   <button
                     key={thread.id}
@@ -178,11 +202,10 @@ export function DashboardMessagingSection({
                     role="listitem"
                     className={`dash-msg-thread${isActive ? ' dash-msg-thread--active' : ''}${unread > 0 ? ' dash-msg-thread--unread' : ''}`}
                     onClick={() => onSelectThread(thread.id)}
-                    aria-current={isActive ? 'true' : undefined}
                   >
                     <div
                       className={`dash-msg-avatar dash-msg-avatar--${avatarVariant(thread.id)}`}
-                      aria-hidden="true"
+                      aria-hidden
                     >
                       {nameInitials(displayName)}
                     </div>
@@ -194,13 +217,13 @@ export function DashboardMessagingSection({
                         </span>
                       </div>
                       <div className="dash-msg-thread__preview">
-                        {thread.lastMessagePreview || 'Nessun messaggio ancora'}
+                        {thread.lastMessagePreview || thread.subject}
                       </div>
                       <div className="dash-msg-thread__meta">
                         <span className="dash-msg-chip">{linkTypeLabel(thread.linkType)}</span>
                         {unread > 0 ? (
                           <span className="dash-msg-thread__badge" aria-label={`${unread} non letti`}>
-                            {unread > 9 ? '9+' : unread}
+                            {unread}
                           </span>
                         ) : null}
                       </div>
@@ -212,14 +235,14 @@ export function DashboardMessagingSection({
           </aside>
 
           <section className="dash-msg-panel" aria-label="Conversazione">
-            {!selectedThread || !selectedName ? (
+            {!selectedThread ? (
               <div className="dash-msg-panel__empty">
                 <div className="dash-msg-panel__empty-orb" aria-hidden>
                   <IconMessages size={28} />
                 </div>
-                <div className="dash-empty-state__title">Seleziona una chat</div>
+                <div className="dash-empty-state__title">Seleziona una conversazione</div>
                 <div className="dash-empty-state__sub">
-                  Scegli una conversazione a sinistra per leggere e rispondere.
+                  Chat moderata: puoi inviare solo messaggi preimpostati.
                 </div>
               </div>
             ) : (
@@ -229,15 +252,15 @@ export function DashboardMessagingSection({
                     type="button"
                     className="dash-msg-panel__back"
                     onClick={() => onSelectThread(null)}
-                    aria-label="Torna all'elenco conversazioni"
+                    aria-label="Torna all’elenco"
                   >
                     <IconChevronLeft size={18} />
                   </button>
                   <div
                     className={`dash-msg-avatar dash-msg-avatar--sm dash-msg-avatar--${avatarVariant(selectedThread.id)}`}
-                    aria-hidden="true"
+                    aria-hidden
                   >
-                    {nameInitials(selectedName)}
+                    {nameInitials(selectedName ?? '?')}
                   </div>
                   <div className="dash-msg-panel__who">
                     <div className="dash-msg-panel__title">{selectedName}</div>
@@ -250,6 +273,27 @@ export function DashboardMessagingSection({
                       ) : null}
                     </div>
                   </div>
+                  {counterpartyPhone && (telHref || waHref) ? (
+                    <div className="dash-msg-panel__contact">
+                      {telHref ? (
+                        <a className="dash-msg-contact-btn" href={telHref}>
+                          <IconPhone size={15} />
+                          <span>{formatPhoneDisplay(counterpartyPhone)}</span>
+                        </a>
+                      ) : null}
+                      {waHref ? (
+                        <a
+                          className="dash-msg-contact-btn dash-msg-contact-btn--wa"
+                          href={waHref}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <IconWhatsApp size={15} />
+                          <span>WhatsApp</span>
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </header>
 
                 {messagesLoading ? (
@@ -271,7 +315,7 @@ export function DashboardMessagingSection({
                 ) : (
                   <div className="dash-msg-panel__body" role="log" aria-live="polite" aria-relevant="additions">
                     {messages.length === 0 ? (
-                      <div className="dash-msg-dayhint">Nessun messaggio ancora. Scrivi qui sotto.</div>
+                      <div className="dash-msg-dayhint">Nessun messaggio ancora. Scegli una risposta qui sotto.</div>
                     ) : (
                       <div className="polish-msg-feed dash-msg-feed">
                         {messages.map((m, index) => {
@@ -298,38 +342,41 @@ export function DashboardMessagingSection({
                 )}
 
                 <form
-                  className="dash-msg-compose"
+                  className="dash-msg-compose dash-msg-compose--templates"
                   onSubmit={(e) => {
                     e.preventDefault()
                     void handleSend()
                   }}
                 >
-                  <label className="visually-hidden" htmlFor={composeId}>
-                    Scrivi un messaggio
-                  </label>
-                  <div className="dash-msg-compose__shell">
-                    <textarea
-                      id={composeId}
-                      className="dash-msg-compose__input"
-                      rows={1}
-                      placeholder="Scrivi un messaggio…"
-                      value={draft}
-                      disabled={sending}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault()
-                          void handleSend()
-                        }
-                      }}
-                    />
+                  <p className="dash-msg-compose__hint" id={`${composeId}-hint`}>
+                    Chat moderata · solo messaggi preimpostati
+                  </p>
+                  <div className="dash-msg-templates" role="listbox" aria-labelledby={`${composeId}-hint`}>
+                    {templates.map((tpl) => {
+                      const active = selectedTemplate === tpl
+                      return (
+                        <button
+                          key={tpl}
+                          type="button"
+                          role="option"
+                          aria-selected={active}
+                          className={`dash-msg-template${active ? ' is-active' : ''}`}
+                          disabled={sending}
+                          onClick={() => setSelectedTemplate(tpl)}
+                        >
+                          {tpl}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="dash-msg-compose__actions">
                     <button
                       type="submit"
-                      className="dash-msg-compose__send"
-                      disabled={sending || !draft.trim()}
-                      aria-label={sending ? 'Invio in corso' : 'Invia messaggio'}
+                      className="dash-btn dash-btn--primary dash-msg-compose__send-btn"
+                      disabled={sending || !selectedTemplate}
                     >
-                      <IconSend size={17} />
+                      <IconSend size={16} />
+                      {sending ? 'Invio…' : 'Invia messaggio'}
                     </button>
                   </div>
                 </form>

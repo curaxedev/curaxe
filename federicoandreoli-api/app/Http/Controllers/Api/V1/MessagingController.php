@@ -8,8 +8,11 @@ use App\Models\AppNotification;
 use App\Models\Application;
 use App\Models\Message;
 use App\Models\MessageThread;
+use App\Models\ProfessionalProfile;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\MessageTemplates;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +40,7 @@ class MessagingController
                 ->orderByDesc('last_message_at')
                 ->limit(100)
                 ->get()
-                ->map(fn (MessageThread $t) => $this->threadPayload($t))
+                ->map(fn (MessageThread $t) => $this->threadPayload($t, $request->user()))
                 ->values();
         } catch (QueryException) {
             return ApiResponse::error(
@@ -94,15 +97,27 @@ class MessagingController
             return $thread;
         }
 
-        $data = $request->validate(['body' => ['required', 'string', 'max:5000']]);
+        $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
         $user = $request->user();
+        $messagingRole = $this->messagingRole($user->role);
+
+        if (! MessageTemplates::isAllowed($data['body'], $messagingRole)) {
+            return ApiResponse::error(
+                'Puoi inviare solo messaggi preimpostati dalla lista disponibile.',
+                422,
+                ['body' => ['Messaggio non consentito.']],
+                'validation',
+            );
+        }
+
+        $body = trim($data['body']);
 
         try {
             $message = Message::query()->create([
                 'thread_id' => $thread->id,
                 'sender_id' => $user->id,
                 'sender_name' => $user->name,
-                'body' => $data['body'],
+                'body' => $body,
             ]);
         } catch (QueryException) {
             return ApiResponse::error(
@@ -124,7 +139,7 @@ class MessagingController
         }
 
         $thread->last_message_at = now();
-        $thread->last_message_preview = mb_substr($data['body'], 0, 160);
+        $thread->last_message_preview = mb_substr($body, 0, 160);
         $thread->unread_by_user_id = $unread;
         $thread->save();
 
@@ -180,7 +195,7 @@ class MessagingController
         $thread->unread_by_user_id = $unread;
         $thread->save();
 
-        return response()->json($this->threadPayload($thread));
+        return response()->json($this->threadPayload($thread, $request->user()));
     }
 
     public function directContact(Request $request): JsonResponse
@@ -199,6 +214,15 @@ class MessagingController
             'professionalName' => ['required', 'string', 'max:120'],
             'initialMessage' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        if (! empty($data['initialMessage']) && ! MessageTemplates::isAllowed($data['initialMessage'], 'family')) {
+            return ApiResponse::error(
+                'Puoi avviare il contatto solo con un messaggio preimpostato.',
+                422,
+                ['initialMessage' => ['Messaggio non consentito.']],
+                'validation',
+            );
+        }
 
         $user = $request->user();
         $pro = User::query()->find($data['professionalId']);
@@ -235,7 +259,7 @@ class MessagingController
 
             if ($existing !== null) {
                 // Una sola richiesta di contatto: non reinviare il messaggio iniziale.
-                return response()->json($this->threadPayload($existing->fresh()));
+                return response()->json($this->threadPayload($existing->fresh(), $user));
             }
 
             $thread = MessageThread::query()->create([
@@ -262,7 +286,7 @@ class MessagingController
                 $this->send($request, $thread->id);
             }
 
-            return response()->json($this->threadPayload($thread->fresh()), 201);
+            return response()->json($this->threadPayload($thread->fresh(), $user), 201);
         } catch (QueryException) {
             return ApiResponse::error(
                 'Messaggi temporaneamente non disponibili. Riprova tra poco.',
@@ -286,6 +310,18 @@ class MessagingController
             'applicationId' => ['required', 'string'],
             'initialMessage' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        if (! empty($data['initialMessage'])) {
+            $role = $this->messagingRole($request->user()->role);
+            if (! MessageTemplates::isAllowed($data['initialMessage'], $role)) {
+                return ApiResponse::error(
+                    'Puoi avviare il contatto solo con un messaggio preimpostato.',
+                    422,
+                    ['initialMessage' => ['Messaggio non consentito.']],
+                    'validation',
+                );
+            }
+        }
 
         $application = Application::query()->find($data['applicationId']);
         if ($application === null) {
@@ -314,7 +350,7 @@ class MessagingController
             });
 
         if ($existing !== null) {
-            return response()->json($this->threadPayload($existing->fresh()));
+            return response()->json($this->threadPayload($existing->fresh(), $user));
         }
 
         $thread = MessageThread::query()->create([
@@ -341,7 +377,7 @@ class MessagingController
             $this->send($request, $thread->id);
         }
 
-        return response()->json($this->threadPayload($thread->fresh()), 201);
+        return response()->json($this->threadPayload($thread->fresh(), $user), 201);
     }
 
     private function threadForUser(Request $request, int $id): MessageThread|JsonResponse
@@ -380,13 +416,14 @@ class MessagingController
     /**
      * @return array<string, mixed>
      */
-    private function threadPayload(MessageThread $t): array
+    private function threadPayload(MessageThread $t, ?User $viewer = null): array
     {
         return [
             'id' => (string) $t->id,
             'participantIds' => array_map('strval', $t->participant_ids ?? []),
             'participantNames' => $t->participant_names ?? [],
             'participantRoles' => $t->participant_roles ?? [],
+            'participantPhones' => $viewer ? $this->visiblePhonesForThread($t, $viewer) : [],
             'subject' => $t->subject,
             'linkType' => $t->link_type,
             'linkId' => $t->link_id,
@@ -396,6 +433,58 @@ class MessagingController
             'unreadByUserId' => $t->unread_by_user_id ?? [],
             'createdAt' => $t->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Telefono visibile in chat solo se il professionista ha Premium attivo e ha salvato il numero.
+     *
+     * @return array<string, string>
+     */
+    private function visiblePhonesForThread(MessageThread $t, User $viewer): array
+    {
+        $phones = [];
+        foreach ($t->participant_ids ?? [] as $pid) {
+            if ((string) $pid === (string) $viewer->id) {
+                continue;
+            }
+            $participant = User::query()->find($pid);
+            if ($participant === null || $participant->role !== UserRole::Professional) {
+                continue;
+            }
+            if (! $this->userHasActivePremium($participant)) {
+                continue;
+            }
+            if (! Schema::hasColumn('professional_profiles', 'phone')) {
+                continue;
+            }
+            $phone = trim((string) (ProfessionalProfile::query()
+                ->where('user_id', $participant->id)
+                ->value('phone') ?? ''));
+            if ($phone !== '') {
+                $phones[(string) $pid] = $phone;
+            }
+        }
+
+        return $phones;
+    }
+
+    private function userHasActivePremium(User $user): bool
+    {
+        if (! Schema::hasTable('subscriptions')) {
+            return false;
+        }
+
+        $sub = Subscription::query()->where('user_id', $user->id)->first();
+        if ($sub === null) {
+            return false;
+        }
+        if (! in_array($sub->status, ['active', 'trialing'], true)) {
+            return false;
+        }
+
+        $plan = (string) ($sub->plan_type ?? 'free');
+
+        return $plan !== '' && $plan !== 'free';
     }
 
     private function messagingRole(UserRole $role): string

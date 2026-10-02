@@ -11,6 +11,8 @@ export type MessageThread = {
   participantIds: string[]
   participantNames: Record<string, string>
   participantRoles: Record<string, MessagingParticipantRole>
+  /** Telefoni Premium visibili in chat (userId → numero). */
+  participantPhones?: Record<string, string>
   subject: string
   linkType: MessageThreadLinkType
   linkId: string | null

@@ -7,6 +7,7 @@ import {
   IconChevronRight,
   IconClose,
   IconEye,
+  IconLock,
   IconStar,
   IconUpload,
 } from '../../../components/icons/DashboardIcons'
@@ -181,6 +182,8 @@ type Props = {
   saving: boolean
   saveError: string | null
   uploadBusy: boolean
+  isPremium: boolean
+  onUpgrade: () => void
   onReload: () => void
   onSave: (patch: ProfessionalProfilePatch) => Promise<boolean>
   onUploadPhoto: (file: File) => Promise<boolean>
@@ -193,6 +196,8 @@ export function ProfessionalProfileEditor({
   saving,
   saveError,
   uploadBusy,
+  isPremium,
+  onUpgrade,
   onReload,
   onSave,
   onUploadPhoto,
@@ -211,6 +216,7 @@ export function ProfessionalProfileEditor({
   const [birthYear, setBirthYear] = useState(1982)
   const [nationality, setNationality] = useState('Rumena')
   const [bio, setBio] = useState('')
+  const [phone, setPhone] = useState('')
   const [category, setCategory] = useState('Badante')
   const [experienceYears, setExperienceYears] = useState('6-9 anni')
   const [hasCar, setHasCar] = useState(false)
@@ -243,6 +249,7 @@ export function ProfessionalProfileEditor({
     setBirthYear(profile.identity.birthYear)
     setNationality(profile.identity.nationality)
     setBio(profile.identity.bio)
+    setPhone(profile.identity.phone ?? '')
     setCategory(profile.professional.category)
     setExperienceYears(profile.professional.experienceYears)
     setSpecializations(normalizeSpecializations(profile.professional.specializations))
@@ -276,6 +283,7 @@ export function ProfessionalProfileEditor({
         professionalTitle,
         birthYear,
         nationality,
+        phone: phone.trim() || null,
         bio,
       },
       professional: {
@@ -310,6 +318,7 @@ export function ProfessionalProfileEditor({
     professionalTitle,
     birthYear,
     nationality,
+    phone,
     bio,
     category,
     experienceYears,
@@ -375,6 +384,7 @@ export function ProfessionalProfileEditor({
       professionalTitle,
       birthYear,
       nationality,
+      phone: isPremium ? phone.trim() || null : undefined,
       bio,
     },
     professional: {
@@ -738,6 +748,42 @@ export function ProfessionalProfileEditor({
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="dash-form-field dash-form-field--full">
+                  <label className="dash-form-label" htmlFor="prof-phone">
+                    Numero di telefono{' '}
+                    <span className="dash-form-label__badge">{isPremium ? 'Premium' : 'Solo Premium'}</span>
+                  </label>
+                  {isPremium ? (
+                    <>
+                      <input
+                        id="prof-phone"
+                        className="dash-form-input"
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Es. +39 333 1234567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                      />
+                      <p className="dash-form-hint">
+                        Visibile in chat alle famiglie con pulsante WhatsApp. La chat Curaxe resta solo con messaggi
+                        preimpostati.
+                      </p>
+                    </>
+                  ) : (
+                    <div className="dash-prof-phone-lock">
+                      <div className="dash-prof-phone-lock__row">
+                        <IconLock size={16} />
+                        <span>Disponibile con piano Premium</span>
+                      </div>
+                      <p className="dash-form-hint">
+                        Con Premium sblocchi il numero in chat e il contatto WhatsApp diretto.
+                      </p>
+                      <button type="button" className="dash-btn dash-btn--accent" onClick={onUpgrade}>
+                        Passa a Premium
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="dash-form-field dash-form-field--full" id="prof-section-titolo">
                   <label className="dash-form-label" htmlFor="prof-title">

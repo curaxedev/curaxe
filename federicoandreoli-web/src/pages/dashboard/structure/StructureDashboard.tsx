@@ -586,6 +586,7 @@ export function StructureDashboard() {
             title="Messaggi"
             subtitle="Conversazioni con i professionisti candidati ai tuoi turni"
             userId={user?.id ?? ''}
+            templateRole="structure"
             threads={messaging.threads}
             messages={messaging.messages}
             selectedThread={messaging.selectedThread}

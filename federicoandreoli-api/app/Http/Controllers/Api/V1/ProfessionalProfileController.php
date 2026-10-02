@@ -6,9 +6,12 @@ use App\Http\Resources\ProfessionalProfileResource;
 use App\Models\ProfessionalProfile;
 use App\Models\ProfessionalProfileView;
 use App\Models\Registration;
+use App\Models\Subscription;
 use App\Models\User;
+use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class ProfessionalProfileController
@@ -81,6 +84,7 @@ class ProfessionalProfileController
             'identity.professionalTitle' => ['nullable', 'string', 'max:255'],
             'identity.birthYear' => ['nullable', 'integer', 'min:1920', 'max:2010'],
             'identity.nationality' => ['nullable', 'string', 'max:100'],
+            'identity.phone' => ['nullable', 'string', 'max:40'],
             'identity.bio' => ['nullable', 'string', 'max:2000'],
             'professional' => ['nullable', 'array'],
             'professional.category' => ['nullable', 'string', 'max:100'],
@@ -113,12 +117,34 @@ class ProfessionalProfileController
 
         $profile = $this->profileFor($request->user());
 
+        if (array_key_exists('identity', $data) && array_key_exists('phone', $data['identity'] ?? [])) {
+            if (! $this->userHasActivePremium($request->user())) {
+                return ApiResponse::error(
+                    'Il numero di telefono è disponibile solo con il piano Premium.',
+                    403,
+                    ['identity.phone' => ['Funzione Premium.']],
+                    'forbidden',
+                );
+            }
+            $phone = trim((string) ($data['identity']['phone'] ?? ''));
+            if ($phone !== '' && ! preg_match('/^[0-9+\s().\-]{8,40}$/', $phone)) {
+                return ApiResponse::error(
+                    'Numero di telefono non valido.',
+                    422,
+                    ['identity.phone' => ['Inserisci un numero valido.']],
+                    'validation',
+                );
+            }
+            $data['identity']['phone'] = $phone === '' ? null : $phone;
+        }
+
         $map = [
             'identity.firstName' => 'first_name',
             'identity.lastName' => 'last_name',
             'identity.professionalTitle' => 'professional_title',
             'identity.birthYear' => 'birth_year',
             'identity.nationality' => 'nationality',
+            'identity.phone' => 'phone',
             'identity.bio' => 'bio',
             'professional.category' => 'category',
             'professional.experienceYears' => 'experience_years',
@@ -144,8 +170,11 @@ class ProfessionalProfileController
             if ($value === '__missing__') {
                 continue;
             }
-            // Permetti di azzerare il raggio (null); per gli altri campi resta lo skip dei null.
-            if ($value === null && $column !== 'radius_km') {
+            // Permetti di azzerare raggio e telefono (null); per gli altri campi resta lo skip dei null.
+            if ($value === null && ! in_array($column, ['radius_km', 'phone'], true)) {
+                continue;
+            }
+            if ($column === 'phone' && ! Schema::hasColumn('professional_profiles', 'phone')) {
                 continue;
             }
             $profile->{$column} = $value;
@@ -231,5 +260,24 @@ class ProfessionalProfileController
             'altro' => 'Altro',
             default => '',
         };
+    }
+
+    private function userHasActivePremium(User $user): bool
+    {
+        if (! Schema::hasTable('subscriptions')) {
+            return false;
+        }
+
+        $sub = Subscription::query()->where('user_id', $user->id)->first();
+        if ($sub === null) {
+            return false;
+        }
+        if (! in_array($sub->status, ['active', 'trialing'], true)) {
+            return false;
+        }
+
+        $plan = (string) ($sub->plan_type ?? 'free');
+
+        return $plan !== '' && $plan !== 'free';
     }
 }

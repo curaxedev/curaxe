@@ -207,6 +207,7 @@ function createDefaultProfile(userId: string): ProfessionalProfile {
       bio:
         'Badante con 9 anni di esperienza nell\'assistenza ad anziani autosufficienti e non. Specializzata nell\'accompagnamento, cura e supporto emotivo.',
       photoUrl: null,
+      phone: null,
     },
     professional: {
       category: 'Badante',
