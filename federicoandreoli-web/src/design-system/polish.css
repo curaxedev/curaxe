@@ -1451,19 +1451,19 @@ textarea:focus-visible,
   }
 }
 
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread {
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread {
   animation: polish-msg-thread-in var(--duration-normal) var(--ease-out) both;
 }
 
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(1) { animation-delay: 0ms; }
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(2) { animation-delay: 45ms; }
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(3) { animation-delay: 90ms; }
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(4) { animation-delay: 135ms; }
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(5) { animation-delay: 180ms; }
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(6) { animation-delay: 225ms; }
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(7) { animation-delay: 270ms; }
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(8) { animation-delay: 315ms; }
-.dash-shell--glass .dash-msg-sidebar > .dash-msg-thread:nth-child(n + 9) { animation-delay: 360ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(1) { animation-delay: 0ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(2) { animation-delay: 45ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(3) { animation-delay: 90ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(4) { animation-delay: 135ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(5) { animation-delay: 180ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(6) { animation-delay: 225ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(7) { animation-delay: 270ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(8) { animation-delay: 315ms; }
+.dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread:nth-child(n + 9) { animation-delay: 360ms; }
 
 .dash-shell--glass .dash-msg-thread {
   transition:
@@ -1478,7 +1478,7 @@ textarea:focus-visible,
 }
 
 @media (max-width: 768px) {
-  .dash-shell--glass .dash-msg-layout--conversation .dash-msg-panel {
+  .dash-shell--glass .dash-msg-shell--conversation .dash-msg-panel {
     animation: polish-msg-panel-in var(--duration-normal) var(--ease-out) both;
   }
 }
@@ -1667,10 +1667,10 @@ textarea:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dash-shell--glass .dash-msg-sidebar > .dash-msg-thread,
+  .dash-shell--glass .dash-msg-sidebar__list > .dash-msg-thread,
   .dash-shell--glass .polish-msg-feed .dash-msg-bubble,
   .dash-shell--glass .dash-notif-list > .dash-notif-item,
-  .dash-shell--glass .dash-msg-layout--conversation .dash-msg-panel {
+  .dash-shell--glass .dash-msg-shell--conversation .dash-msg-panel {
     animation: none;
   }
 

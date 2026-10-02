@@ -278,33 +278,23 @@
   display: none !important;
 }
 
-/* ── Messaging — iMessage-inspired glass ────────────────────── */
-.dash-shell--glass .dash-msg-layout {
-  gap: var(--space-5);
-  min-height: 480px;
-}
-
-.dash-shell--glass .dash-msg-sidebar {
-  padding: var(--space-2);
+/* ── Messaging — unified glass chat shell ─────────────────────── */
+.dash-shell--glass .dash-msg-shell {
+  border: 1px solid var(--glass-border-muted);
+  border-radius: var(--glass-radius-xl);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-muted);
-  border-radius: var(--glass-radius-xl);
-  box-shadow: var(--glass-shadow);
-  max-height: min(580px, calc(100dvh - 12rem));
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  box-shadow: var(--glass-shadow-lg);
+}
+
+.dash-shell--glass .dash-msg-sidebar {
+  background: color-mix(in srgb, var(--glass-bg) 70%, transparent);
+  border-right-color: var(--glass-border-muted);
 }
 
 .dash-shell--glass .dash-msg-thread {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
-  border: 1px solid transparent;
-  border-radius: var(--glass-radius-lg);
-  background: rgba(255, 255, 255, 0.35);
-  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.28);
   transition:
     background var(--glass-duration) var(--glass-ease),
     border-color var(--glass-duration) var(--glass-ease),
@@ -312,7 +302,7 @@
 }
 
 .dash-shell--glass .dash-msg-thread:hover {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.52);
   border-color: var(--glass-border-muted);
   box-shadow: var(--glass-shadow);
 }
@@ -325,24 +315,8 @@
     0 4px 16px rgba(42, 92, 130, 0.08);
 }
 
-.dash-shell--glass .dash-msg-thread__content {
-  flex: 1;
-  min-width: 0;
-}
-
 .dash-shell--glass .dash-msg-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-family: var(--font-glass-heading);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  border: 1.5px solid rgba(255, 255, 255, 0.5);
   box-shadow: var(--glass-shadow);
 }
 
@@ -358,21 +332,13 @@
 }
 
 .dash-shell--glass .dash-msg-panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-height: min(560px, calc(100dvh - 12rem));
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-muted);
-  border-radius: var(--glass-radius-xl);
-  box-shadow: var(--glass-shadow-lg);
-  overflow: hidden;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(42, 92, 130, 0.05), transparent 55%),
+    rgba(255, 255, 255, 0.12);
 }
 
 .dash-shell--glass .dash-msg-panel__header {
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.42);
   border-bottom-color: var(--glass-border-muted);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -384,30 +350,22 @@
 }
 
 .dash-shell--glass .dash-msg-panel__body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   background:
     radial-gradient(ellipse 100% 80% at 50% 100%, rgba(42, 92, 130, 0.03) 0%, transparent 60%),
-    rgba(255, 255, 255, 0.15);
+    transparent;
 }
 
 .dash-shell--glass .dash-msg-bubble {
-  border-radius: 20px 20px 20px 6px;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.45);
   box-shadow: 0 2px 8px rgba(42, 92, 130, 0.06);
-  padding: var(--space-3) var(--space-4);
 }
 
 .dash-shell--glass .dash-msg-bubble--own {
-  border-radius: 20px 20px 6px 20px;
-  background: linear-gradient(145deg, rgba(42, 92, 130, 0.88) 0%, rgba(42, 92, 130, 0.78) 100%);
+  background: linear-gradient(145deg, rgba(42, 92, 130, 0.9) 0%, rgba(42, 92, 130, 0.78) 100%);
   border-color: rgba(255, 255, 255, 0.12);
-  color: #fff;
   box-shadow: 0 4px 16px rgba(42, 92, 130, 0.2);
 }
 
@@ -420,40 +378,24 @@
 }
 
 .dash-shell--glass .dash-msg-compose {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.52);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-top-color: var(--glass-border-muted);
-  padding: var(--space-3) var(--space-4);
-  gap: var(--space-2);
 }
 
-.dash-shell--glass .dash-msg-compose__input {
-  border-radius: var(--glass-radius-xl);
-  border: 1px solid var(--glass-border-muted);
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: var(--space-3) var(--space-4);
-  min-height: 44px;
-  transition: border-color var(--glass-duration) var(--glass-ease), box-shadow var(--glass-duration) var(--glass-ease);
+.dash-shell--glass .dash-msg-compose__shell {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: var(--glass-border-muted);
 }
 
-.dash-shell--glass .dash-msg-compose__input:focus {
-  outline: none;
+.dash-shell--glass .dash-msg-compose__shell:focus-within {
+  background: rgba(255, 255, 255, 0.88);
   border-color: rgba(42, 92, 130, 0.25);
   box-shadow: 0 0 0 3px rgba(42, 92, 130, 0.1);
 }
 
 .dash-shell--glass .dash-msg-compose__send {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
   box-shadow: var(--glass-shadow-float);
   transition:
     transform var(--duration-fast) var(--ease-out),
@@ -461,11 +403,8 @@
 }
 
 .dash-shell--glass .dash-msg-panel__back {
-  gap: var(--space-1);
-  border-radius: var(--glass-radius-pill);
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.45);
-  border: 1px solid var(--glass-border-muted);
+  background: rgba(255, 255, 255, 0.55);
+  border-color: var(--glass-border-muted);
 }
 
 /* ── Empty / loading states ───────────────────────────────────── */

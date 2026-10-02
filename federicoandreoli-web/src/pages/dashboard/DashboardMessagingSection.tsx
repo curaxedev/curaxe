@@ -52,14 +52,14 @@ function EmptyStateIcon({ children }: { children: React.ReactNode }) {
 
 function MessagingSkeleton() {
   return (
-    <div className="dash-msg-layout" aria-busy="true" aria-label="Caricamento messaggi">
+    <div className="dash-msg-shell" aria-busy="true" aria-label="Caricamento messaggi">
       <div className="dash-msg-sidebar">
         {[0, 1, 2].map((key) => (
-          <div key={key} className="dash-skeleton" style={{ width: '100%', height: 72, marginBottom: 8 }} />
+          <div key={key} className="dash-skeleton dash-msg-skeleton-row" />
         ))}
       </div>
       <div className="dash-msg-panel">
-        <div className="dash-skeleton" style={{ width: '100%', height: '100%', minHeight: 280 }} />
+        <div className="dash-skeleton dash-msg-skeleton-panel" />
       </div>
     </div>
   )
@@ -71,7 +71,7 @@ function linkTypeLabel(linkType: MessageThread['linkType']): string {
 
 export function DashboardMessagingSection({
   title = 'Messaggi',
-  subtitle = 'Conversazioni con professionisti e candidature',
+  subtitle = 'Conversazioni con i professionisti che hai contattato o che si sono candidati.',
   userId,
   threads,
   messages,
@@ -96,8 +96,8 @@ export function DashboardMessagingSection({
 
   if (loading) {
     return (
-      <div>
-        <div className="dash-section-header">
+      <div className="dash-msg-page">
+        <div className="dash-section-header dash-msg-page__header">
           <div>
             <h2 className="dash-section__title">{title}</h2>
           </div>
@@ -109,8 +109,8 @@ export function DashboardMessagingSection({
 
   if (error) {
     return (
-      <div>
-        <div className="dash-section-header">
+      <div className="dash-msg-page">
+        <div className="dash-section-header dash-msg-page__header">
           <div>
             <h2 className="dash-section__title">{title}</h2>
           </div>
@@ -135,9 +135,13 @@ export function DashboardMessagingSection({
     if (ok) setDraft('')
   }
 
+  const selectedName = selectedThread
+    ? (threadCounterparty(selectedThread, userId)?.name ?? selectedThread.subject)
+    : null
+
   return (
-    <div>
-      <div className="dash-section-header">
+    <div className="dash-msg-page">
+      <div className="dash-section-header dash-msg-page__header">
         <div>
           <h2 className="dash-section__title">{title}</h2>
           <p className="dash-section__subtitle">{subtitle}</p>
@@ -145,96 +149,114 @@ export function DashboardMessagingSection({
       </div>
 
       {threads.length === 0 ? (
-        <div className="dash-empty-state polish-state-panel">
+        <div className="dash-empty-state polish-state-panel dash-msg-empty">
           <EmptyStateIcon>
             <IconInbox size={28} />
           </EmptyStateIcon>
           <div className="dash-empty-state__title">Nessuna conversazione</div>
           <div className="dash-empty-state__sub">
-            Quando contatti un professionista o rispondi a una candidatura, la conversazione apparirà qui.
+            Quando contatti un professionista o rispondi a una candidatura, la chat apparirà qui.
           </div>
         </div>
       ) : (
-        <div className={`dash-msg-layout${selectedThreadId ? ' dash-msg-layout--conversation' : ''}`}>
-          <div className="dash-msg-sidebar" role="list" aria-label="Elenco conversazioni">
-            {threads.map((thread) => {
-              const counterparty = threadCounterparty(thread, userId)
-              const displayName = counterparty?.name ?? thread.subject
-              const unread = thread.unreadByUserId[userId] ?? 0
-              const isActive = thread.id === selectedThreadId
+        <div
+          className={`dash-msg-shell${selectedThreadId ? ' dash-msg-shell--conversation' : ''}`}
+        >
+          <aside className="dash-msg-sidebar" aria-label="Elenco conversazioni">
+            <div className="dash-msg-sidebar__label">Inbox</div>
+            <div className="dash-msg-sidebar__list" role="list">
+              {threads.map((thread) => {
+                const counterparty = threadCounterparty(thread, userId)
+                const displayName = counterparty?.name ?? thread.subject
+                const unread = thread.unreadByUserId[userId] ?? 0
+                const isActive = thread.id === selectedThreadId
 
-              return (
-                <button
-                  key={thread.id}
-                  type="button"
-                  role="listitem"
-                  className={`dash-msg-thread${isActive ? ' dash-msg-thread--active' : ''}${unread > 0 ? ' dash-msg-thread--unread' : ''}`}
-                  onClick={() => onSelectThread(thread.id)}
-                  aria-current={isActive ? 'true' : undefined}
-                >
-                  <div
-                    className={`dash-msg-avatar dash-msg-avatar--${avatarVariant(thread.id)}`}
-                    aria-hidden="true"
+                return (
+                  <button
+                    key={thread.id}
+                    type="button"
+                    role="listitem"
+                    className={`dash-msg-thread${isActive ? ' dash-msg-thread--active' : ''}${unread > 0 ? ' dash-msg-thread--unread' : ''}`}
+                    onClick={() => onSelectThread(thread.id)}
+                    aria-current={isActive ? 'true' : undefined}
                   >
-                    {nameInitials(displayName)}
-                  </div>
-                  <div className="dash-msg-thread__content">
-                    <div className="dash-msg-thread__top">
-                      <span className="dash-msg-thread__name">{displayName}</span>
-                      <span className="dash-msg-thread__time">{formatMessageTime(thread.lastMessageAt)}</span>
+                    <div
+                      className={`dash-msg-avatar dash-msg-avatar--${avatarVariant(thread.id)}`}
+                      aria-hidden="true"
+                    >
+                      {nameInitials(displayName)}
                     </div>
-                    <div className="dash-msg-thread__subject">{thread.subject}</div>
-                    <div className="dash-msg-thread__preview">{thread.lastMessagePreview}</div>
-                    <div className="dash-msg-thread__meta">
-                      <span className="dash-badge dash-badge--info">{linkTypeLabel(thread.linkType)}</span>
-                      {unread > 0 ? (
-                        <span className="dash-msg-thread__badge" aria-label={`${unread} non letti`}>
-                          {unread}
+                    <div className="dash-msg-thread__content">
+                      <div className="dash-msg-thread__top">
+                        <span className="dash-msg-thread__name">{displayName}</span>
+                        <span className="dash-msg-thread__time">
+                          {formatMessageTime(thread.lastMessageAt)}
                         </span>
-                      ) : null}
+                      </div>
+                      <div className="dash-msg-thread__preview">
+                        {thread.lastMessagePreview || 'Nessun messaggio ancora'}
+                      </div>
+                      <div className="dash-msg-thread__meta">
+                        <span className="dash-msg-chip">{linkTypeLabel(thread.linkType)}</span>
+                        {unread > 0 ? (
+                          <span className="dash-msg-thread__badge" aria-label={`${unread} non letti`}>
+                            {unread > 9 ? '9+' : unread}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+                  </button>
+                )
+              })}
+            </div>
+          </aside>
 
-          <div className="dash-msg-panel">
-            {!selectedThread ? (
+          <section className="dash-msg-panel" aria-label="Conversazione">
+            {!selectedThread || !selectedName ? (
               <div className="dash-msg-panel__empty">
-                <EmptyStateIcon>
+                <div className="dash-msg-panel__empty-orb" aria-hidden>
                   <IconMessages size={28} />
-                </EmptyStateIcon>
-                <div className="dash-empty-state__title">Seleziona una conversazione</div>
-                <div className="dash-empty-state__sub">Scegli un thread dalla lista per leggere e rispondere.</div>
+                </div>
+                <div className="dash-empty-state__title">Seleziona una chat</div>
+                <div className="dash-empty-state__sub">
+                  Scegli una conversazione a sinistra per leggere e rispondere.
+                </div>
               </div>
             ) : (
               <>
-                <div className="dash-msg-panel__header">
-                  <div>
-                    <div className="dash-msg-panel__title">
-                      {threadCounterparty(selectedThread, userId)?.name ?? selectedThread.subject}
-                    </div>
-                    <div className="dash-msg-panel__sub">
-                      {selectedThread.subject}
-                      {selectedThread.linkLabel ? ` · ${selectedThread.linkLabel}` : ''}
-                    </div>
-                  </div>
+                <header className="dash-msg-panel__header">
                   <button
                     type="button"
-                    className="dash-btn dash-btn--ghost dash-msg-panel__back"
+                    className="dash-msg-panel__back"
                     onClick={() => onSelectThread(null)}
                     aria-label="Torna all'elenco conversazioni"
                   >
-                    <IconChevronLeft size={16} />
-                    Elenco
+                    <IconChevronLeft size={18} />
                   </button>
-                </div>
+                  <div
+                    className={`dash-msg-avatar dash-msg-avatar--sm dash-msg-avatar--${avatarVariant(selectedThread.id)}`}
+                    aria-hidden="true"
+                  >
+                    {nameInitials(selectedName)}
+                  </div>
+                  <div className="dash-msg-panel__who">
+                    <div className="dash-msg-panel__title">{selectedName}</div>
+                    <div className="dash-msg-panel__sub">
+                      <span className="dash-msg-chip dash-msg-chip--soft">
+                        {linkTypeLabel(selectedThread.linkType)}
+                      </span>
+                      {selectedThread.linkLabel ? (
+                        <span className="dash-msg-panel__link-label">{selectedThread.linkLabel}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                </header>
 
                 {messagesLoading ? (
                   <div className="dash-msg-panel__body" aria-busy="true">
-                    <div className="dash-skeleton" style={{ width: '70%', height: 48, marginBottom: 12 }} />
-                    <div className="dash-skeleton" style={{ width: '55%', height: 48, marginLeft: 'auto' }} />
+                    <div className="dash-msg-bubble-skel dash-msg-bubble-skel--them" />
+                    <div className="dash-msg-bubble-skel dash-msg-bubble-skel--own" />
+                    <div className="dash-msg-bubble-skel dash-msg-bubble-skel--them" />
                   </div>
                 ) : messagesError ? (
                   <div className="dash-msg-panel__body" role="alert">
@@ -249,60 +271,102 @@ export function DashboardMessagingSection({
                 ) : (
                   <div className="dash-msg-panel__body" role="log" aria-live="polite" aria-relevant="additions">
                     {messages.length === 0 ? (
-                      <div className="dash-empty-mini">Nessun messaggio. Scrivi il primo messaggio qui sotto.</div>
+                      <div className="dash-msg-dayhint">Nessun messaggio ancora. Scrivi qui sotto.</div>
                     ) : (
-                      <div className="polish-msg-feed">
-                        {messages.map((m) => (
-                          <MessageBubble key={m.id} message={m} isOwn={m.senderId === userId} />
-                        ))}
+                      <div className="polish-msg-feed dash-msg-feed">
+                        {messages.map((m, index) => {
+                          const prev = messages[index - 1]
+                          const next = messages[index + 1]
+                          const isOwn = m.senderId === userId
+                          const stackedTop = Boolean(prev && prev.senderId === m.senderId)
+                          const stackedBottom = Boolean(next && next.senderId === m.senderId)
+                          return (
+                            <MessageBubble
+                              key={m.id}
+                              message={m}
+                              isOwn={isOwn}
+                              stackedTop={stackedTop}
+                              stackedBottom={stackedBottom}
+                              showSender={!isOwn && !stackedTop}
+                            />
+                          )
+                        })}
                       </div>
                     )}
                     <div ref={messagesEndRef} />
                   </div>
                 )}
 
-                <div className="dash-msg-compose">
+                <form
+                  className="dash-msg-compose"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void handleSend()
+                  }}
+                >
                   <label className="visually-hidden" htmlFor={composeId}>
                     Scrivi un messaggio
                   </label>
-                  <textarea
-                    id={composeId}
-                    className="dash-form-input dash-form-textarea dash-msg-compose__input"
-                    rows={2}
-                    placeholder="Scrivi un messaggio…"
-                    value={draft}
-                    disabled={sending}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        void handleSend()
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="dash-btn dash-btn--primary dash-msg-compose__send"
-                    disabled={sending || !draft.trim()}
-                    onClick={() => void handleSend()}
-                    aria-label={sending ? 'Invio in corso' : 'Invia messaggio'}
-                  >
-                    <IconSend size={18} />
-                  </button>
-                </div>
+                  <div className="dash-msg-compose__shell">
+                    <textarea
+                      id={composeId}
+                      className="dash-msg-compose__input"
+                      rows={1}
+                      placeholder="Scrivi un messaggio…"
+                      value={draft}
+                      disabled={sending}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          void handleSend()
+                        }
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      className="dash-msg-compose__send"
+                      disabled={sending || !draft.trim()}
+                      aria-label={sending ? 'Invio in corso' : 'Invia messaggio'}
+                    >
+                      <IconSend size={17} />
+                    </button>
+                  </div>
+                </form>
               </>
             )}
-          </div>
+          </section>
         </div>
       )}
     </div>
   )
 }
 
-function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
+function MessageBubble({
+  message,
+  isOwn,
+  stackedTop,
+  stackedBottom,
+  showSender,
+}: {
+  message: Message
+  isOwn: boolean
+  stackedTop: boolean
+  stackedBottom: boolean
+  showSender: boolean
+}) {
+  const className = [
+    'dash-msg-bubble',
+    isOwn ? 'dash-msg-bubble--own' : 'dash-msg-bubble--them',
+    stackedTop ? 'dash-msg-bubble--stack-top' : '',
+    stackedBottom ? 'dash-msg-bubble--stack-bottom' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div className={`dash-msg-bubble${isOwn ? ' dash-msg-bubble--own' : ''}`}>
-      {!isOwn ? <div className="dash-msg-bubble__sender">{message.senderName}</div> : null}
+    <div className={className}>
+      {showSender ? <div className="dash-msg-bubble__sender">{message.senderName}</div> : null}
       <div className="dash-msg-bubble__body">{message.body}</div>
       <div className="dash-msg-bubble__time">{formatMessageTime(message.createdAt)}</div>
     </div>
