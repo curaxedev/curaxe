@@ -22,6 +22,7 @@ import {
   SUGGESTED_DESTINATIONS,
   type RecentPlace,
 } from '../lib/recentPlaces'
+import { nearMeErrorMessage, resolveComuneNearMe } from '../lib/nearMePlace'
 import { PlaceRowIcon } from './icons/CityPlaceIcons'
 
 type Panel = 'dove' | 'mode' | null
@@ -91,6 +92,7 @@ export function HomelySearchExplorer({
   const [suggestions, setSuggestions] = useState<ItaliaGeoRow[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
   const [nearBusy, setNearBusy] = useState(false)
+  const [nearHint, setNearHint] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -223,30 +225,28 @@ export function HomelySearchExplorer({
   }
 
   const requestNearMe = () => {
-    if (!navigator.geolocation) {
-      selectPlace({ label: 'Vicino a me', q: 'Vicino a me' })
+    if (nearBusy) return
+    if (status !== 'ready') {
+      setNearHint('Elenco comuni in caricamento — riprova tra un attimo')
       return
     }
     setNearBusy(true)
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        setNearBusy(false)
-        selectPlace({
-          label: 'Vicino a me',
-          sublabel: 'Intorno a te',
-          q: 'Vicino a me',
-        })
-      },
-      () => {
-        setNearBusy(false)
-        selectPlace({
-          label: 'Vicino a me',
-          sublabel: 'Attiva la posizione dal browser',
-          q: 'Vicino a me',
-        })
-      },
-      { enableHighAccuracy: false, timeout: 8000 },
-    )
+    setNearHint(null)
+    void (async () => {
+      const result = await resolveComuneNearMe(search)
+      setNearBusy(false)
+      if (!result.ok) {
+        setNearHint(nearMeErrorMessage(result.reason))
+        return
+      }
+      const { row } = result
+      selectPlace({
+        label: formatPlacePrimary(row),
+        sublabel: `Vicino a te · ${formatPlaceSecondary(row)}`,
+        istat: row.id,
+        q: row.comune,
+      })
+    })()
   }
 
   const onInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -403,7 +403,11 @@ export function HomelySearchExplorer({
                           <span className="cx-explorer__row-copy">
                             <strong>Vicino a me</strong>
                             <small>
-                              {nearBusy ? 'Rilevamento…' : 'Attiva la posizione per vedere intorno a te'}
+                              {nearBusy
+                                ? 'Rilevamento posizione e comune…'
+                                : nearHint
+                                  ? nearHint
+                                  : 'Usa la tua posizione per impostare il comune'}
                             </small>
                           </span>
                         </button>

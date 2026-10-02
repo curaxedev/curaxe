@@ -10124,11 +10124,11 @@
   z-index: 50;
   min-width: min(100vw - 2rem, 24rem);
   max-width: 26rem;
-  max-height: min(70vh, 28rem);
+  max-height: min(78vh, 34rem);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 1.15rem 1.1rem 1.35rem;
+  padding: 1.15rem 1.1rem 1.5rem;
   background: #fff;
   border-radius: 1.75rem;
   box-shadow:
