@@ -1,7 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   IconAlert,
   IconChevronLeft,
+  IconClose,
   IconInbox,
   IconMessages,
   IconPhone,
@@ -12,6 +14,7 @@ import type { Message, MessageThread, MessagingParticipantRole } from '../../lib
 import { formatMessageTime, threadCounterparty } from '../../lib/messagingApi'
 import {
   formatPhoneDisplay,
+  templateCategoriesForRole,
   templatesForRole,
   toTelHref,
   toWhatsAppUrl,
@@ -97,10 +100,21 @@ export function DashboardMessagingSection({
   onSelectThread,
   onSendMessage,
 }: DashboardMessagingSectionProps) {
+  const [replyOpen, setReplyOpen] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('Tutte')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const composeId = useId()
+  const replyTitleId = useId()
   const templates = useMemo(() => templatesForRole(templateRole), [templateRole])
+  const categories = useMemo(() => ['Tutte', ...templateCategoriesForRole(templateRole)], [templateRole])
+  const filteredTemplates = useMemo(
+    () =>
+      categoryFilter === 'Tutte'
+        ? templates
+        : templates.filter((t) => t.category === categoryFilter),
+    [templates, categoryFilter],
+  )
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -108,7 +122,23 @@ export function DashboardMessagingSection({
 
   useEffect(() => {
     setSelectedTemplate('')
+    setReplyOpen(false)
+    setCategoryFilter('Tutte')
   }, [selectedThreadId])
+
+  useEffect(() => {
+    if (!replyOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !sending) setReplyOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [replyOpen, sending])
 
   if (loading) {
     return (
@@ -149,7 +179,10 @@ export function DashboardMessagingSection({
   const handleSend = async () => {
     if (!selectedTemplate || sending) return
     const ok = await onSendMessage(selectedTemplate)
-    if (ok) setSelectedTemplate('')
+    if (ok) {
+      setSelectedTemplate('')
+      setReplyOpen(false)
+    }
   }
 
   const selectedName = selectedThread
@@ -315,7 +348,7 @@ export function DashboardMessagingSection({
                 ) : (
                   <div className="dash-msg-panel__body" role="log" aria-live="polite" aria-relevant="additions">
                     {messages.length === 0 ? (
-                      <div className="dash-msg-dayhint">Nessun messaggio ancora. Scegli una risposta qui sotto.</div>
+                      <div className="dash-msg-dayhint">Nessun messaggio ancora. Tocca Rispondi per scegliere un messaggio.</div>
                     ) : (
                       <div className="polish-msg-feed dash-msg-feed">
                         {messages.map((m, index) => {
@@ -341,45 +374,118 @@ export function DashboardMessagingSection({
                   </div>
                 )}
 
-                <form
-                  className="dash-msg-compose dash-msg-compose--templates"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    void handleSend()
-                  }}
-                >
+                <div className="dash-msg-compose dash-msg-compose--reply">
                   <p className="dash-msg-compose__hint" id={`${composeId}-hint`}>
                     Chat moderata · solo messaggi preimpostati
                   </p>
-                  <div className="dash-msg-templates" role="listbox" aria-labelledby={`${composeId}-hint`}>
-                    {templates.map((tpl) => {
-                      const active = selectedTemplate === tpl
-                      return (
-                        <button
-                          key={tpl}
-                          type="button"
-                          role="option"
-                          aria-selected={active}
-                          className={`dash-msg-template${active ? ' is-active' : ''}`}
-                          disabled={sending}
-                          onClick={() => setSelectedTemplate(tpl)}
+                  <button
+                    type="button"
+                    className="dash-btn dash-btn--primary dash-msg-reply-trigger"
+                    disabled={sending || messagesLoading}
+                    aria-describedby={`${composeId}-hint`}
+                    onClick={() => {
+                      setSelectedTemplate('')
+                      setCategoryFilter('Tutte')
+                      setReplyOpen(true)
+                    }}
+                  >
+                    <IconSend size={16} />
+                    Rispondi
+                  </button>
+                </div>
+
+                {replyOpen
+                  ? createPortal(
+                      <div
+                        className="dash-modal-overlay dash-msg-reply-modal"
+                        role="presentation"
+                        onClick={() => {
+                          if (!sending) setReplyOpen(false)
+                        }}
+                      >
+                        <div
+                          className="dash-modal dash-msg-reply-modal__panel"
+                          role="dialog"
+                          aria-modal="true"
+                          aria-labelledby={replyTitleId}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {tpl}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <div className="dash-msg-compose__actions">
-                    <button
-                      type="submit"
-                      className="dash-btn dash-btn--primary dash-msg-compose__send-btn"
-                      disabled={sending || !selectedTemplate}
-                    >
-                      <IconSend size={16} />
-                      {sending ? 'Invio…' : 'Invia messaggio'}
-                    </button>
-                  </div>
-                </form>
+                          <div className="dash-modal__header">
+                            <h2 id={replyTitleId} className="dash-modal__title">
+                              Scegli una risposta
+                            </h2>
+                            <button
+                              type="button"
+                              className="dash-modal__close"
+                              aria-label="Chiudi"
+                              disabled={sending}
+                              onClick={() => setReplyOpen(false)}
+                            >
+                              <IconClose size={20} />
+                            </button>
+                          </div>
+                          <div className="dash-modal__body dash-msg-reply-modal__body">
+                            <p className="dash-msg-reply-modal__lead">
+                              Messaggi già moderati: seleziona quello più adatto e invia.
+                            </p>
+                            <div className="dash-msg-reply-modal__cats" role="tablist" aria-label="Categorie">
+                              {categories.map((cat) => (
+                                <button
+                                  key={cat}
+                                  type="button"
+                                  role="tab"
+                                  aria-selected={categoryFilter === cat}
+                                  className={`dash-msg-reply-cat${categoryFilter === cat ? ' is-active' : ''}`}
+                                  onClick={() => setCategoryFilter(cat)}
+                                >
+                                  {cat}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="dash-msg-reply-modal__list" role="listbox" aria-label="Risposte preimpostate">
+                              {filteredTemplates.map((tpl) => {
+                                const active = selectedTemplate === tpl.body
+                                return (
+                                  <button
+                                    key={tpl.body}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={active}
+                                    className={`dash-msg-reply-option${active ? ' is-active' : ''}`}
+                                    disabled={sending}
+                                    onClick={() => setSelectedTemplate(tpl.body)}
+                                  >
+                                    <span className="dash-msg-reply-option__cat">{tpl.category}</span>
+                                    <span className="dash-msg-reply-option__body">{tpl.body}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          <div className="dash-modal__footer">
+                            <button
+                              type="button"
+                              className="dash-btn dash-btn--ghost"
+                              disabled={sending}
+                              onClick={() => setReplyOpen(false)}
+                            >
+                              Annulla
+                            </button>
+                            <button
+                              type="button"
+                              className="dash-btn dash-btn--primary"
+                              disabled={sending || !selectedTemplate}
+                              onClick={() => void handleSend()}
+                            >
+                              <IconSend size={16} />
+                              {sending ? 'Invio…' : 'Invia'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>,
+                      document.body,
+                    )
+                  : null}
               </>
             )}
           </section>
