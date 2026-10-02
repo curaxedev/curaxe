@@ -256,24 +256,6 @@ function SectionHome({
                 </div>
               </div>
 
-              <ul className="dash-home-hero__tasks">
-                {checklist.slice(0, 6).map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      className={`dash-home-hero__task${item.done ? ' is-done' : ''}`}
-                      onClick={() => onGoTo('profilo')}
-                      disabled={item.done}
-                    >
-                      <span className="dash-home-hero__task-mark" aria-hidden>
-                        {item.done ? <IconCheckMark size={12} /> : null}
-                      </span>
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-
               <div className="dash-home-hero__actions">
                 <button type="button" className="dash-home-hero__cta" onClick={() => onGoTo('profilo')}>
                   Completa profilo
