@@ -11,6 +11,7 @@ import {
   IconSupport,
 } from '../../components/icons/DashboardIcons'
 import { BrandLogo } from '../../components/BrandLogo'
+import { FamilyHeaderProfileSearch } from '../../components/FamilyHeaderProfileSearch'
 import { contattiPath } from '../../lib/siteRoutes'
 
 export type AccountType = 'professional' | 'family' | 'agency' | 'structure' | 'admin'
@@ -216,7 +217,7 @@ export function DashboardLayout({
       </aside>
 
       <div className="dash-main">
-        <header className="dash-header">
+        <header className={`dash-header${accountType === 'family' ? ' dash-header--family-search' : ''}`}>
           <div className="dash-header__left">
             <div className="dash-header__avatar">{initials}</div>
             <nav className="dash-breadcrumb" aria-label="Breadcrumb">
@@ -225,6 +226,12 @@ export function DashboardLayout({
               <span className="dash-breadcrumb__current">{activeLabel}</span>
             </nav>
           </div>
+
+          {accountType === 'family' ? (
+            <div className="dash-header__search">
+              <FamilyHeaderProfileSearch />
+            </div>
+          ) : null}
 
           <div className="dash-header__right">
             <span className={`dash-account-badge dash-account-badge--${accountType}`}>

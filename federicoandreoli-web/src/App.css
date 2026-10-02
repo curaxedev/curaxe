@@ -6084,6 +6084,78 @@
   flex-shrink: 0;
 }
 
+.dash-header--family-search {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(12rem, 1.4fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dash-header--family-search .dash-header__left {
+  flex: unset;
+  min-width: 0;
+}
+
+.dash-header__search {
+  min-width: 0;
+  width: 100%;
+  max-width: 34rem;
+  justify-self: center;
+}
+
+.dash-header-search {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dash-header-search__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-header-search__field .prof-geo-search--toolbar .prof-geo-search__input {
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 0.9rem;
+  border-radius: 999px;
+  background: #f4f7fa;
+}
+
+.dash-header-search__field .prof-geo-search__dropdown {
+  z-index: 60;
+}
+
+.dash-header-search__btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.dash-header-search__btn:hover {
+  filter: brightness(1.05);
+}
+
+.dash-header-search__btn-label {
+  display: inline;
+}
+
 .dash-mobile-toggle {
   display: none;
   background: none;
@@ -7398,6 +7470,37 @@
     padding: max(8px, env(safe-area-inset-top)) var(--space-4) 8px;
     position: relative;
     z-index: 35;
+  }
+
+  .dash-header--family-search {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'left right'
+      'search search';
+    row-gap: 8px;
+  }
+
+  .dash-header--family-search .dash-header__left {
+    grid-area: left;
+  }
+
+  .dash-header--family-search .dash-header__right {
+    grid-area: right;
+  }
+
+  .dash-header--family-search .dash-header__search {
+    grid-area: search;
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  .dash-header-search__btn-label {
+    display: none;
+  }
+
+  .dash-header-search__btn {
+    width: 40px;
+    padding: 0;
   }
 
   /* Niente sidebar mobile: solo dock + sheet Altro */
