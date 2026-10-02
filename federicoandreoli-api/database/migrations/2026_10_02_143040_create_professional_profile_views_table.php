@@ -20,7 +20,10 @@ return new class extends Migration
                 ['professional_profile_id', 'viewer_key', 'viewed_on'],
                 'prof_profile_views_unique_day'
             );
-            $table->index(['professional_profile_id', 'viewed_on']);
+            $table->index(
+                ['professional_profile_id', 'viewed_on'],
+                'prof_profile_views_day_idx'
+            );
         });
     }
 
