@@ -416,7 +416,52 @@ function SectionRequests({
   userId: string
   onOpenThread: (threadId: string) => void
 }) {
-  const unreadCount = threads.reduce((sum, t) => sum + (t.unreadByUserId[userId] ?? 0), 0)
+  const newThreads = threads.filter((t) => (t.unreadByUserId[userId] ?? 0) > 0)
+  const contactThreads = threads.filter((t) => (t.unreadByUserId[userId] ?? 0) === 0)
+  const unreadCount = newThreads.reduce((sum, t) => sum + (t.unreadByUserId[userId] ?? 0), 0)
+
+  function renderThreadCard(thread: MessageThread, badge: 'Nuova' | 'Contatto') {
+    const other = otherParticipant(thread, userId)
+    const unread = thread.unreadByUserId[userId] ?? 0
+    return (
+      <div key={thread.id} className="dash-req-card">
+        <div className="dash-req-card__header">
+          <div
+            className="dash-req-avatar"
+            style={{ background: other.color + '22', color: other.color }}
+          >
+            {other.initials}
+          </div>
+          <div className="dash-req-info">
+            <div className="dash-req-name">{other.name}</div>
+            <div className="dash-req-meta">
+              {ROLE_TYPE_LABEL[other.role]} · {formatThreadDate(thread.lastMessageAt)}
+              {thread.linkType === 'direct_contact'
+                ? ' · Contatto diretto'
+                : thread.linkLabel
+                  ? ` · ${thread.linkLabel}`
+                  : ''}
+            </div>
+          </div>
+          <span
+            className={`dash-badge dash-badge--${unread > 0 ? 'new' : 'ongoing'}${unread > 0 ? ' dash-badge--pulse' : ''}`}
+          >
+            {badge}
+          </span>
+        </div>
+        <p className="dash-req-msg">{thread.lastMessagePreview || thread.subject}</p>
+        <div className="dash-req-footer">
+          <button
+            type="button"
+            className="dash-btn dash-btn--primary"
+            onClick={() => onOpenThread(thread.id)}
+          >
+            Apri conversazione
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -424,8 +469,8 @@ function SectionRequests({
         <div>
           <h2 className="dash-section__title">Richieste e contatti</h2>
           <p className="dash-section__subtitle">
-            Stessa inbox dei messaggi · {threads.length} conversazioni
-            {unreadCount > 0 ? ` · ${unreadCount} non lette` : ''}
+            Una richiesta di contatto per famiglia · poi continua in Messaggi
+            {unreadCount > 0 ? ` · ${unreadCount} nuove` : ''}
           </p>
         </div>
         <button type="button" className="dash-btn dash-btn--ghost" onClick={() => onOpenThread('')}>
@@ -440,49 +485,24 @@ function SectionRequests({
           </div>
           <div className="dash-empty-state__title">Nessuna richiesta</div>
           <div className="dash-empty-state__sub">
-            Quando una famiglia o una struttura ti contatta, la conversazione compare qui e in Messaggi.
+            Quando una famiglia ti contatta per la prima volta, la richiesta compare qui come Nuova e poi tra i
+            Contatti. In Messaggi restano tutte le conversazioni già aperte.
           </div>
         </div>
       ) : (
-        <div className="dash-req-list">
-          {threads.map((thread) => {
-            const other = otherParticipant(thread, userId)
-            const unread = thread.unreadByUserId[userId] ?? 0
-            return (
-              <div key={thread.id} className="dash-req-card">
-                <div className="dash-req-card__header">
-                  <div
-                    className="dash-req-avatar"
-                    style={{ background: other.color + '22', color: other.color }}
-                  >
-                    {other.initials}
-                  </div>
-                  <div className="dash-req-info">
-                    <div className="dash-req-name">{other.name}</div>
-                    <div className="dash-req-meta">
-                      {ROLE_TYPE_LABEL[other.role]} · {formatThreadDate(thread.lastMessageAt)}
-                      {thread.linkLabel ? ` · ${thread.linkLabel}` : ''}
-                    </div>
-                  </div>
-                  <span
-                    className={`dash-badge dash-badge--${unread > 0 ? 'new' : 'ongoing'}${unread > 0 ? ' dash-badge--pulse' : ''}`}
-                  >
-                    {unread > 0 ? 'Nuova' : 'In corso'}
-                  </span>
-                </div>
-                <p className="dash-req-msg">{thread.lastMessagePreview || thread.subject}</p>
-                <div className="dash-req-footer">
-                  <button
-                    type="button"
-                    className="dash-btn dash-btn--primary"
-                    onClick={() => onOpenThread(thread.id)}
-                  >
-                    Apri conversazione
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+        <div className="dash-req-groups">
+          {newThreads.length > 0 ? (
+            <section className="dash-req-group" aria-label="Richieste nuove">
+              <h3 className="dash-req-group__title">Richieste nuove</h3>
+              <div className="dash-req-list">{newThreads.map((t) => renderThreadCard(t, 'Nuova'))}</div>
+            </section>
+          ) : null}
+          {contactThreads.length > 0 ? (
+            <section className="dash-req-group" aria-label="Contatti">
+              <h3 className="dash-req-group__title">Contatti</h3>
+              <div className="dash-req-list">{contactThreads.map((t) => renderThreadCard(t, 'Contatto'))}</div>
+            </section>
+          ) : null}
         </div>
       )}
     </div>

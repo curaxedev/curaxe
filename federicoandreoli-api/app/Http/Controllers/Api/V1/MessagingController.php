@@ -234,14 +234,7 @@ class MessagingController
                 });
 
             if ($existing !== null) {
-                if (! empty($data['initialMessage'])) {
-                    $request->merge(['body' => $data['initialMessage']]);
-                    $sendResult = $this->send($request, $existing->id);
-                    if ($sendResult->getStatusCode() >= 400) {
-                        // Thread già esistente: restituiamo comunque la conversazione.
-                    }
-                }
-
+                // Una sola richiesta di contatto: non reinviare il messaggio iniziale.
                 return response()->json($this->threadPayload($existing->fresh()));
             }
 
@@ -308,6 +301,21 @@ class MessagingController
             ? $application->applicant_id
             : $application->owner_id;
         $other = User::query()->find($otherId);
+
+        $existing = MessageThread::query()
+            ->where('link_type', 'application')
+            ->where('link_id', (string) $application->id)
+            ->get()
+            ->first(function (MessageThread $t) use ($user, $otherId) {
+                $ids = array_map('strval', $t->participant_ids ?? []);
+
+                return in_array((string) $user->id, $ids, true)
+                    && in_array((string) $otherId, $ids, true);
+            });
+
+        if ($existing !== null) {
+            return response()->json($this->threadPayload($existing->fresh()));
+        }
 
         $thread = MessageThread::query()->create([
             'participant_ids' => [(string) $user->id, (string) $otherId],

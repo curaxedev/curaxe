@@ -22,7 +22,7 @@ import {
   type HelpServiceIconKey,
   type MockProfile,
 } from '../lib/mockProfiles'
-import { MessagingError, openDirectContactThread } from '../lib/messagingApi'
+import { MessagingError, getThreads, openDirectContactThread } from '../lib/messagingApi'
 import {
   createSavedProfile,
   deleteSavedProfile,
@@ -323,6 +323,7 @@ export function ProfileDetailPage() {
   const [bioExpanded, setBioExpanded] = useState(false)
   const [referencesExpanded, setReferencesExpanded] = useState(false)
   const [contactSent, setContactSent] = useState(false)
+  const [contactThreadId, setContactThreadId] = useState<string | null>(null)
   const [contactLoading, setContactLoading] = useState(false)
   const [contactError, setContactError] = useState<string | null>(null)
   const [showContactAuth, setShowContactAuth] = useState(false)
@@ -354,6 +355,42 @@ export function ProfileDetailPage() {
     }
   }, [isAuthenticated, user?.id, user?.role, id])
 
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'public_user' || !user?.id || !id) {
+      setContactSent(false)
+      setContactThreadId(null)
+      return
+    }
+    let cancelled = false
+    void getThreads(user.id)
+      .then((threads) => {
+        if (cancelled) return
+        const existing = threads.find(
+          (t) =>
+            t.linkType === 'direct_contact' &&
+            t.participantIds.map(String).includes(String(id)) &&
+            t.participantIds.map(String).includes(String(user.id)),
+        )
+        if (existing) {
+          setContactSent(true)
+          setContactThreadId(existing.id)
+        } else {
+          setContactSent(false)
+          setContactThreadId(null)
+        }
+      })
+      .catch(() => {
+        /* ignore — Contatta resta disponibile */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, user?.id, user?.role, id])
+
+  const messagingHref = contactThreadId
+    ? `${getDashboardPathForRole('public_user')}?section=messaggi&thread=${encodeURIComponent(contactThreadId)}`
+    : `${getDashboardPathForRole('public_user')}?section=messaggi`
+
   const returnTo = useMemo(() => {
     const path = id ? `/profili/${id}` : profilesDirectoryPath
     const q = searchParams.toString()
@@ -369,11 +406,19 @@ export function ProfileDetailPage() {
   )
 
   useEffect(() => {
-    if (!wantsContact || !isAuthenticated || !profile || !id || !user?.id || contactSent || contactLoading) {
+    if (!wantsContact || !isAuthenticated || !profile || !id || !user?.id || contactLoading) {
       return
     }
     if (user.role !== 'public_user') {
       setShowContactAuth(true)
+      return
+    }
+    if (contactSent) {
+      if (contactThreadId) {
+        navigate(
+          `${getDashboardPathForRole('public_user')}?section=messaggi&thread=${encodeURIComponent(contactThreadId)}`,
+        )
+      }
       return
     }
 
@@ -390,6 +435,7 @@ export function ProfileDetailPage() {
         })
         if (cancelled) return
         setContactSent(true)
+        setContactThreadId(thread.id)
         navigate(
           `${getDashboardPathForRole('public_user')}?section=messaggi&thread=${encodeURIComponent(thread.id)}`,
         )
@@ -417,6 +463,7 @@ export function ProfileDetailPage() {
     id,
     user,
     contactSent,
+    contactThreadId,
     contactLoading,
     navigate,
   ])
@@ -487,6 +534,7 @@ export function ProfileDetailPage() {
         initialMessage: `Buongiorno, sono interessato/a al profilo di ${profile.name.split(' ')[0]}. Vorrei maggiori informazioni sulla disponibilità.`,
       })
       setContactSent(true)
+      setContactThreadId(thread.id)
       navigate(
         `${getDashboardPathForRole('public_user')}?section=messaggi&thread=${encodeURIComponent(thread.id)}`,
       )
@@ -905,7 +953,7 @@ export function ProfileDetailPage() {
                       ) : null}
                       {contactSent ? (
                         <p className="profile-detail__success" role="status">
-                          Conversazione avviata. Puoi continuare nella sezione Messaggi della dashboard famiglia.
+                          Hai già inviato una richiesta di contatto. Continua la conversazione in Messaggi.
                         </p>
                       ) : null}
                       <button
@@ -913,7 +961,7 @@ export function ProfileDetailPage() {
                         className="profile-detail__cta"
                         onClick={() => {
                           if (contactSent) {
-                            navigate('/dashboard/famiglia?section=messaggi')
+                            navigate(messagingHref)
                             return
                           }
                           handleContact()
@@ -929,9 +977,9 @@ export function ProfileDetailPage() {
                       {contactSent ? (
                         <Link
                           className="profile-detail__cta-secondary profile-detail__cta--link"
-                          to="/dashboard/famiglia?section=messaggi"
+                          to={messagingHref}
                         >
-                          Apri inbox messaggi
+                          Apri conversazione
                         </Link>
                       ) : null}
                       <button

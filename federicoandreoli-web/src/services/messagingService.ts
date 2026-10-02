@@ -347,11 +347,7 @@ export async function getOrCreateDirectContactThread(
       t.participantIds.includes(input.professionalId),
   )
   if (existing) {
-    if (input.initialMessage?.trim()) {
-      await postMessage(familyUserId, familyName, existing.id, { body: input.initialMessage })
-      const refreshed = ensureStore().threads.find((t) => t.id === existing.id)
-      return refreshed ?? existing
-    }
+    // Una sola richiesta di contatto: riapri la conversazione esistente senza duplicare il messaggio.
     return existing
   }
 
@@ -439,11 +435,6 @@ export async function getOrCreateApplicationThread(
       t.participantIds.includes(professionalId),
   )
   if (existing) {
-    if (input.initialMessage?.trim()) {
-      await postMessage(ownerUserId, ownerName, existing.id, { body: input.initialMessage })
-      const refreshed = ensureStore().threads.find((t) => t.id === existing.id)
-      return refreshed ?? existing
-    }
     return existing
   }
 
