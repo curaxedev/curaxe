@@ -15,6 +15,8 @@ cat > "${DEST}/.htaccess" <<'HT'
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+  # Missing hashed assets must 404 (not return index.html as text/html).
+  RewriteRule ^assets/ - [L]
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
