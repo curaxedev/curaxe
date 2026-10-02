@@ -68,76 +68,81 @@ type CompletionItem = {
   ok: (profile: ProfessionalProfile) => boolean
 }
 
+function textLen(value: string | null | undefined): number {
+  return (value ?? '').trim().length
+}
+
 const COMPLETION_ITEMS: CompletionItem[] = [
   {
     id: 'foto',
     label: 'Foto profilo',
     hint: 'Carica una foto chiara del volto',
     weight: 15,
-    ok: (p) => Boolean(p.identity.photoUrl),
+    ok: (p) => Boolean(p.identity?.photoUrl),
   },
   {
     id: 'bio',
     label: 'Bio / presentazione',
     hint: 'Almeno 20 caratteri su esperienza e approccio',
     weight: 10,
-    ok: (p) => p.identity.bio.trim().length >= 20,
+    ok: (p) => textLen(p.identity?.bio) >= 20,
   },
   {
     id: 'titolo',
     label: 'Titolo professionale',
     hint: 'Es. Badante esperta — Milano e provincia',
     weight: 8,
-    ok: (p) => p.identity.professionalTitle.trim().length >= 5,
+    ok: (p) => textLen(p.identity?.professionalTitle) >= 5,
   },
   {
     id: 'categoria',
     label: 'Categoria e esperienza',
     hint: 'Ruolo e anni di esperienza',
     weight: 10,
-    ok: (p) => Boolean(p.professional.category && p.professional.experienceYears),
+    ok: (p) => Boolean(p.professional?.category && p.professional?.experienceYears),
   },
   {
     id: 'specializzazioni',
     label: 'Specializzazioni',
     hint: 'Almeno una competenza specifica',
     weight: 10,
-    ok: (p) => p.professional.specializations.length > 0,
+    ok: (p) => (p.professional?.specializations?.length ?? 0) > 0,
   },
   {
     id: 'lingue',
     label: 'Lingue parlate',
     hint: 'Indica le lingue che parli',
     weight: 7,
-    ok: (p) => p.professional.languages.length > 0,
+    ok: (p) => (p.professional?.languages?.length ?? 0) > 0,
   },
   {
     id: 'disponibilita',
     label: 'Disponibilità aggiornata',
     hint: 'Tipo contratto e almeno 3 giorni',
     weight: 12,
-    ok: (p) => p.availability.employmentTypes.length > 0 && p.availability.days.length >= 3,
+    ok: (p) =>
+      (p.availability?.employmentTypes?.length ?? 0) > 0 && (p.availability?.days?.length ?? 0) >= 3,
   },
   {
     id: 'tariffe',
     label: 'Tariffa oraria',
     hint: 'Imposta una tariffa oraria realistica',
     weight: 10,
-    ok: (p) => p.rates.hourly >= 8,
+    ok: (p) => (p.rates?.hourly ?? 0) >= 8,
   },
   {
     id: 'tariffe',
     label: 'Tariffa convivente',
     hint: 'Tariffa mensile se offri convivenza',
     weight: 8,
-    ok: (p) => p.rates.monthlyLiveIn >= 800,
+    ok: (p) => (p.rates?.monthlyLiveIn ?? 0) >= 800,
   },
   {
     id: 'zone',
     label: 'Zone di lavoro',
     hint: 'Comune o zone dove operi',
     weight: 10,
-    ok: (p) => p.zones.length > 0 || p.primaryZone.trim().length > 0,
+    ok: (p) => (p.zones?.length ?? 0) > 0 || textLen(p.primaryZone) > 0,
   },
 ]
 

@@ -232,10 +232,11 @@ export async function approveAdminKycItem(
 }
 
 export function validateAdminKycReject(input: AdminKycRejectInput): AdminKycError | null {
-  if (!input.reason.trim()) {
+  const reason = (input.reason ?? '').trim()
+  if (!reason) {
     return new AdminKycError('validation', 'Indica un motivo per il rifiuto.')
   }
-  if (input.reason.trim().length < 10) {
+  if (reason.length < 10) {
     return new AdminKycError('validation', 'Il motivo deve contenere almeno 10 caratteri.')
   }
   return null
@@ -263,7 +264,7 @@ export async function rejectAdminKycItem(
   }
 
   const [item] = store.pending.splice(index, 1)
-  const historyEntry = appendHistory(item, 'rejected', input.reason.trim())
+  const historyEntry = appendHistory(item, 'rejected', (input.reason ?? '').trim())
   writeStore({
     pending: store.pending,
     history: [historyEntry, ...store.history],
