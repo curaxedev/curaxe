@@ -1190,6 +1190,7 @@ function SectionPlan({
   periodEndLabel,
   onCancel,
   cancelLoading,
+  onPortal,
 }: {
   onUpgrade: () => void
   planType: PlanType
@@ -1200,6 +1201,7 @@ function SectionPlan({
   periodEndLabel: string | null
   onCancel: () => void
   cancelLoading: boolean
+  onPortal?: () => void
 }) {
   const features = [
     { label: 'Profilo visibile nelle ricerche', free: 'Limitato', premium: 'Prioritario' },
@@ -1280,14 +1282,26 @@ function SectionPlan({
             ))}
           </ul>
           {isPremium ? (
-            <button
-              className="dash-btn dash-btn--ghost dash-btn--lg"
-              style={{ width: '100%' }}
-              disabled={cancelLoading || cancelAtPeriodEnd}
-              onClick={onCancel}
-            >
-              {cancelAtPeriodEnd ? 'Disdetta programmata' : 'Annulla abbonamento'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {onPortal ? (
+                <button
+                  type="button"
+                  className="dash-btn dash-btn--primary dash-btn--lg"
+                  style={{ width: '100%' }}
+                  onClick={onPortal}
+                >
+                  Gestisci su Stripe
+                </button>
+              ) : null}
+              <button
+                className="dash-btn dash-btn--ghost dash-btn--lg"
+                style={{ width: '100%' }}
+                disabled={cancelLoading || cancelAtPeriodEnd}
+                onClick={onCancel}
+              >
+                {cancelAtPeriodEnd ? 'Disdetta programmata' : 'Annulla abbonamento'}
+              </button>
+            </div>
           ) : (
             <button className="dash-btn dash-btn--primary dash-btn--lg" style={{ width: '100%' }} onClick={onUpgrade}>
               Attiva Premium
@@ -1646,6 +1660,7 @@ export function ProfessionalDashboard() {
             periodEndLabel={periodEndLabel}
             onCancel={handleCancelSubscription}
             cancelLoading={billing.cancelLoading}
+            onPortal={() => void billing.openPortal()}
           />
         )
       case 'notifiche':

@@ -201,6 +201,34 @@ class StripeBillingPasskeyTest extends TestCase
         $this->assertSame('sk_test_encrypt_me_please', Crypt::decryptString($raw));
     }
 
+    public function test_invoices_empty_without_stripe_customer(): void
+    {
+        $pro = User::query()->where('email', 'maria.rossi@email.it')->firstOrFail();
+        Sanctum::actingAs($pro);
+
+        $this->getJson('/api/v1/billing/invoices')
+            ->assertOk()
+            ->assertJsonPath('invoices', []);
+    }
+
+    public function test_family_user_cannot_list_invoices(): void
+    {
+        $family = User::query()->where('email', 'bianchi@email.it')->firstOrFail();
+        Sanctum::actingAs($family);
+
+        $this->getJson('/api/v1/billing/invoices')->assertForbidden();
+    }
+
+    public function test_portal_unavailable_without_stripe_customer(): void
+    {
+        $pro = User::query()->where('email', 'maria.rossi@email.it')->firstOrFail();
+        Sanctum::actingAs($pro);
+
+        $this->postJson('/api/v1/billing/portal-sessions', [
+            'returnUrl' => 'https://curaxe.it/dashboard/professionale?section=impostazioni',
+        ])->assertStatus(422);
+    }
+
     public function test_webauthn_credential_model(): void
     {
         $admin = User::query()->where('role', 'platform_admin')->firstOrFail();

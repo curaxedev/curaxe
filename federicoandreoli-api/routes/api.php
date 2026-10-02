@@ -149,6 +149,8 @@ Route::prefix('v1')->group(function (): void {
                 ->middleware('throttle:billing');
             Route::post('/billing/portal-sessions', [BillingController::class, 'portal'])
                 ->middleware('throttle:billing');
+            Route::get('/billing/invoices', [BillingController::class, 'invoices'])
+                ->middleware('throttle:billing');
         });
 
         Route::middleware('role:platform_admin')->group(function (): void {

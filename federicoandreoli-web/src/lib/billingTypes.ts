@@ -115,6 +115,18 @@ export type AdminBillingStats = {
   mrrCents: number
 }
 
+export type BillingInvoice = {
+  id: string
+  number: string | null
+  status: string | null
+  amountDue: number
+  amountPaid: number
+  currency: string
+  createdAt: string | null
+  hostedInvoiceUrl: string | null
+  invoicePdf: string | null
+}
+
 export type BillingErrorCode =
   | 'not_found'
   | 'session_expired'

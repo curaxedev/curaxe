@@ -5,6 +5,7 @@ import type {
   AdminBillingStats,
   AdminSubscriptionRow,
   BillingAudience,
+  BillingInvoice,
   CheckoutSession,
   CreateCheckoutInput,
   UserSubscription,
@@ -29,6 +30,7 @@ export type {
   AdminBillingStats,
   AdminSubscriptionRow,
   BillingAudience,
+  BillingInvoice,
   BillingProductKey,
   CheckoutSession,
   CreateCheckoutInput,
@@ -170,6 +172,16 @@ export async function postBillingPortalSession(returnUrl?: string): Promise<{ ur
     })
   } catch (err) {
     throw toBillingError(err, 'Apertura Customer Portal non riuscita.')
+  }
+}
+
+export async function getBillingInvoices(): Promise<BillingInvoice[]> {
+  if (isMockApiEnabled()) return []
+  try {
+    const raw = await httpGet<{ invoices: BillingInvoice[] }>('/api/v1/billing/invoices')
+    return Array.isArray(raw.invoices) ? raw.invoices : []
+  } catch (err) {
+    throw toBillingError(err, 'Impossibile caricare le fatture.')
   }
 }
 

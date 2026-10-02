@@ -13,6 +13,7 @@ import {
   patchOptionalConsents,
 } from '../../lib/gdprApi'
 import { GdprError } from '../../lib/gdprTypes'
+import { BillingManageSettingsCard } from './billing/BillingManageSettingsCard'
 
 function Toggle({
   checked,
@@ -241,6 +242,8 @@ export function AccountSettingsSection({
       )}
 
       <div className="dash-settings-grid">
+        <BillingManageSettingsCard />
+
         <form className="dash-settings-card" onSubmit={(e) => void handleEmailSubmit(e)}>
           <div className="dash-settings-card__title">Email account</div>
           <div className="dash-form-field">

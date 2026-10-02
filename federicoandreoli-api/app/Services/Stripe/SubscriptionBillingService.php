@@ -262,7 +262,78 @@ class SubscriptionBillingService
 
         $session = $client->billingPortal->sessions->create($params);
 
+        AuditLog::record($user->id, 'billing.portal_session', Subscription::class, (string) $sub->id, [
+            'return_host' => parse_url($returnUrl, PHP_URL_HOST),
+        ]);
+
         return ['url' => $session->url];
+    }
+
+    /**
+     * Elenco fatture Stripe del solo customer legato all'utente autenticato.
+     * Mai accettare customer ID dal client.
+     *
+     * @return list<array{
+     *   id: string,
+     *   number: string|null,
+     *   status: string|null,
+     *   amountDue: int,
+     *   amountPaid: int,
+     *   currency: string,
+     *   createdAt: string|null,
+     *   hostedInvoiceUrl: string|null,
+     *   invoicePdf: string|null
+     * }>
+     */
+    public function listInvoices(User $user, int $limit = 24): array
+    {
+        $sub = $this->ensureSubscription($user);
+        if (! is_string($sub->stripe_customer_id) || $sub->stripe_customer_id === '') {
+            return [];
+        }
+
+        $limit = max(1, min(24, $limit));
+        $settings = BillingSetting::current();
+        $client = $this->clients->requireClient($settings);
+
+        $page = $client->invoices->all([
+            'customer' => $sub->stripe_customer_id,
+            'limit' => $limit,
+        ]);
+
+        $out = [];
+        foreach ($page->data as $invoice) {
+            $hosted = isset($invoice->hosted_invoice_url) && is_string($invoice->hosted_invoice_url)
+                ? $invoice->hosted_invoice_url
+                : null;
+            $pdf = isset($invoice->invoice_pdf) && is_string($invoice->invoice_pdf)
+                ? $invoice->invoice_pdf
+                : null;
+
+            // Solo URL https Stripe-hosted; evita XSS / open-redirect via campi anomali.
+            if ($hosted !== null && ! str_starts_with($hosted, 'https://')) {
+                $hosted = null;
+            }
+            if ($pdf !== null && ! str_starts_with($pdf, 'https://')) {
+                $pdf = null;
+            }
+
+            $created = isset($invoice->created) ? Carbon::createFromTimestamp((int) $invoice->created) : null;
+
+            $out[] = [
+                'id' => (string) $invoice->id,
+                'number' => isset($invoice->number) && is_string($invoice->number) ? $invoice->number : null,
+                'status' => isset($invoice->status) && is_string($invoice->status) ? $invoice->status : null,
+                'amountDue' => (int) ($invoice->amount_due ?? 0),
+                'amountPaid' => (int) ($invoice->amount_paid ?? 0),
+                'currency' => strtolower((string) ($invoice->currency ?? 'eur')),
+                'createdAt' => $created?->toIso8601String(),
+                'hostedInvoiceUrl' => $hosted,
+                'invoicePdf' => $pdf,
+            ];
+        }
+
+        return $out;
     }
 
     public function adminRefund(User $admin, Subscription $sub, ?int $amountCents, ?string $reason): BillingRefund

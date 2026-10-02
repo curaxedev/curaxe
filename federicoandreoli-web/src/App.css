@@ -7016,6 +7016,135 @@
 .dash-settings-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); }
 .dash-settings-card__title { font-family: var(--font-heading); font-size: 1rem; font-weight: 700; color: var(--color-text); margin-bottom: var(--space-4); }
 
+.dash-billing-manage__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.dash-billing-manage__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: rgba(22, 58, 82, 0.08);
+  color: var(--color-text);
+}
+
+.dash-billing-manage__badge.is-premium {
+  background: rgba(42, 92, 130, 0.12);
+  color: var(--color-primary);
+}
+
+.dash-billing-manage__copy,
+.dash-billing-manage__muted,
+.dash-billing-manage__hint {
+  margin: 0 0 12px;
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.dash-billing-manage__hint {
+  margin: 10px 0 0;
+  font-size: var(--text-xs);
+}
+
+.dash-billing-manage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dash-billing-manage__invoices {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.dash-billing-manage__invoices-title {
+  font-size: var(--text-small);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.dash-billing-manage__invoice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-billing-manage__invoice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.dash-billing-manage__invoice-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-billing-manage__invoice-main strong {
+  font-size: var(--text-small);
+}
+
+.dash-billing-manage__invoice-main span {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.dash-billing-manage__invoice-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dash-billing-manage__invoice-amount {
+  font-size: var(--text-small);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-billing-manage__invoice-links {
+  display: flex;
+  gap: 10px;
+  font-size: var(--text-xs);
+}
+
+.dash-billing-manage__invoice-links a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.dash-billing-manage__invoice-links a:hover {
+  text-decoration: underline;
+}
+
+.dash-billing-manage__error {
+  margin: 12px 0 0;
+  font-size: var(--text-small);
+  color: var(--color-accent);
+}
+
 /* Stripe landlord wizard */
 .dash-wizard-steps {
   display: flex;

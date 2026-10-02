@@ -94,6 +94,19 @@ class BillingController
         return response()->json($result);
     }
 
+    public function invoices(Request $request): JsonResponse
+    {
+        try {
+            $invoices = $this->billing->listInvoices($request->user());
+        } catch (\RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), 503, [], 'not_configured');
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Impossibile caricare le fatture.', 502, [], 'stripe_error');
+        }
+
+        return response()->json(['invoices' => $invoices]);
+    }
+
     public function adminSubscriptions(Request $request): JsonResponse
     {
         if ($request->user()->role !== UserRole::PlatformAdmin) {
