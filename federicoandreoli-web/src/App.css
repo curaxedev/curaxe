@@ -9895,3 +9895,429 @@
 .dash-candidate-row--pipeline {
   align-items: flex-start;
 }
+
+/* ── Homely-style search explorer (Curaxe) ───────────────────── */
+.cx-explorer {
+  position: relative;
+  width: 100%;
+  max-width: 40rem;
+  z-index: 30;
+}
+
+.cx-explorer__pill {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.2fr) 3.5rem;
+  align-items: stretch;
+  width: 100%;
+  min-height: 4.15rem;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 20, 0.08);
+  border-radius: 999px;
+  box-shadow:
+    0 1px 2px rgba(28, 43, 40, 0.04),
+    0 8px 28px rgba(28, 43, 40, 0.1);
+  transition: background 240ms ease, box-shadow 240ms ease;
+}
+
+.cx-explorer.is-open .cx-explorer__pill {
+  background: #e8ebe9;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.cx-explorer__seg {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.cx-explorer__seg.is-active {
+  z-index: 5;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(28, 43, 40, 0.06),
+    0 10px 28px rgba(28, 43, 40, 0.12);
+}
+
+.cx-explorer__seg.is-idle {
+  opacity: 0.72;
+}
+
+.cx-explorer__seg + .cx-explorer__seg::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1px;
+  height: 1.75rem;
+  background: #ddd;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.cx-explorer__seg.is-active::before,
+.cx-explorer__seg.is-active + .cx-explorer__seg::before,
+.cx-explorer__seg:hover + .cx-explorer__seg::before,
+.cx-explorer__seg:hover::before {
+  opacity: 0;
+}
+
+.cx-explorer__seg-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0.2rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.85rem 1.35rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.cx-explorer__seg--dove .cx-explorer__seg-btn {
+  padding-left: 1.5rem;
+  padding-right: 2.25rem;
+}
+
+.cx-explorer__kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #111;
+  line-height: 1;
+}
+
+.cx-explorer__value {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #222;
+  line-height: 1.2;
+}
+
+.cx-explorer__value.is-placeholder {
+  color: #9aa0a6;
+  font-weight: 450;
+}
+
+.cx-explorer__input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #222;
+  padding: 0;
+  line-height: 1.2;
+}
+
+.cx-explorer__input::placeholder {
+  color: #9aa0a6;
+  font-weight: 450;
+}
+
+.cx-explorer__clear {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: #ebebeb;
+  color: #444;
+  cursor: pointer;
+}
+
+.cx-explorer__clear:hover {
+  background: #e0e0e0;
+}
+
+.cx-explorer__submit {
+  align-self: center;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 2.85rem;
+  height: 2.85rem;
+  margin-right: 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-primary, #2a5c82);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary, #2a5c82) 35%, transparent);
+  transition: width 240ms ease, padding 240ms ease, transform 160ms ease;
+}
+
+.cx-explorer__submit:hover {
+  transform: scale(1.04);
+}
+
+.cx-explorer__submit.is-wide {
+  width: auto;
+  padding: 0 1.1rem;
+}
+
+.cx-explorer__submit-label {
+  display: none;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.cx-explorer__submit.is-wide .cx-explorer__submit-label {
+  display: inline;
+}
+
+.cx-explorer__pop {
+  position: absolute;
+  top: calc(100% + 0.65rem);
+  left: 0;
+  z-index: 40;
+  min-width: min(100vw - 2rem, 24rem);
+  max-width: 26rem;
+  padding: 1.15rem 1.1rem 1.2rem;
+  background: #fff;
+  border-radius: 1.75rem;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    0 24px 48px rgba(28, 43, 40, 0.14);
+}
+
+.cx-explorer__pop--dove {
+  left: 0;
+}
+
+.cx-explorer__pop--mode {
+  left: 50%;
+  transform: translateX(-35%);
+  min-width: min(100vw - 2rem, 22rem);
+}
+
+.cx-explorer__section + .cx-explorer__section {
+  margin-top: 1rem;
+}
+
+.cx-explorer__section-title,
+.cx-explorer__pop-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.01em;
+}
+
+.cx-explorer__pop-title {
+  color: #1f2937;
+  font-size: 1rem;
+  text-align: center;
+  margin-bottom: 0.9rem;
+}
+
+.cx-explorer__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.cx-explorer__row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.55rem 0.45rem;
+  border: 0;
+  border-radius: 0.9rem;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.cx-explorer__row:hover,
+.cx-explorer__row.is-active {
+  background: #f3f4f3;
+}
+
+.cx-explorer__row-icon {
+  display: grid;
+  place-items: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #ebebeb;
+  color: #444;
+}
+
+.cx-explorer__row-icon--near {
+  background: color-mix(in srgb, var(--color-primary, #2a5c82) 14%, #fff);
+  color: var(--color-primary, #2a5c82);
+}
+
+.cx-explorer__row-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.cx-explorer__row-copy strong {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: #111;
+}
+
+.cx-explorer__row-copy small {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.cx-explorer__empty {
+  margin: 0.35rem 0 0;
+  padding: 0.5rem 0.35rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.cx-explorer__mode-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.cx-explorer__mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 1.1rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.cx-explorer__mode-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary, #2a5c82) 35%, #e5e7eb);
+  background: color-mix(in srgb, var(--color-primary, #2a5c82) 6%, #fff);
+}
+
+.cx-explorer__mode-card.is-selected {
+  border-color: var(--color-primary, #2a5c82);
+  background: color-mix(in srgb, var(--color-primary, #2a5c82) 10%, #fff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary, #2a5c82) 35%, transparent);
+}
+
+.cx-explorer__mode-card strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.cx-explorer__mode-card small {
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.35;
+}
+
+@media (max-width: 720px) {
+  .cx-explorer {
+    max-width: none;
+  }
+
+  .cx-explorer__pill {
+    grid-template-columns: 1fr;
+    border-radius: 1.35rem;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .cx-explorer.is-open .cx-explorer__pill {
+    background: #fff;
+    border: 1px solid rgba(15, 23, 20, 0.08);
+    box-shadow:
+      0 1px 2px rgba(28, 43, 40, 0.04),
+      0 8px 28px rgba(28, 43, 40, 0.1);
+  }
+
+  .cx-explorer__seg {
+    border-radius: 0;
+  }
+
+  .cx-explorer__seg.is-active {
+    box-shadow: none;
+    background: #f7f7f7;
+  }
+
+  .cx-explorer__seg + .cx-explorer__seg::before {
+    left: 1.25rem;
+    right: 1.25rem;
+    top: 0;
+    width: auto;
+    height: 1px;
+    transform: none;
+  }
+
+  .cx-explorer__submit {
+    width: calc(100% - 1.5rem);
+    height: 3rem;
+    margin: 0.65rem 0.75rem 0.85rem;
+    justify-self: stretch;
+  }
+
+  .cx-explorer__submit.is-wide,
+  .cx-explorer__submit {
+    width: calc(100% - 1.5rem);
+  }
+
+  .cx-explorer__submit-label {
+    display: inline;
+  }
+
+  .cx-explorer__pop,
+  .cx-explorer__pop--mode {
+    position: static;
+    transform: none;
+    min-width: 0;
+    max-width: none;
+    margin: 0 0.5rem 0.75rem;
+    box-shadow: none;
+    border: 1px solid #eee;
+    border-radius: 1.1rem;
+  }
+}
