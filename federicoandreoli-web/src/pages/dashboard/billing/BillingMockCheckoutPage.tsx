@@ -68,7 +68,7 @@ export function BillingMockCheckoutPage({
   return (
     <div className="billing-checkout-page">
       <div className="billing-checkout-page__card">
-        <div className="billing-checkout-page__brand">Federico Andreoli</div>
+        <div className="billing-checkout-page__brand">Curaxe</div>
         <h1 className="billing-checkout-page__title">Completa il pagamento</h1>
         <p className="billing-checkout-page__user">{user?.name ?? 'Utente'}</p>
 

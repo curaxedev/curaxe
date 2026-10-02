@@ -56,12 +56,12 @@ const POSITION_PAGE_FAQ = [
   },
   {
     q: 'Contratti, pagamenti e turni dove si definiscono?',
-    a: 'Su Federico Andreoli si arriva al primo contatto in modo ordinato: contratto, retribuzione effettiva e adempimenti restano tra te e il datore, come da prassi del settore socio-sanitario.',
+    a: 'Su Curaxe si arriva al primo contatto in modo ordinato: contratto, retribuzione effettiva e adempimenti restano tra te e il datore, come da prassi del settore socio-sanitario.',
   },
 ] as const
 
 /** Contatti di riferimento brand (demo: link mailto esemplificativo). */
-const PLATFORM_SUPPORT_EMAIL = 'info@federicoandreoli.it'
+const PLATFORM_SUPPORT_EMAIL = 'info@curaxe.it'
 
 function mobilityLevelIt(level: OpenPositionMobilityLevel): string {
   switch (level) {
@@ -211,12 +211,12 @@ export function OpenPositionDetailPage() {
 
   useEffect(() => {
     if (job) {
-      document.title = `${job.title} | Posizioni aperte | Federico Andreoli`
+      document.title = `${job.title} | Posizioni aperte | Curaxe`
     } else {
-      document.title = 'Posizione aperta | Federico Andreoli'
+      document.title = 'Posizione aperta | Curaxe'
     }
     return () => {
-      document.title = 'Federico Andreoli'
+      document.title = 'Curaxe'
     }
   }, [job])
 
@@ -586,7 +586,7 @@ export function OpenPositionDetailPage() {
                       Contatti e riferimenti
                     </h2>
                     <p className="open-pos-detail__help-lead">
-                      Piattaforma <strong>Federico Andreoli</strong> — punto d’accesso digitale per domanda e offerta di
+                      Piattaforma <strong>Curaxe</strong> — punto d’accesso digitale per domanda e offerta di
                       assistenza socio-sanitaria.
                     </p>
                     <dl className="open-pos-detail__contact-dl">

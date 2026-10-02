@@ -1,5 +1,5 @@
 const FONTS_URL =
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600&display=swap'
+  'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap'
 
 let injected = false
 

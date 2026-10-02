@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { BrandLogo } from './BrandLogo'
 
 export type AuthShellProps = {
   children: ReactNode
@@ -26,9 +27,7 @@ export function AuthShell({ children, className, registerExit = false, hideBrand
       </a>
       {hideBrandBar ? null : (
         <header className="auth-shell__bar">
-          <Link className="auth-shell__brand" to="/">
-            Federico Andreoli
-          </Link>
+          <BrandLogo size="sm" className="auth-shell__brand" />
           {registerExit && (
             <Link to="/" className="auth-shell__exit" title="Torna alla home e interrompi la registrazione">
               <span className="auth-shell__exit-long">Esci dalla registrazione</span>

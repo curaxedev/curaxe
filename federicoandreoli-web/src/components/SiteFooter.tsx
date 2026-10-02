@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { BrandLogo } from './BrandLogo'
 import { IconHeart, IconStar } from './icons/DashboardIcons'
 import { useCookieConsent } from '../context/CookieConsentContext'
 import { BRAND_NAME } from '../lib/brand'
@@ -106,12 +107,10 @@ export function SiteFooter() {
             <p id="site-footer-heading" className="visually-hidden">
               Piè di pagina e link utili
             </p>
-            <Link className="site-footer__logo" to="/">
-              {BRAND_NAME}
-            </Link>
+            <BrandLogo size="lg" className="site-footer__logo" />
             <p className="site-footer__tagline">
-              Il punto d’incontro tra chi cerca assistenza socio-sanitaria e chi la offre, con percorsi chiari e profili
-              documentati.
+              Il punto d’incontro tra chi cerca assistenza socio-sanitaria e chi la offre — con percorsi chiari e
+              profili documentati.
             </p>
             <ul className="site-footer__pills" aria-label="In sintesi">
               <li className="site-footer__pill">Profili verificati</li>

@@ -17,7 +17,7 @@ function ticketErrorMessage(err: unknown, fallback: string): string {
 export function useAdminTickets() {
   const { user } = useAuth()
   const actorEmail = user?.email
-  const assigneeEmail = user?.email ?? 'admin@federicoandreoli.it'
+  const assigneeEmail = user?.email ?? 'admin@curaxe.it'
 
   const [tickets, setTickets] = useState<AdminTicket[]>([])
   const [loading, setLoading] = useState(true)

@@ -10,7 +10,7 @@ export function RegisterIntentWizardPage() {
   const { resetForIntent } = useRegisterWizard()
 
   return (
-    <WizardShell backTo="/accedi" backLabel="Login" progressFraction={0.06} title="Come vuoi usare Federico Andreoli?">
+    <WizardShell backTo="/accedi" backLabel="Login" progressFraction={0.06} title="Come vuoi usare Curaxe?">
       <div className="wz-intent-grid">
         <button
           type="button"

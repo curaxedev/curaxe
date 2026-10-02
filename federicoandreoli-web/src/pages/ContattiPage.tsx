@@ -10,7 +10,7 @@ import './contatti-page.css'
 const FAQ_HREF = '/#faq'
 
 const CONTACT_INFO = {
-  email: 'assistenza@federicoandreoli.it',
+  email: 'assistenza@curaxe.it',
   phone: '+39 02 1234 5678',
   hours: 'Lunedì – Venerdì, 9:00 – 18:00',
   address: 'Milano, Italia',

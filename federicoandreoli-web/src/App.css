@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════════════════════════
-   App.css — Federico Andreoli  |  Care & Trust Design System
-   Font: Outfit (headings 600-800) + Inter (body 400-600)
-   Primary: #2A5C82  Accent: #E07A5F  Sage: #81B29A
+   App.css — Curaxe | Care & Trust Design System
+   Font: Syne (brand/headings) + Manrope (body)
+   Primary: #1B4D5C  Accent: #C45C3E  Sage: #5F8F7A
    ══════════════════════════════════════════════════════════════ */
 
 /* ── Shell ───────────────────────────────────────────────────── */
@@ -125,11 +125,78 @@
     backdrop-filter var(--topbar-float-dur) var(--topbar-float-ease);
 }
 
-.brand {
-  font-family: var(--font-heading);
+/* ── Brand logo CURAXE ───────────────────────────────────────── */
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.brand-logo:hover {
+  color: var(--color-primary-hover);
+}
+
+.brand-logo__mark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 0.55rem;
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
+.brand-logo__mark-inner {
+  font-family: var(--font-brand);
   font-weight: 800;
-  font-size: 1.2rem;
+  line-height: 1;
   letter-spacing: -0.04em;
+}
+
+.brand-logo__word {
+  font-family: var(--font-brand);
+  font-weight: 800;
+  letter-spacing: var(--tracking-brand);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.brand-logo--sm .brand-logo__mark {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 0.42rem;
+}
+.brand-logo--sm .brand-logo__mark-inner { font-size: 0.85rem; }
+.brand-logo--sm .brand-logo__word { font-size: 1.05rem; }
+
+.brand-logo--md .brand-logo__mark {
+  width: 1.85rem;
+  height: 1.85rem;
+}
+.brand-logo--md .brand-logo__mark-inner { font-size: 1rem; }
+.brand-logo--md .brand-logo__word { font-size: 1.22rem; }
+
+.brand-logo--lg .brand-logo__mark {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.65rem;
+}
+.brand-logo--lg .brand-logo__mark-inner { font-size: 1.25rem; }
+.brand-logo--lg .brand-logo__word { font-size: 1.55rem; }
+
+/* Legacy .brand alias → same as logo wordmark cluster */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-brand);
+  font-weight: 800;
+  font-size: 1.22rem;
+  letter-spacing: var(--tracking-brand);
+  text-transform: uppercase;
   color: var(--color-primary);
   text-decoration: none;
   flex-shrink: 0;
@@ -5463,18 +5530,21 @@
 }
 
 .site-footer__logo {
-  display: inline-block;
+  display: inline-flex;
   margin: 0 0 var(--space-3);
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: -0.04em;
   color: var(--color-ink-strong);
-  text-decoration: none;
 }
 
 .site-footer__logo:hover {
   color: var(--color-primary);
+}
+
+.site-footer__logo.brand-logo .brand-logo__word {
+  color: inherit;
+}
+
+.site-footer__logo.brand-logo .brand-logo__mark {
+  background: var(--color-primary);
 }
 
 .site-footer__tagline {

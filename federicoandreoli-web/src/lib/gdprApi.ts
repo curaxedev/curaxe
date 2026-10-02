@@ -56,7 +56,7 @@ export async function downloadMyData(user: AuthUser): Promise<GdprExportPayload>
   try {
     const payload = await httpPost<GdprExportPayload>('/api/v1/gdpr/export')
     downloadFile(
-      `federicoandreoli-dati-${user.id}-${Date.now()}.json`,
+      `curaxe-dati-${user.id}-${Date.now()}.json`,
       JSON.stringify(payload, null, 2),
       'application/json'
     )

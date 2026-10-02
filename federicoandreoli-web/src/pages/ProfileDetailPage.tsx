@@ -41,7 +41,7 @@ const PROFILE_PAGE_FAQ = [
     a: 'No. Le informazioni cliniche o i dati sensibili restano fuori dai messaggi pubblici e dalla scheda profilo. Vanno gestite direttamente tra famiglia e professionista, nel rispetto della normativa.',
   },
   {
-    q: 'Federico Andreoli verifica le qualifiche del professionista?',
+    q: 'Curaxe verifica le qualifiche del professionista?',
     a: 'In anteprima i profili sono dimostrativi e non sottoposti a verifica documentale. In produzione potremo mostrare badge di qualifica per OSS, infermieri (OPI) e attestati di formazione.',
   },
   {
@@ -56,7 +56,7 @@ const TRUST_CUES = [
   'Coerenza profilo–richiesta: dopo l’accesso suggeriremo solo profili compatibili con i tuoi bisogni.',
 ] as const
 
-const PLATFORM_SUPPORT_EMAIL = 'info@federicoandreoli.it'
+const PLATFORM_SUPPORT_EMAIL = 'info@curaxe.it'
 
 function CategoryLabel({ category }: { category: MockProfile['category'] }) {
   switch (category) {
@@ -329,12 +329,12 @@ export function ProfileDetailPage() {
 
   useEffect(() => {
     if (profile) {
-      document.title = `${profile.name} — ${categoryLabelText(profile.category)} | Federico Andreoli`
+      document.title = `${profile.name} — ${categoryLabelText(profile.category)} | Curaxe`
     } else {
-      document.title = 'Profilo | Federico Andreoli'
+      document.title = 'Profilo | Curaxe'
     }
     return () => {
-      document.title = 'Federico Andreoli'
+      document.title = 'Curaxe'
     }
   }, [profile])
 
@@ -982,7 +982,7 @@ export function ProfileDetailPage() {
                       Riferimenti
                     </h2>
                     <p className="profile-detail__help-lead">
-                      Piattaforma <strong>Federico Andreoli</strong> — punto d’accesso digitale per domanda e offerta di
+                      Piattaforma <strong>Curaxe</strong> — punto d’accesso digitale per domanda e offerta di
                       assistenza socio-sanitaria.
                     </p>
                     <dl className="profile-detail__contact-dl">

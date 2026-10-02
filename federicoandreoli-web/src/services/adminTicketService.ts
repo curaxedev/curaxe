@@ -76,7 +76,7 @@ function createSeedStore(): AdminTicketStore {
       openedAt: '2026-05-09T14:20:00.000Z',
       priority: 'urgent',
       status: 'in-progress',
-      assignedTo: 'admin@federicoandreoli.it',
+      assignedTo: 'admin@curaxe.it',
       messages: [
         seedMessage(
           'm-002-1',
@@ -88,7 +88,7 @@ function createSeedStore(): AdminTicketStore {
         seedMessage(
           'm-002-2',
           'admin',
-          'Supporto Federico Andreoli',
+          'Supporto Curaxe',
           'Buongiorno Maria, stiamo verificando con il provider di pagamento. Ti aggiorniamo entro 24 ore.',
           '2026-05-09T16:45:00.000Z',
         ),
@@ -135,7 +135,7 @@ function createSeedStore(): AdminTicketStore {
       openedAt: '2026-05-03T17:00:00.000Z',
       priority: 'urgent',
       status: 'closed',
-      assignedTo: 'admin@federicoandreoli.it',
+      assignedTo: 'admin@curaxe.it',
       messages: [
         seedMessage(
           'm-005-1',
@@ -147,7 +147,7 @@ function createSeedStore(): AdminTicketStore {
         seedMessage(
           'm-005-2',
           'admin',
-          'Supporto Federico Andreoli',
+          'Supporto Curaxe',
           'Account riattivato. La verifica documenti è in corso.',
           '2026-05-04T10:00:00.000Z',
         ),

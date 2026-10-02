@@ -28,7 +28,7 @@ export function TerminiPage() {
             <span className="legal-hero__label">Documento legale</span>
             <h1 className="legal-hero__title">Termini e Condizioni d'uso</h1>
             <p className="legal-hero__meta">
-              Piattaforma Federico Andreoli · BackSoftware · Ultimo aggiornamento: {LAST_UPDATE}
+              Piattaforma Curaxe · gestita da BackSoftware · Ultimo aggiornamento: {LAST_UPDATE}
             </p>
           </div>
         </div>
@@ -49,8 +49,8 @@ export function TerminiPage() {
             <div className="legal-callout">
               <p>
                 I presenti Termini e Condizioni d'uso (<strong>«T&C»</strong>) regolano il rapporto tra{' '}
-                <strong>BackSoftware di Federico Andreoli</strong> (di seguito «Gestore» o «Piattaforma») e
-                chiunque utilizzi il sito <strong>federicoandreoli.backsoftware.it</strong> e i relativi
+                <strong>BackSoftware</strong> (di seguito «Gestore» o «Piattaforma») e
+                chiunque utilizzi il sito <strong>curaxe.it</strong> e i relativi
                 servizi. La Piattaforma è un <strong>marketplace di intermediazione</strong>: non è
                 un'agenzia di lavoro, non fornisce direttamente servizi di cura né assume i professionisti
                 iscritti. Leggere attentamente prima di utilizzare il servizio.
@@ -69,11 +69,11 @@ export function TerminiPage() {
               <ul>
                 <li>
                   <strong>«Piattaforma»</strong>: il sito web e i servizi digitali raggiungibili
-                  all'indirizzo federicoandreoli.backsoftware.it, gestiti da BackSoftware di Federico
+                  all'indirizzo curaxe.it, gestiti da BackSoftware.
                   Andreoli.
                 </li>
                 <li>
-                  <strong>«Gestore»</strong>: BackSoftware di Federico Andreoli, titolare e gestore
+                  <strong>«Gestore»</strong>: BackSoftware, titolare e gestore
                   della Piattaforma.
                 </li>
                 <li>
@@ -431,7 +431,7 @@ export function TerminiPage() {
               </p>
               <ul>
                 <li>
-                  <strong>Titolare:</strong> BackSoftware di Federico Andreoli
+                  <strong>Titolare:</strong> BackSoftware
                 </li>
                 <li>
                   <strong>E-mail:</strong>{' '}
@@ -439,8 +439,8 @@ export function TerminiPage() {
                 </li>
                 <li>
                   <strong>Sito:</strong>{' '}
-                  <a href="https://federicoandreoli.backsoftware.it" target="_blank" rel="noopener noreferrer">
-                    federicoandreoli.backsoftware.it
+                  <a href="https://curaxe.it" target="_blank" rel="noopener noreferrer">
+                    curaxe.it
                   </a>
                 </li>
               </ul>

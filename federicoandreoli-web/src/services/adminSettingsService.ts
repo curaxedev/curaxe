@@ -36,7 +36,7 @@ export function createDefaultAdminSettings(): AdminPlatformSettings {
       profileVerified: true,
     },
     emailTemplates: {
-      welcomeSubject: 'Benvenuto su Federico Andreoli',
+      welcomeSubject: 'Benvenuto su Curaxe',
       paymentFailedSubject: 'Pagamento non riuscito — azione richiesta',
     },
     maintenance: {

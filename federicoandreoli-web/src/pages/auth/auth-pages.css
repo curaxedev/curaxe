@@ -41,13 +41,8 @@
 }
 
 .auth-shell__brand {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 1.1rem;
-  letter-spacing: -0.04em;
   color: var(--color-primary);
   text-decoration: none;
-  transition: color 0.2s;
 }
 
 .auth-shell__brand:hover {

@@ -27,12 +27,12 @@ export function StructureDetailPage() {
 
   useEffect(() => {
     if (structure) {
-      document.title = `${structure.name} — ${kindLabel(structure.kind)} | Federico Andreoli`
+      document.title = `${structure.name} — ${kindLabel(structure.kind)} | Curaxe`
     } else {
-      document.title = 'Organizzazione | Federico Andreoli'
+      document.title = 'Organizzazione | Curaxe'
     }
     return () => {
-      document.title = 'Federico Andreoli'
+      document.title = 'Curaxe'
     }
   }, [structure])
 

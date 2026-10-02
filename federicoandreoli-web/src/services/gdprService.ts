@@ -138,7 +138,7 @@ export async function exportUserData(user: AuthUser): Promise<GdprExportPayload>
   }
 
   downloadFile(
-    `federicoandreoli-dati-${user.id}-${Date.now()}.json`,
+    `curaxe-dati-${user.id}-${Date.now()}.json`,
     JSON.stringify(payload, null, 2),
     'application/json',
   )

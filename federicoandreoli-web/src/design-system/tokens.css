@@ -1,43 +1,44 @@
 /**
- * Design System — Care & Trust
- * Primary: indigo #2A5C82 (fiducia)  Accent: coral #E07A5F (calore/CTA)  Sage: #81B29A (verificato)
+ * Design System — Curaxe
+ * Primary: deep teal #1B4D5C (fiducia / cura)  Accent: clay #C45C3E (CTA)  Sage: #5F8F7A (verificato)
+ * Type: Syne (display/brand) + Manrope (UI/body)
  */
 :root {
   /* ── Colori base ─────────────────────────────────────────────── */
-  --color-page: #F4F1EE;
-  --color-surface: #FDFCFB;
-  --color-text: #2D2A27;
-  --color-text-muted: #7A7268;
-  --color-border: #E5DDD5;
-  --color-border-strong: #D4CAC0;
-  --color-ink-strong: #1E1C1A;
+  --color-page: #F2F5F7;
+  --color-surface: #FBFCFD;
+  --color-text: #1A2428;
+  --color-text-muted: #5C6B73;
+  --color-border: #D8E0E4;
+  --color-border-strong: #B9C5CC;
+  --color-ink-strong: #0F171A;
 
-  /* ── Primary — blu indaco (fiducia) ──────────────────────────── */
-  --color-primary: #2A5C82;
-  --color-primary-hover: #1E4A6A;
-  --color-primary-soft: #C8DEF0;
-  --color-primary-softer: #EBF4FB;
+  /* ── Primary — teal fiducia ──────────────────────────────────── */
+  --color-primary: #1B4D5C;
+  --color-primary-hover: #143B47;
+  --color-primary-soft: #C5DCE3;
+  --color-primary-softer: #E8F2F5;
   --color-primary-contrast: #ffffff;
 
-  /* ── Accent — coral/terracotta (calore, CTA, badge Pro) ─────── */
-  --color-accent: #E07A5F;
-  --color-accent-hover: #C96347;
-  --color-accent-soft: #FAE8E3;
-  --color-accent-softer: #FDF4F1;
+  /* ── Accent — clay (calore, CTA) ─────────────────────────────── */
+  --color-accent: #C45C3E;
+  --color-accent-hover: #A84B32;
+  --color-accent-soft: #F6E4DE;
+  --color-accent-softer: #FBF1ED;
 
-  /* ── Sage — verde salvia (verificato, KYC, successo) ─────────── */
-  --color-sage: #81B29A;
-  --color-sage-hover: #6A9A83;
-  --color-sage-soft: #E0EDE6;
-  --color-sage-softer: #F2F8F4;
+  /* ── Sage — verificato / successo ────────────────────────────── */
+  --color-sage: #5F8F7A;
+  --color-sage-hover: #4C7A66;
+  --color-sage-soft: #D9E8E1;
+  --color-sage-softer: #EFF6F3;
 
-  /* ── Compat alias (usati in sezioni homepage ereditate) ──────── */
-  --color-warm-accent: #E07A5F;
-  --color-warm-accent-soft: #FAE8E3;
-  --color-success: #81B29A;
-  --color-success-soft: #E0EDE6;
-  --color-accent-purple: #5B4BCC;
-  --color-accent-purple-soft: #EDEAFC;
+  /* ── Compat alias ────────────────────────────────────────────── */
+  --color-warm-accent: #C45C3E;
+  --color-warm-accent-soft: #F6E4DE;
+  --color-success: #5F8F7A;
+  --color-success-soft: #D9E8E1;
+  --color-accent-purple: #3D5A80;
+  --color-accent-purple-soft: #E4EAF1;
 
   /* ── Forme ───────────────────────────────────────────────────── */
   --radius-sm: 10px;
@@ -46,16 +47,16 @@
   --radius-card: 24px;
   --radius-pill: 9999px;
 
-  /* ── Ombre — 4 livelli + alias legacy ────────────────────────── */
-  --shadow-xs: 0 1px 3px rgba(42, 92, 130, 0.05);
-  --shadow-sm: 0 2px 8px rgba(42, 92, 130, 0.07);
-  --shadow-md: 0 8px 28px rgba(42, 92, 130, 0.10);
-  --shadow-lg: 0 20px 56px rgba(42, 92, 130, 0.13);
-  --shadow-xl: 0 28px 72px rgba(42, 92, 130, 0.16), 0 8px 24px rgba(42, 92, 130, 0.08);
-  --shadow-primary-soft: 0 10px 36px rgba(42, 92, 130, 0.20);
-  --shadow-accent-soft: 0 10px 36px rgba(224, 122, 95, 0.22);
-  --shadow-card: 0 4px 20px rgba(42, 92, 130, 0.08), 0 1px 4px rgba(42, 92, 130, 0.06);
-  --shadow-lift: 0 6px 20px rgba(42, 92, 130, 0.12), 0 2px 6px rgba(42, 92, 130, 0.06);
+  /* ── Ombre ───────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 3px rgba(27, 77, 92, 0.05);
+  --shadow-sm: 0 2px 8px rgba(27, 77, 92, 0.07);
+  --shadow-md: 0 8px 28px rgba(27, 77, 92, 0.1);
+  --shadow-lg: 0 20px 56px rgba(27, 77, 92, 0.13);
+  --shadow-xl: 0 28px 72px rgba(27, 77, 92, 0.16), 0 8px 24px rgba(27, 77, 92, 0.08);
+  --shadow-primary-soft: 0 10px 36px rgba(27, 77, 92, 0.22);
+  --shadow-accent-soft: 0 10px 36px rgba(196, 92, 62, 0.22);
+  --shadow-card: 0 4px 20px rgba(27, 77, 92, 0.08), 0 1px 4px rgba(27, 77, 92, 0.06);
+  --shadow-lift: 0 6px 20px rgba(27, 77, 92, 0.12), 0 2px 6px rgba(27, 77, 92, 0.06);
 
   /* ── Bordi sottili ───────────────────────────────────────────── */
   --border-subtle: color-mix(in srgb, var(--color-border) 55%, transparent);
@@ -71,71 +72,68 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* ── Tipografia ──────────────────────────────────────────────── */
-  --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  /* Alias per retrocompat */
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* ── Tipografia Curaxe ───────────────────────────────────────── */
+  --font-brand: 'Syne', system-ui, sans-serif;
+  --font-heading: 'Syne', system-ui, sans-serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
+  --font-sans: 'Manrope', system-ui, sans-serif;
 
-  /* Type scale: display → overline */
+  /* Type scale */
   --text-display: clamp(2.1rem, 4.5vw, 2.9rem);
   --text-title: clamp(1.35rem, 2.2vw, 1.75rem);
   --text-title-sm: 1.125rem;
   --text-lead: 1.125rem;
-  --text-body: 1.0625rem;   /* 17px — accessibilità utenti anziani */
-  --text-small: 0.9375rem;  /* 15px */
-  --text-caption: 0.8125rem; /* 13px — alias xs */
-  --text-xs: 0.8125rem;     /* 13px */
-  --text-overline: 0.6875rem; /* 11px */
+  --text-body: 1.0625rem;
+  --text-small: 0.9375rem;
+  --text-caption: 0.8125rem;
+  --text-xs: 0.8125rem;
+  --text-overline: 0.6875rem;
 
-  /* Line heights */
   --leading-display: 1.05;
   --leading-title: 1.22;
   --leading-body: 1.62;
   --leading-caption: 1.45;
 
-  /* Letter spacing */
   --tracking-display: -0.038em;
   --tracking-title: -0.025em;
   --tracking-body: -0.011em;
   --tracking-caption: -0.006em;
   --tracking-overline: 0.14em;
   --tracking-label: 0.06em;
+  --tracking-brand: 0.04em;
 
-  /* Touch & input */
   --touch-target: 44px;
   --input-height: 44px;
 
-  /* ── Layout ──────────────────────────────────────────────────── */
   --content-max: 1140px;
   --header-h: 72px;
   --scroll-padding-top: calc(var(--header-h) + var(--space-5));
 
-  /* ── Palette home (flusso colore continuo) ───────────────────── */
-  --home-slate-band: #EDE8E2;
-  --home-warm-start: #FAF6F2;
-  --home-warm-end: #F5E8E0;
-  --home-sky-band: #E6EFF4;
-  --home-sky-deep: #CCDCE8;
-  --home-ink-band: #1E2D3D;
-  --home-accent-round: #E07A5F;
-  --home-ready-top: #1A3A54;
-  --home-ready-bottom: #0F2438;
+  /* ── Palette home ────────────────────────────────────────────── */
+  --home-slate-band: #E6EDF0;
+  --home-warm-start: #F7F3F0;
+  --home-warm-end: #F0E6E0;
+  --home-sky-band: #E3EEF1;
+  --home-sky-deep: #C5D8DF;
+  --home-ink-band: #143B47;
+  --home-accent-round: #C45C3E;
+  --home-ready-top: #143B47;
+  --home-ready-bottom: #0F2430;
 
   --home-bridge: clamp(3.25rem, 9vw, 6rem);
   --home-warm-bottom: color-mix(in srgb, var(--home-warm-end) 88%, var(--color-accent-soft));
   --home-cities-floor: color-mix(in srgb, var(--home-slate-band) 28%, var(--color-surface));
 
-  /* ── Motion (see motion.css for full system) ─────────────────── */
+  /* ── Motion ──────────────────────────────────────────────────── */
   --motion-duration: 0.75s;
   --motion-stagger: 0.07s;
 
-  /* ── Glass palette (RESTYLE-01 — see glass.css for full system) ─ */
+  /* ── Glass ───────────────────────────────────────────────────── */
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-bg-elevated: rgba(255, 255, 255, 0.82);
   --glass-border: rgba(255, 255, 255, 0.18);
   --glass-blur: blur(20px) saturate(180%);
   --glass-shadow:
     0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 8px 32px rgba(42, 92, 130, 0.08);
+    0 8px 32px rgba(27, 77, 92, 0.08);
 }

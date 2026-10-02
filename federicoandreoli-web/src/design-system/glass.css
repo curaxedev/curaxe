@@ -47,8 +47,8 @@
   --glass-radius-pill: 9999px;
 
   /* ── SF-like typography stack ─────────────────────────────────── */
-  --font-glass: system-ui, -apple-system, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-  --font-glass-heading: system-ui, -apple-system, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', sans-serif;
+  --font-glass: var(--font-body);
+  --font-glass-heading: var(--font-heading);
 
   /* ── Motion (aliases — see motion.css) ──────────────────────── */
   /* --glass-ease and --glass-duration defined in motion.css */

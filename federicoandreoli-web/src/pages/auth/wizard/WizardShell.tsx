@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { BrandLogo } from '../../../components/BrandLogo'
 import { IconChevronLeft } from '../../../components/icons/DashboardIcons'
 import './register-wizard.css'
 
@@ -33,9 +34,7 @@ export function WizardShell({
         ) : (
           <span />
         )}
-        <Link className="wz-header__brand" to="/">
-          Federico Andreoli
-        </Link>
+        <BrandLogo size="sm" className="wz-header__brand" />
         <Link className="wz-header__exit" to="/" title="Esci dalla registrazione">
           Esci
         </Link>

@@ -98,7 +98,7 @@ const faqs = [
   },
   {
     q: 'La piattaforma sostituisce contratti o pagamenti?',
-    a: 'No. Federico Andreoli mette in contatto domanda e offerta e gestisce richieste di contatto (lead). Stipendi, contratti e adempimenti restano fuori piattaforma, tra le parti.',
+    a: 'No. Curaxe mette in contatto domanda e offerta e gestisce richieste di contatto (lead). Stipendi, contratti e adempimenti restano fuori piattaforma, tra le parti.',
   },
   {
     q: 'Come funzionano i dati sanitari?',
@@ -337,7 +337,7 @@ export function HomePage() {
             <div className="home-cities__inner">
               <p className="home-cities__eyebrow type-overline">Nella tua zona</p>
               <h2 id="home-cities-title" className="home-cities__title type-title">
-                Federico Andreoli nella tua città
+                Curaxe nella tua città
               </h2>
               <p className="home-cities__sub">
                 Esplora le aree con più professionisti attivi, poi affina con quartiere o CAP.

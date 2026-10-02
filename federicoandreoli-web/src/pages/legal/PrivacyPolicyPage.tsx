@@ -27,7 +27,7 @@ export function PrivacyPolicyPage() {
             <span className="legal-hero__label">GDPR – Art. 13-14</span>
             <h1 className="legal-hero__title">Informativa sul trattamento dei dati personali</h1>
             <p className="legal-hero__meta">
-              Piattaforma Federico Andreoli · BackSoftware · Ultimo aggiornamento: {LAST_UPDATE}
+              Piattaforma Curaxe · gestita da BackSoftware · Ultimo aggiornamento: {LAST_UPDATE}
             </p>
           </div>
         </div>
@@ -50,7 +50,7 @@ export function PrivacyPolicyPage() {
                 La presente informativa è resa ai sensi degli artt. 13 e 14 del Regolamento (UE)
                 2016/679 (<strong>GDPR</strong>) e del D.Lgs. 196/2003 (Codice Privacy) come
                 modificato dal D.Lgs. 101/2018, agli Utenti che interagiscono con la piattaforma{' '}
-                <strong>federicoandreoli.backsoftware.it</strong>.
+                <strong>curaxe.it</strong>.
               </p>
             </div>
 
@@ -65,7 +65,7 @@ export function PrivacyPolicyPage() {
               </p>
               <ul>
                 <li>
-                  <strong>Denominazione:</strong> BackSoftware di Federico Andreoli
+                  <strong>Denominazione:</strong> BackSoftware
                 </li>
                 <li>
                   <strong>Indirizzo e-mail:</strong>{' '}
@@ -73,8 +73,8 @@ export function PrivacyPolicyPage() {
                 </li>
                 <li>
                   <strong>Sito web:</strong>{' '}
-                  <a href="https://federicoandreoli.backsoftware.it" target="_blank" rel="noopener noreferrer">
-                    federicoandreoli.backsoftware.it
+                  <a href="https://curaxe.it" target="_blank" rel="noopener noreferrer">
+                    curaxe.it
                   </a>
                 </li>
               </ul>
@@ -560,7 +560,7 @@ export function PrivacyPolicyPage() {
               <p>
                 Si invita a consultare periodicamente questa pagina. L'ultima versione è sempre
                 disponibile all'indirizzo{' '}
-                <Link to="/privacy">federicoandreoli.backsoftware.it/privacy</Link>.
+                <Link to="/privacy">curaxe.it/privacy</Link>.
               </p>
               <div className="legal-callout">
                 <p>

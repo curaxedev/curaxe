@@ -23,7 +23,7 @@ export function CookiePolicyPage() {
             <span className="legal-hero__label">Provvedimento Garante 2021 · GDPR</span>
             <h1 className="legal-hero__title">Cookie Policy</h1>
             <p className="legal-hero__meta">
-              Piattaforma Federico Andreoli · BackSoftware · Ultimo aggiornamento: {LAST_UPDATE}
+              Piattaforma Curaxe · gestita da BackSoftware · Ultimo aggiornamento: {LAST_UPDATE}
             </p>
           </div>
         </div>
@@ -48,7 +48,7 @@ export function CookiePolicyPage() {
                 Privacy) come modificato dal D.Lgs. 101/2018, all'art. 122 del Codice Privacy e al{' '}
                 <strong>Provvedimento del Garante per la Protezione dei Dati Personali del
                 10 giugno 2021</strong> («Linee guida cookie e altri strumenti di tracciamento»).
-                Titolare del trattamento: BackSoftware di Federico Andreoli.
+                Titolare del trattamento: BackSoftware.
               </p>
             </div>
 
@@ -138,7 +138,7 @@ export function CookiePolicyPage() {
               <p><strong>3.1 Google Fonts</strong></p>
               <p>
                 La Piattaforma utilizza <strong>Google Fonts</strong> (fonts.googleapis.com) per
-                il caricamento dei caratteri tipografici Outfit e Inter. Quando il browser
+                il caricamento dei caratteri tipografici Syne e Manrope. Quando il browser
                 dell'utente carica le pagine, effettua richieste ai server di Google per scaricare
                 i file dei font. <strong>Google può raccogliere l'indirizzo IP</strong> e altre
                 informazioni tecniche del dispositivo dell'utente (es. user-agent) anche senza
@@ -270,7 +270,7 @@ export function CookiePolicyPage() {
                         <span className="legal-badge legal-badge--third">Terze parti</span>
                       </td>
                       <td>N/A (richiesta HTTP)</td>
-                      <td>Caricamento font Outfit e Inter; Google può registrare IP</td>
+                      <td>Caricamento font Syne e Manrope; Google può registrare IP</td>
                       <td>Google LLC</td>
                     </tr>
                     <tr>
@@ -443,7 +443,7 @@ export function CookiePolicyPage() {
               </p>
               <p>
                 La versione aggiornata è sempre disponibile all'indirizzo{' '}
-                <Link to="/cookie">federicoandreoli.backsoftware.it/cookie</Link>.
+                <Link to="/cookie">curaxe.it/cookie</Link>.
               </p>
               <div className="legal-callout">
                 <p>

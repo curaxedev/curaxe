@@ -45,7 +45,7 @@ const faqs = [
   },
   {
     q: 'La piattaforma gestisce contratti o pagamenti?',
-    a: 'No. Federico Andreoli facilita il contatto: contratti e pagamenti restano tra le parti.',
+    a: 'No. Curaxe facilita il contatto: contratti e pagamenti restano tra le parti.',
   },
   {
     q: 'Quali documenti servono?',

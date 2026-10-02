@@ -9,7 +9,7 @@ import {
   IconStar,
   IconSupport,
 } from '../../components/icons/DashboardIcons'
-import { BRAND_NAME } from '../../lib/brand'
+import { BrandLogo } from '../../components/BrandLogo'
 import { contattiPath } from '../../lib/siteRoutes'
 
 export type AccountType = 'professional' | 'family' | 'agency' | 'structure' | 'admin'
@@ -126,7 +126,7 @@ export function DashboardLayout({
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
             onClick={() => navigate(brandPath)}
           >
-            <div className="dash-sidebar__brand-name">{BRAND_NAME}</div>
+            <BrandLogo link={false} size="sm" wordmarkOnly className="dash-sidebar__brand-name" />
             <div className="dash-sidebar__brand-sub">Dashboard {ACCOUNT_BADGE_LABELS[accountType]}</div>
           </button>
         </div>

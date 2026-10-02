@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { BrandLogo } from './BrandLogo'
 import { IconClose, IconInfo, IconMenu } from './icons/DashboardIcons'
 import { assistenzaHeroCercoLink, assistenzaHeroOffroLink } from '../lib/assistenzaHeroMode'
-import { BRAND_NAME } from '../lib/brand'
 import { comeFunzionaPath, profilesDirectoryPath } from '../lib/siteRoutes'
 import { registerWorkerProfileHref } from '../pages/auth/registerQuery'
 
@@ -63,9 +63,7 @@ export function SiteHeader() {
   return (
     <header className={`topbar${scrolled ? ' topbar--scrolled' : ''}${mobileOpen ? ' topbar--drawer-open' : ''}`}>
       <div className="topbar__inner">
-        <Link className="brand" to="/">
-          {BRAND_NAME}
-        </Link>
+        <BrandLogo size="md" />
 
         {!onRegister && (
           <nav className="topbar__nav" aria-label="Principale">
