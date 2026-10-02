@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ItaliaGeoSearchCombobox } from './ItaliaGeoSearchCombobox'
-import { IconSearch } from './icons/DashboardIcons'
+import { IconMapPin, IconSearch } from './icons/DashboardIcons'
 import type { ItaliaGeoRow } from '../lib/italiaGeo/italiaComuniTypes'
 import { buildProfilesDirectoryHref } from '../lib/profilesDirectoryNav'
 
@@ -39,20 +39,25 @@ export function FamilyHeaderProfileSearch() {
 
   return (
     <form className="dash-header-search" role="search" onSubmit={onSubmit}>
-      <div className="dash-header-search__field">
-        <ItaliaGeoSearchCombobox
-          layoutVariant="toolbar"
-          selectedPlace={place}
-          onSelectedPlaceChange={(next) => {
-            setPlace(next)
-            if (next) goToResults(next)
-          }}
-        />
+      <div className="dash-header-search__shell">
+        <span className="dash-header-search__icon" aria-hidden="true">
+          <IconMapPin size={16} />
+        </span>
+        <div className="dash-header-search__field">
+          <ItaliaGeoSearchCombobox
+            layoutVariant="toolbar"
+            selectedPlace={place}
+            onSelectedPlaceChange={(next) => {
+              setPlace(next)
+              if (next) goToResults(next)
+            }}
+          />
+        </div>
+        <button type="submit" className="dash-header-search__btn" aria-label="Cerca professionisti">
+          <IconSearch size={15} />
+          <span className="dash-header-search__btn-label">Cerca</span>
+        </button>
       </div>
-      <button type="submit" className="dash-header-search__btn" aria-label="Cerca professionisti">
-        <IconSearch size={18} />
-        <span className="dash-header-search__btn-label">Cerca</span>
-      </button>
     </form>
   )
 }

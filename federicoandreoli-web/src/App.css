@@ -6084,31 +6084,68 @@
   flex-shrink: 0;
 }
 
+/* Header famiglia: 3 colonne uguali → la search resta davvero al centro */
 .dash-header--family-search {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(12rem, 1.4fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 26rem) minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-3);
+  column-gap: var(--space-4);
 }
 
 .dash-header--family-search .dash-header__left {
   flex: unset;
   min-width: 0;
+  justify-self: start;
+}
+
+.dash-header--family-search .dash-header__right {
+  justify-self: end;
 }
 
 .dash-header__search {
   min-width: 0;
   width: 100%;
-  max-width: 34rem;
   justify-self: center;
 }
 
 .dash-header-search {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
   width: 100%;
   min-width: 0;
+}
+
+.dash-header-search__shell {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 4px 4px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-page) 55%, #fff);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-text) 4%, transparent);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.dash-header-search__shell:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: #fff;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent),
+    0 4px 14px color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.dash-header-search__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--color-text-muted) 88%, var(--color-primary));
+  opacity: 0.85;
+  pointer-events: none;
 }
 
 .dash-header-search__field {
@@ -6116,17 +6153,38 @@
   min-width: 0;
 }
 
+.dash-header-search__field .prof-geo-search--toolbar {
+  width: 100%;
+}
+
 .dash-header-search__field .prof-geo-search--toolbar .prof-geo-search__input {
-  min-height: 40px;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  min-height: 36px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: 0.9rem;
-  border-radius: 999px;
-  background: #f4f7fa;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.dash-header-search__field .prof-geo-search--toolbar .prof-geo-search__input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.dash-header-search__field .prof-geo-search--toolbar .prof-geo-search__input::placeholder {
+  color: var(--color-text-muted);
+  font-weight: 450;
+  opacity: 0.9;
 }
 
 .dash-header-search__field .prof-geo-search__dropdown {
   z-index: 60;
+  margin-top: 8px;
+  border-radius: 14px;
 }
 
 .dash-header-search__btn {
@@ -6135,21 +6193,33 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 40px;
-  padding: 0 14px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
   border: 0;
   border-radius: 999px;
   background: var(--color-primary);
   color: #fff;
   font: inherit;
-  font-size: 0.86rem;
-  font-weight: 700;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease,
+    box-shadow 0.15s ease;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 28%, transparent);
 }
 
 .dash-header-search__btn:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
+  transform: translateY(-0.5px);
+}
+
+.dash-header-search__btn:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
 }
 
 .dash-header-search__btn-label {
@@ -7477,7 +7547,8 @@
     grid-template-areas:
       'left right'
       'search search';
-    row-gap: 8px;
+    row-gap: 10px;
+    column-gap: var(--space-3);
   }
 
   .dash-header--family-search .dash-header__left {
@@ -7494,13 +7565,20 @@
     justify-self: stretch;
   }
 
-  .dash-header-search__btn-label {
-    display: none;
+  .dash-header-search__shell {
+    min-height: 42px;
+    padding-left: 12px;
   }
 
   .dash-header-search__btn {
-    width: 40px;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
     padding: 0;
+  }
+
+  .dash-header-search__btn-label {
+    display: none;
   }
 
   /* Niente sidebar mobile: solo dock + sheet Altro */
