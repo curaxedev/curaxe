@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        // SPA-only auth: evita Route [login] not defined (500) su guest redirect.
+        $middleware->redirectGuestsTo(
+            fn () => rtrim((string) config('app.frontend_url'), '/').'/accedi'
+        );
         $middleware->api(prepend: [
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
@@ -49,6 +53,8 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*') || $request->expectsJson()) {
                 return \App\Support\ApiResponse::error('Non autenticato.', 401, [], 'unauthorized');
             }
+
+            return redirect()->away(rtrim((string) config('app.frontend_url'), '/').'/accedi');
         });
 
         $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {

@@ -227,7 +227,11 @@ export async function httpRequest<T>(method: string, path: string, options: Http
   }
 
   if (res.status === 204) return undefined as T
-  return (await res.json()) as T
+  try {
+    return (await res.json()) as T
+  } catch {
+    throw new HttpError('server', res.status, 'Risposta non valida dal server. Riprova.')
+  }
 }
 
 export function httpGet<T>(path: string, options?: HttpRequestOptions): Promise<T> {

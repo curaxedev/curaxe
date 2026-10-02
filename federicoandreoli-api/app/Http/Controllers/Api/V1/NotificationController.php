@@ -11,20 +11,28 @@ class NotificationController
 {
     public function index(Request $request): JsonResponse
     {
-        $items = AppNotification::query()
-            ->where('user_id', $request->user()->id)
-            ->orderByDesc('id')
-            ->limit(100)
-            ->get()
-            ->map(fn (AppNotification $n) => [
-                'id' => (string) $n->id,
-                'userId' => (string) $n->user_id,
-                'audience' => $n->audience,
-                'text' => $n->text,
-                'createdAt' => $n->created_at?->toIso8601String(),
-                'read' => $n->read,
-                'type' => $n->type,
-            ]);
+        if (! \Illuminate\Support\Facades\Schema::hasTable('app_notifications')) {
+            return response()->json(['notifications' => []]);
+        }
+
+        try {
+            $items = AppNotification::query()
+                ->where('user_id', $request->user()->id)
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get()
+                ->map(fn (AppNotification $n) => [
+                    'id' => (string) $n->id,
+                    'userId' => (string) $n->user_id,
+                    'audience' => $n->audience,
+                    'text' => $n->text,
+                    'createdAt' => $n->created_at?->toIso8601String(),
+                    'read' => $n->read,
+                    'type' => $n->type,
+                ]);
+        } catch (\Illuminate\Database\QueryException) {
+            return response()->json(['notifications' => []]);
+        }
 
         return response()->json(['notifications' => $items]);
     }

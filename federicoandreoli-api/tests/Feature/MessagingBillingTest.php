@@ -50,6 +50,16 @@ class MessagingBillingTest extends TestCase
             ->assertJsonPath('notifications.0.read', false);
     }
 
+    public function test_unauthenticated_messaging_returns_401_not_login_route_500(): void
+    {
+        $this->get('/api/v1/messaging/threads', [
+            'Accept' => '*/*',
+            'Origin' => 'http://localhost:5173',
+        ])
+            ->assertUnauthorized()
+            ->assertJsonPath('error_code', 'unauthorized');
+    }
+
     public function test_billing_checkout_complete_and_cancel(): void
     {
         $pro = User::query()->where('email', 'maria.rossi@email.it')->firstOrFail();

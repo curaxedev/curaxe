@@ -10,44 +10,79 @@ use App\Models\Message;
 use App\Models\MessageThread;
 use App\Models\User;
 use App\Support\ApiResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class MessagingController
 {
     public function threads(Request $request): JsonResponse
     {
+        if (! Schema::hasTable('message_threads')) {
+            return response()->json([]);
+        }
+
         $userId = (string) $request->user()->id;
-        $threads = MessageThread::query()
-            ->orderByDesc('last_message_at')
-            ->get()
-            ->filter(fn (MessageThread $t) => in_array($userId, array_map('strval', $t->participant_ids ?? []), true))
-            ->values()
-            ->map(fn (MessageThread $t) => $this->threadPayload($t));
+
+        try {
+            $threads = MessageThread::query()
+                ->where(function ($query) use ($userId): void {
+                    $query->whereJsonContains('participant_ids', $userId);
+                    if (ctype_digit($userId)) {
+                        $query->orWhereJsonContains('participant_ids', (int) $userId);
+                    }
+                })
+                ->orderByDesc('last_message_at')
+                ->limit(100)
+                ->get()
+                ->map(fn (MessageThread $t) => $this->threadPayload($t))
+                ->values();
+        } catch (QueryException) {
+            return ApiResponse::error(
+                'Messaggi temporaneamente non disponibili. Riprova tra poco.',
+                503,
+                [],
+                'messaging_unavailable',
+            );
+        }
 
         return response()->json($threads);
     }
 
     public function messages(Request $request, int $id): JsonResponse
     {
+        if (! Schema::hasTable('messages')) {
+            return ApiResponse::error('Messaggi temporaneamente non disponibili.', 503, [], 'messaging_unavailable');
+        }
+
         $thread = $this->threadForUser($request, $id);
         if ($thread instanceof JsonResponse) {
             return $thread;
         }
 
-        $messages = Message::query()
-            ->where('thread_id', $thread->id)
-            ->orderBy('id')
-            ->get()
-            ->map(fn (Message $m) => [
-                'id' => (string) $m->id,
-                'threadId' => (string) $m->thread_id,
-                'senderId' => (string) $m->sender_id,
-                'senderName' => $m->sender_name,
-                'body' => $m->body,
-                'createdAt' => $m->created_at?->toIso8601String(),
-            ]);
+        try {
+            $messages = Message::query()
+                ->where('thread_id', $thread->id)
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Message $m) => [
+                    'id' => (string) $m->id,
+                    'threadId' => (string) $m->thread_id,
+                    'senderId' => (string) $m->sender_id,
+                    'senderName' => $m->sender_name,
+                    'body' => $m->body,
+                    'createdAt' => $m->created_at?->toIso8601String(),
+                ]);
+        } catch (QueryException) {
+            return ApiResponse::error(
+                'Messaggi temporaneamente non disponibili. Riprova tra poco.',
+                503,
+                [],
+                'messaging_unavailable',
+            );
+        }
 
         return response()->json($messages);
     }
@@ -236,7 +271,26 @@ class MessagingController
 
     private function threadForUser(Request $request, int $id): MessageThread|JsonResponse
     {
-        $thread = MessageThread::query()->find($id);
+        if (! Schema::hasTable('message_threads')) {
+            return ApiResponse::error(
+                'Messaggi temporaneamente non disponibili.',
+                503,
+                [],
+                'messaging_unavailable',
+            );
+        }
+
+        try {
+            $thread = MessageThread::query()->find($id);
+        } catch (QueryException) {
+            return ApiResponse::error(
+                'Messaggi temporaneamente non disponibili. Riprova tra poco.',
+                503,
+                [],
+                'messaging_unavailable',
+            );
+        }
+
         if ($thread === null) {
             return ApiResponse::error('Conversazione non trovata.', 404, [], 'not_found');
         }
