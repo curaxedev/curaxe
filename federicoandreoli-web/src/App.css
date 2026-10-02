@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    App.css — Curaxe | Care & Trust Design System
-   Font: Syne (brand/headings) + Manrope (body)
+   Font: Nunito Sans (brand/headings) + Manrope (body)
    Primary: #1B4D5C  Accent: #C45C3E  Sage: #5F8F7A
    ══════════════════════════════════════════════════════════════ */
 
@@ -125,78 +125,39 @@
     backdrop-filter var(--topbar-float-dur) var(--topbar-float-ease);
 }
 
-/* ── Brand logo CURAXE ───────────────────────────────────────── */
+/* ── Brand logo CURAXE — solo wordmark, soft ─────────────────── */
 .brand-logo {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
   text-decoration: none;
   color: var(--color-primary);
   flex-shrink: 0;
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .brand-logo:hover {
   color: var(--color-primary-hover);
 }
 
-.brand-logo__mark {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  border-radius: 0.55rem;
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 28%, transparent);
-}
-
-.brand-logo__mark-inner {
-  font-family: var(--font-brand);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.04em;
-}
-
 .brand-logo__word {
   font-family: var(--font-brand);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: var(--tracking-brand);
   line-height: 1;
-  text-transform: uppercase;
 }
 
-.brand-logo--sm .brand-logo__mark {
-  width: 1.55rem;
-  height: 1.55rem;
-  border-radius: 0.42rem;
-}
-.brand-logo--sm .brand-logo__mark-inner { font-size: 0.85rem; }
-.brand-logo--sm .brand-logo__word { font-size: 1.05rem; }
+.brand-logo--sm .brand-logo__word { font-size: 1.15rem; font-weight: 700; }
+.brand-logo--md .brand-logo__word { font-size: 1.35rem; font-weight: 700; }
+.brand-logo--lg .brand-logo__word { font-size: 1.55rem; font-weight: 700; }
 
-.brand-logo--md .brand-logo__mark {
-  width: 1.85rem;
-  height: 1.85rem;
-}
-.brand-logo--md .brand-logo__mark-inner { font-size: 1rem; }
-.brand-logo--md .brand-logo__word { font-size: 1.22rem; }
-
-.brand-logo--lg .brand-logo__mark {
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 0.65rem;
-}
-.brand-logo--lg .brand-logo__mark-inner { font-size: 1.25rem; }
-.brand-logo--lg .brand-logo__word { font-size: 1.55rem; }
-
-/* Legacy .brand alias → same as logo wordmark cluster */
+/* Legacy .brand */
 .brand {
   display: inline-flex;
   align-items: center;
   font-family: var(--font-brand);
-  font-weight: 800;
-  font-size: 1.22rem;
+  font-weight: 700;
+  font-size: 1.35rem;
   letter-spacing: var(--tracking-brand);
-  text-transform: uppercase;
   color: var(--color-primary);
   text-decoration: none;
   flex-shrink: 0;

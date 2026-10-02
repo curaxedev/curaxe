@@ -23,8 +23,8 @@ export const tokens = {
   radius: { sm: 10, md: 16, lg: 24, card: 24, pill: 9999 },
   space: { 1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64 },
   font: {
-    brand: "Syne, system-ui, sans-serif",
-    heading: "Syne, system-ui, sans-serif",
+    brand: "Nunito Sans, system-ui, sans-serif",
+    heading: "Nunito Sans, system-ui, sans-serif",
     body: "Manrope, system-ui, sans-serif",
     sans: "Manrope, system-ui, sans-serif",
   },

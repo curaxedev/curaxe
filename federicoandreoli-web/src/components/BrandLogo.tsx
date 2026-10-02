@@ -1,38 +1,27 @@
 import { Link } from 'react-router-dom'
-import { BRAND_NAME, BRAND_NAME_UPPER } from '../lib/brand'
+import { BRAND_NAME } from '../lib/brand'
 
 export type BrandLogoProps = {
   /** Link to home (default true for header/footer). */
   link?: boolean
   className?: string
-  /** Compact mark for tight headers / auth. */
   size?: 'sm' | 'md' | 'lg'
-  /** Show only wordmark without the glyph. */
+  /** Kept for API compat — mark is never shown. */
   wordmarkOnly?: boolean
 }
 
 /**
- * Curaxe wordmark — Syne display + mark geometrico.
- * Hero-level brand signal: uppercase CURAXE with distinctive tracking.
+ * Curaxe wordmark — solo testo, tipografia morbida (Nunito Sans).
+ * Nessun glyph / icona: brand empatico e pulito.
  */
 export function BrandLogo({
   link = true,
   className = '',
   size = 'md',
-  wordmarkOnly = false,
 }: BrandLogoProps) {
   const classes = ['brand-logo', `brand-logo--${size}`, className].filter(Boolean).join(' ')
 
-  const inner = (
-    <>
-      {!wordmarkOnly ? (
-        <span className="brand-logo__mark" aria-hidden>
-          <span className="brand-logo__mark-inner">C</span>
-        </span>
-      ) : null}
-      <span className="brand-logo__word">{BRAND_NAME_UPPER}</span>
-    </>
-  )
+  const inner = <span className="brand-logo__word">{BRAND_NAME}</span>
 
   if (link) {
     return (

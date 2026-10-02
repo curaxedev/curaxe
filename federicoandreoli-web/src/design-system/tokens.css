@@ -1,7 +1,7 @@
 /**
  * Design System — Curaxe
  * Primary: deep teal #1B4D5C (fiducia / cura)  Accent: clay #C45C3E (CTA)  Sage: #5F8F7A (verificato)
- * Type: Syne (display/brand) + Manrope (UI/body)
+ * Type: Nunito Sans (brand/UI) + Manrope (body) — soft, clean, empathetic
  */
 :root {
   /* ── Colori base ─────────────────────────────────────────────── */
@@ -72,9 +72,9 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* ── Tipografia Curaxe ───────────────────────────────────────── */
-  --font-brand: 'Syne', system-ui, sans-serif;
-  --font-heading: 'Syne', system-ui, sans-serif;
+  /* ── Tipografia Curaxe — morbida e leggibile ─────────────────── */
+  --font-brand: 'Nunito Sans', system-ui, sans-serif;
+  --font-heading: 'Nunito Sans', system-ui, sans-serif;
   --font-body: 'Manrope', system-ui, sans-serif;
   --font-sans: 'Manrope', system-ui, sans-serif;
 
@@ -94,13 +94,13 @@
   --leading-body: 1.62;
   --leading-caption: 1.45;
 
-  --tracking-display: -0.038em;
-  --tracking-title: -0.025em;
-  --tracking-body: -0.011em;
-  --tracking-caption: -0.006em;
-  --tracking-overline: 0.14em;
-  --tracking-label: 0.06em;
-  --tracking-brand: 0.04em;
+  --tracking-display: -0.02em;
+  --tracking-title: -0.015em;
+  --tracking-body: -0.005em;
+  --tracking-caption: 0;
+  --tracking-overline: 0.12em;
+  --tracking-label: 0.04em;
+  --tracking-brand: -0.01em;
 
   --touch-target: 44px;
   --input-height: 44px;
