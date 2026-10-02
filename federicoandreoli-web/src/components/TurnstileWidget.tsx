@@ -7,6 +7,7 @@ type Props = {
 
 /**
  * Widget Cloudflare Turnstile. Se disabilitato server-side, non renderizza nulla.
+ * Se l’API security/meta non risponde, resta silenzioso (niente errore anti-bot spaventoso).
  */
 export function TurnstileWidget({ onToken }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -34,12 +35,17 @@ export function TurnstileWidget({ onToken }: Props) {
           callback: (token) => onToken(token),
           'expired-callback': () => onToken(null),
           'error-callback': () => {
-            setError('Verifica anti-bot non riuscita.')
+            setError('Verifica anti-bot non riuscita. Ricarica la pagina.')
             onToken(null)
           },
         })
       } catch {
-        if (!cancelled) setError('Impossibile caricare la verifica anti-bot.')
+        // API down o Turnstile non configurato: non bloccare login/registrazione in UI
+        if (!cancelled) {
+          onToken(null)
+          setVisible(false)
+          setError(null)
+        }
       }
     }
 

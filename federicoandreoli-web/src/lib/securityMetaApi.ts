@@ -17,8 +17,13 @@ export async function getSecurityMeta(): Promise<SecurityMeta> {
     return { turnstile: { enabled: false, siteKey: null }, cloudflareTrustProxies: false }
   }
   if (cachedMeta) return cachedMeta
-  cachedMeta = await httpGet<SecurityMeta>('/api/v1/security/meta', { anonymous: true })
-  return cachedMeta
+  try {
+    cachedMeta = await httpGet<SecurityMeta>('/api/v1/security/meta', { anonymous: true })
+    return cachedMeta
+  } catch {
+    // API irraggiungibile: Turnstile off, niente errore in UI
+    return { turnstile: { enabled: false, siteKey: null }, cloudflareTrustProxies: false }
+  }
 }
 
 export function clearSecurityMetaCache(): void {

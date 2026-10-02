@@ -3,11 +3,26 @@ import type { ItaliaGeoRow } from '../lib/italiaGeo/italiaComuniTypes'
 import { searchDirectoryProfiles } from '../lib/directoryApi'
 import type { DirectoryProfileSummary, ListingIntent } from '../lib/directoryTypes'
 import { DirectoryError } from '../lib/directoryTypes'
+import { HttpError } from '../lib/http'
 
 const PAGE_SIZE = 12
 
 function directoryErrorMessage(err: unknown): string {
-  if (err instanceof DirectoryError) return err.message
+  if (err instanceof HttpError) {
+    if (err.kind === 'network' || err.kind === 'timeout') {
+      return 'Servizio temporaneamente non raggiungibile. Riprova tra poco.'
+    }
+    if (err.kind === 'server') {
+      return 'Il server directory non risponde al momento. Riprova tra poco.'
+    }
+    return err.message
+  }
+  if (err instanceof DirectoryError) {
+    if (/contattare|connessione|Errore 5/i.test(err.message)) {
+      return 'Servizio temporaneamente non raggiungibile. Riprova tra poco.'
+    }
+    return err.message
+  }
   return 'Impossibile caricare i profili. Riprova.'
 }
 

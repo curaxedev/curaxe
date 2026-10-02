@@ -55,6 +55,12 @@ function toDirectoryError(err: unknown, fallback: string): DirectoryError {
       return new DirectoryError('not_found', err.message)
     }
     if (err.kind === 'validation') return new DirectoryError('validation', err.message)
+    if (err.kind === 'network' || err.kind === 'timeout') {
+      return new DirectoryError('server', 'Servizio temporaneamente non raggiungibile. Riprova tra poco.')
+    }
+    if (err.kind === 'server') {
+      return new DirectoryError('server', 'Il server directory non risponde al momento. Riprova tra poco.')
+    }
     return new DirectoryError('server', err.message || fallback)
   }
   return new DirectoryError('server', fallback)

@@ -284,8 +284,7 @@ export function ProfilesDirectoryPage() {
 
           <h1 className="prof-dir__page-title">Cerca profili e organizzazioni per zona</h1>
           <p className="prof-dir__page-lead">
-            Suggerimenti da dati geografici pubblici (comuni, CAP, province, regioni). I risultati sono caricati dal
-            servizio directory (anteprima con dati mock, pronto per API Laravel).
+            Cerca per comune, CAP, provincia o regione. I risultati arrivano dalla directory live di Curaxe.
           </p>
 
           <div className="prof-dir__intro-tabs">
