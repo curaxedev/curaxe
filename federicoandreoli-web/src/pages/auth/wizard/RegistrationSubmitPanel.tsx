@@ -9,6 +9,7 @@ import { offerFieldErrors, seekerFieldErrors, type FieldErrorRow } from './regis
 export type RegistrationCompletionState = {
   registrationId: string
   intent: RegisterIntent
+  email?: string
   emailVerificationRequired: boolean
   documentsUploadPending?: boolean
 }
@@ -47,19 +48,23 @@ export function RegistrationSubmitPanel({ intent, draft, summary, submitLabel }:
 
       clearCompleted(intent)
 
+      const email = draft.email?.trim().toLowerCase() || undefined
+
       const state: RegistrationCompletionState = {
         registrationId: result.id,
         intent,
-        emailVerificationRequired: result.emailVerificationRequired,
+        email,
+        emailVerificationRequired: result.emailVerificationRequired ?? true,
         documentsUploadPending: result.documentsUploadPending,
       }
 
       const params = new URLSearchParams({
         intent,
         id: result.id,
+        verify: '1',
       })
-      if (result.emailVerificationRequired) {
-        params.set('verify', '1')
+      if (email) {
+        params.set('email', email)
       }
       if (result.documentsUploadPending) {
         params.set('docs', 'pending')

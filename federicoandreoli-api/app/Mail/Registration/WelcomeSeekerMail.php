@@ -2,6 +2,7 @@
 
 namespace App\Mail\Registration;
 
+use App\Domains\Auth\Services\OtpService;
 use App\Mail\BaseMailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -10,12 +11,13 @@ class WelcomeSeekerMail extends BaseMailable
 {
     public function __construct(
         public readonly string $name,
+        public readonly string $code,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Benvenuto! Il tuo account famiglia è pronto',
+            subject: 'Benvenuto! Conferma il tuo account famiglia',
         );
     }
 
@@ -25,6 +27,8 @@ class WelcomeSeekerMail extends BaseMailable
             view: 'emails.registration.welcome-seeker',
             with: [
                 'name' => $this->name,
+                'code' => $this->code,
+                'ttlMinutes' => OtpService::TTL_MINUTES,
             ],
         );
     }

@@ -215,7 +215,7 @@ export async function submitSeekerRegistration(
   return {
     id: registrationId,
     intent: 'seeker',
-    emailVerificationRequired: false,
+    emailVerificationRequired: true,
     message: 'Account famiglia creato. Puoi pubblicare una richiesta dalla dashboard.',
   }
 }

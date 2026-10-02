@@ -9,6 +9,7 @@ use App\Mail\Registration\WelcomeSeekerMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -84,7 +85,7 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseHas('registrations', ['user_id' => $user->id, 'intent' => 'offer']);
 
         Mail::assertQueued(WelcomeProfessionalMail::class, function (WelcomeProfessionalMail $mail) {
-            return str_contains($mail->verificationUrl, '/api/v1/email/verify/');
+            return strlen($mail->code) === 6 && ctype_digit($mail->code);
         });
     }
 
@@ -96,12 +97,15 @@ class RegistrationTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('intent', 'seeker')
-            ->assertJsonPath('emailVerificationRequired', false);
+            ->assertJsonPath('emailVerificationRequired', true);
 
         $user = User::query()->where('email', 'famiglia.nuova@example.com')->firstOrFail();
         $this->assertSame(UserRole::PublicUser, $user->role);
+        $this->assertNull($user->email_verified_at);
 
-        Mail::assertQueued(WelcomeSeekerMail::class);
+        Mail::assertQueued(WelcomeSeekerMail::class, function (WelcomeSeekerMail $mail) {
+            return strlen($mail->code) === 6 && ctype_digit($mail->code);
+        });
     }
 
     public function test_registration_rejects_duplicate_email(): void
@@ -133,20 +137,61 @@ class RegistrationTest extends TestCase
             ->assertJsonValidationErrors(['birthDate']);
     }
 
+    public function test_welcome_otp_activates_account_and_returns_token(): void
+    {
+        Mail::fake();
+        $this->postJson('/api/v1/registrations/professional', $this->professionalPayload())->assertCreated();
+
+        $code = null;
+        Mail::assertQueued(WelcomeProfessionalMail::class, function (WelcomeProfessionalMail $mail) use (&$code) {
+            $code = $mail->code;
+
+            return true;
+        });
+
+        $this->postJson('/api/v1/auth/email-otp/verify', [
+            'email' => 'nuova.badante@example.com',
+            'code' => $code,
+        ])->assertOk()->assertJsonStructure(['token', 'user']);
+
+        $user = User::query()->where('email', 'nuova.badante@example.com')->firstOrFail();
+        $this->assertNotNull($user->email_verified_at);
+    }
+
+    public function test_seeker_welcome_otp_activates_account(): void
+    {
+        Mail::fake();
+        $this->postJson('/api/v1/registrations/seeker', $this->seekerPayload())->assertCreated();
+
+        $code = null;
+        Mail::assertQueued(WelcomeSeekerMail::class, function (WelcomeSeekerMail $mail) use (&$code) {
+            $code = $mail->code;
+
+            return true;
+        });
+
+        $this->postJson('/api/v1/auth/email-otp/verify', [
+            'email' => 'famiglia.nuova@example.com',
+            'code' => $code,
+        ])->assertOk();
+
+        $user = User::query()->where('email', 'famiglia.nuova@example.com')->firstOrFail();
+        $this->assertNotNull($user->email_verified_at);
+    }
+
     public function test_signed_verification_link_marks_email_verified(): void
     {
         Mail::fake();
         $this->postJson('/api/v1/registrations/professional', $this->professionalPayload())->assertCreated();
 
-        $url = null;
-        Mail::assertQueued(WelcomeProfessionalMail::class, function (WelcomeProfessionalMail $mail) use (&$url) {
-            $url = $mail->verificationUrl;
-
-            return true;
-        });
-
         $user = User::query()->where('email', 'nuova.badante@example.com')->firstOrFail();
         $this->assertNull($user->email_verified_at);
+
+        $url = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addDays(7),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
 
         $this->get($url)->assertRedirect(config('app.frontend_url').'/accedi?verifica=ok');
 
@@ -171,6 +216,7 @@ class RegistrationTest extends TestCase
         Mail::fake();
         $this->postJson('/api/v1/registrations/professional', $this->professionalPayload())->assertCreated();
 
+        // Welcome mail already issued an OTP; request a fresh one for login.
         $this->postJson('/api/v1/auth/email-otp/request', ['email' => 'nuova.badante@example.com'])
             ->assertStatus(202);
 

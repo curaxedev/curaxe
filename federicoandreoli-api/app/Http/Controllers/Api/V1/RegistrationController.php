@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domains\Auth\Enums\UserRole;
+use App\Domains\Auth\Services\OtpService;
 use App\Http\Requests\RegisterProfessionalRequest;
 use App\Http\Requests\RegisterSeekerRequest;
 use App\Mail\Registration\WelcomeProfessionalMail;
@@ -13,10 +14,13 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 
 class RegistrationController
 {
+    public function __construct(
+        private readonly OtpService $otps,
+    ) {}
+
     public function professional(RegisterProfessionalRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -42,13 +46,14 @@ class RegistrationController
             return $user;
         });
 
-        Mail::to($user->email)->send(new WelcomeProfessionalMail($user->name, $this->verificationUrl($user)));
+        $code = $this->otps->issue($user->email);
+        Mail::to($user->email)->send(new WelcomeProfessionalMail($user->name, $code));
 
         return response()->json([
             'id' => (string) $user->id,
             'intent' => 'offer',
             'emailVerificationRequired' => true,
-            'message' => 'Registrazione professionista ricevuta. Completa il profilo dopo l’accesso.',
+            'message' => 'Registrazione professionista ricevuta. Conferma l’email con il codice inviato.',
         ], 201);
     }
 
@@ -75,13 +80,14 @@ class RegistrationController
             return $user;
         });
 
-        Mail::to($user->email)->send(new WelcomeSeekerMail($user->name));
+        $code = $this->otps->issue($user->email);
+        Mail::to($user->email)->send(new WelcomeSeekerMail($user->name, $code));
 
         return response()->json([
             'id' => (string) $user->id,
             'intent' => 'seeker',
-            'emailVerificationRequired' => false,
-            'message' => 'Account famiglia creato. Puoi pubblicare una richiesta dalla dashboard.',
+            'emailVerificationRequired' => true,
+            'message' => 'Account famiglia creato. Conferma l’email con il codice inviato.',
         ], 201);
     }
 
@@ -100,14 +106,5 @@ class RegistrationController
             'version' => ConsentRecord::POLICY_VERSION,
             'source' => 'registration',
         ]);
-    }
-
-    private function verificationUrl(User $user): string
-    {
-        return URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addDays(7),
-            ['id' => $user->id, 'hash' => sha1($user->email)],
-        );
     }
 }
