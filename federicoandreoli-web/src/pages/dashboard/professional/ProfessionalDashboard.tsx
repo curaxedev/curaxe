@@ -26,11 +26,9 @@ import {
   fetchProfessionalHomeStats,
   type ProfessionalHomeStats,
 } from '../../../lib/professionalStatsApi'
-import type {
-  ProfessionalDocument,
-  ProfessionalDocumentSlot,
-} from '../../../lib/professionalProfileApi'
 import type { ProfessionalProfile, ProfessionalProfilePatch } from '../../../lib/professionalProfileTypes'
+import { ItaliaGeoSearchCombobox } from '../../../components/ItaliaGeoSearchCombobox'
+import type { ItaliaGeoRow } from '../../../lib/italiaGeo/italiaComuniTypes'
 import {
   IconBell,
   IconBriefcase,
@@ -469,15 +467,12 @@ function SectionHome({
 }
 
 /* ── Section B: Profile ─────────────────────────────────────── */
-const DOC_SLOTS: { slot: ProfessionalDocumentSlot; label: string }[] = [
-  { slot: 'identita', label: 'Documento di identità' },
-  { slot: 'attestati', label: 'Attestati / Diplomi' },
-  { slot: 'referenze', label: 'Referenze' },
-]
+function formatCoverageLabel(place: ItaliaGeoRow): string {
+  return `${place.comune} (${place.siglaProvincia})`
+}
 
 function SectionProfile({
   profile,
-  documents,
   loading,
   error,
   saving,
@@ -486,11 +481,8 @@ function SectionProfile({
   onReload,
   onSave,
   onUploadPhoto,
-  onUploadDocument,
-  onRemoveDocument,
 }: {
   profile: ProfessionalProfile | null
-  documents: ProfessionalDocument[]
   loading: boolean
   error: string | null
   saving: boolean
@@ -499,12 +491,9 @@ function SectionProfile({
   onReload: () => void
   onSave: (patch: ProfessionalProfilePatch) => Promise<boolean>
   onUploadPhoto: (file: File) => Promise<boolean>
-  onUploadDocument: (slot: ProfessionalDocumentSlot, file: File) => Promise<boolean>
-  onRemoveDocument: (id: string) => Promise<boolean>
 }) {
   const [saved, setSaved] = useState(false)
   const photoInputRef = useRef<HTMLInputElement | null>(null)
-  const docInputRefs = useRef<Partial<Record<ProfessionalDocumentSlot, HTMLInputElement | null>>>({})
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [professionalTitle, setProfessionalTitle] = useState('')
@@ -526,8 +515,9 @@ function SectionProfile({
   const [certifications, setCertifications] = useState<string[]>([])
   const [zones, setZones] = useState<string[]>([])
   const [primaryZone, setPrimaryZone] = useState('')
+  const [primaryPlace, setPrimaryPlace] = useState<ItaliaGeoRow | null>(null)
   const [availableFrom, setAvailableFrom] = useState('')
-  const [zoneInput, setZoneInput] = useState('')
+  const [coverageSearchKey, setCoverageSearchKey] = useState(0)
   const [formReady, setFormReady] = useState(false)
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -566,6 +556,7 @@ function SectionProfile({
     setMonthlyRate(profile.rates.monthlyLiveIn)
     setZones(profile.zones)
     setPrimaryZone(profile.primaryZone)
+    setPrimaryPlace(null)
     setAvailableToMove(profile.availableToMove)
     setCertifications(profile.certifications)
     setFormReady(true)
@@ -616,10 +607,11 @@ function SectionProfile({
     toastTimeout.current = setTimeout(() => setSaved(false), 3000)
   }
 
-  const addZone = () => {
-    const z = zoneInput.trim()
-    if (z && !zones.includes(z)) setZones([...zones, z])
-    setZoneInput('')
+  const addCoveragePlace = (place: ItaliaGeoRow | null) => {
+    if (!place) return
+    const label = formatCoverageLabel(place)
+    setZones((prev) => (prev.includes(label) ? prev : [...prev, label]))
+    setCoverageSearchKey((k) => k + 1)
   }
 
   if (loading) {
@@ -642,14 +634,14 @@ function SectionProfile({
 
   return (
     <div className="dash-prof-wrap">
-      <div className="dash-section-header">
+      <div className="dash-section-header dash-section-header--prof">
         <div>
           <h2 className="dash-section__title">Il mio profilo</h2>
           <p className="dash-section__subtitle">Come appare a famiglie, strutture e agenzie</p>
         </div>
         <button
           type="button"
-          className="dash-btn dash-btn--primary dash-btn--lg"
+          className="dash-btn dash-btn--primary dash-btn--lg dash-prof-save-desktop"
           onClick={() => void handleSave()}
           disabled={saving}
         >
@@ -932,19 +924,41 @@ function SectionProfile({
         </div>
         <div className="dash-prof-cols">
           <div>
-            <div className="dash-prof-section">
+            <div className="dash-prof-section" id="prof-section-zone">
               <div className="dash-form-field">
-                <label className="dash-form-label" htmlFor="prof-primary-zone">Zona di lavoro principale</label>
-                <input
-                  id="prof-primary-zone"
-                  className="dash-form-input"
-                  value={primaryZone}
-                  onChange={(e) => setPrimaryZone(e.target.value)}
-                />
+                <span className="dash-form-label">Zona di lavoro principale</span>
+                {primaryZone && !primaryPlace ? (
+                  <div className="dash-chip-group" style={{ marginBottom: 8 }}>
+                    <span className="dash-chip">
+                      {primaryZone}
+                      <button
+                        type="button"
+                        className="dash-chip__remove"
+                        onClick={() => setPrimaryZone('')}
+                        aria-label="Rimuovi zona principale"
+                      >
+                        <IconClose size={12} />
+                      </button>
+                    </span>
+                  </div>
+                ) : null}
+                <div className="dash-prof-geo">
+                  <ItaliaGeoSearchCombobox
+                    selectedPlace={primaryPlace}
+                    onSelectedPlaceChange={(place) => {
+                      setPrimaryPlace(place)
+                      setPrimaryZone(place ? formatCoverageLabel(place) : '')
+                    }}
+                  />
+                </div>
+                <p className="dash-form-hint">Cerca comune, CAP, provincia o regione</p>
               </div>
             </div>
             <div className="dash-prof-section">
-              <div className="dash-prof-section__title">Province / Regioni coperte</div>
+              <div className="dash-prof-section__title">Aree coperte</div>
+              <p className="dash-form-hint" style={{ marginTop: 0 }}>
+                Aggiungi comuni o province con la stessa ricerca della home.
+              </p>
               <div className="dash-chip-group">
                 {zones.map((z) => (
                   <span key={z} className="dash-chip">
@@ -960,15 +974,12 @@ function SectionProfile({
                   </span>
                 ))}
               </div>
-              <div className="dash-chip-input-wrap">
-                <input
-                  className="dash-form-input"
-                  placeholder="Aggiungi zona…"
-                  value={zoneInput}
-                  onChange={(e) => setZoneInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addZone()}
+              <div className="dash-prof-geo">
+                <ItaliaGeoSearchCombobox
+                  key={coverageSearchKey}
+                  selectedPlace={null}
+                  onSelectedPlaceChange={addCoveragePlace}
                 />
-                <button type="button" className="dash-btn dash-btn--ghost" onClick={addZone}>+ Aggiungi</button>
               </div>
             </div>
             <Toggle checked={availableToMove} onChange={setAvailableToMove} label="Disponibile a spostarsi" />
@@ -1011,9 +1022,8 @@ function SectionProfile({
 
       {/* Certifications */}
       <div className="dash-card" style={{ marginTop: 'var(--space-4)' }}>
-        <div className="dash-card__title">Certificazioni e documenti</div>
+        <div className="dash-card__title">Certificazioni</div>
         <div className="dash-prof-section">
-          <div className="dash-prof-section__title">Certificazioni possedute</div>
           <div className="dash-checkbox-group">
             {CERTIFICATIONS_LIST.map((c) => (
               <label key={c} className="dash-checkbox-item">
@@ -1027,61 +1037,9 @@ function SectionProfile({
             ))}
           </div>
         </div>
-
-        <div className="dash-prof-section">
-          <div className="dash-prof-section__title">Carica documenti</div>
-          <div className="dash-doc-slots">
-            {DOC_SLOTS.map(({ slot, label }) => {
-              const existing = documents.find((d) => d.slot === slot)
-              return (
-                <div key={slot} className="dash-doc-slot">
-                  <input
-                    ref={(el) => {
-                      docInputRefs.current[slot] = el
-                    }}
-                    type="file"
-                    accept=".pdf,image/jpeg,image/png"
-                    hidden
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      e.target.value = ''
-                      if (file) void onUploadDocument(slot, file)
-                    }}
-                  />
-                  <IconUpload size={20} />
-                  <span className="dash-doc-slot__label">{label}</span>
-                  {existing ? (
-                    <>
-                      <span className="dash-doc-slot__name" title={existing.name}>
-                        {existing.name}
-                      </span>
-                      <button
-                        type="button"
-                        className="dash-doc-slot__cta"
-                        disabled={uploadBusy}
-                        onClick={() => void onRemoveDocument(existing.id)}
-                      >
-                        Rimuovi
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="dash-doc-slot__cta"
-                      disabled={uploadBusy}
-                      onClick={() => docInputRefs.current[slot]?.click()}
-                    >
-                      Carica
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
       </div>
 
-      <div style={{ marginTop: 'var(--space-5)', display: 'flex', justifyContent: 'flex-end' }}>
+      <div className="dash-prof-save-bar">
         <button
           type="button"
           className="dash-btn dash-btn--primary dash-btn--lg"
@@ -1438,7 +1396,6 @@ export function ProfessionalDashboard() {
   })
   const {
     profile,
-    documents: profileDocuments,
     loading: profileLoading,
     error: profileError,
     saving: profileSaving,
@@ -1447,8 +1404,6 @@ export function ProfessionalDashboard() {
     reload: reloadProfile,
     save: saveProfile,
     uploadPhoto: uploadProfilePhoto,
-    uploadDocument: uploadProfileDocument,
-    removeDocument: removeProfileDocument,
     completionPercent,
   } = useProfessionalProfile()
   const [activeSection, setActiveSection] = useState('home')
@@ -1591,7 +1546,6 @@ export function ProfessionalDashboard() {
         return (
           <SectionProfile
             profile={profile}
-            documents={profileDocuments}
             loading={profileLoading}
             error={profileError}
             saving={profileSaving}
@@ -1600,8 +1554,6 @@ export function ProfessionalDashboard() {
             onReload={() => void reloadProfile()}
             onSave={saveProfile}
             onUploadPhoto={uploadProfilePhoto}
-            onUploadDocument={uploadProfileDocument}
-            onRemoveDocument={removeProfileDocument}
           />
         )
       case 'richieste':
