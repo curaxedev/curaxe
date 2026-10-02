@@ -62,9 +62,9 @@
   box-shadow: var(--focus-ring);
 }
 
-.auth-otp-chain:focus-within {
-  box-shadow: var(--focus-ring);
-  border-radius: var(--radius-md);
+.auth-otp-box:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 
 /* ── Contrast — form labels & secondary text ─────────────────────── */
@@ -87,7 +87,4 @@
   .auth-success-icon,
   .wz-success-ring--pop,
   .contatti-alert--success,
-  .auth-otp-chain:focus-within {
-    animation: none !important;
-  }
 }

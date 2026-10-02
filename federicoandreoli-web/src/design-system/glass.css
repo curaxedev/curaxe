@@ -2270,20 +2270,18 @@
   box-shadow: 0 0 0 3px rgba(42, 92, 130, 0.1);
 }
 
-.auth-shell--glass .auth-otp-input {
+.auth-shell--glass .auth-otp-box {
   background: var(--glass-auth-input-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-muted);
-  border-radius: var(--glass-radius-md);
-  padding: var(--space-4) var(--space-3);
+  border: 1.5px solid var(--glass-border-muted);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset;
 }
 
-.auth-shell--glass .auth-otp-input:focus-visible {
-  border-color: rgba(42, 92, 130, 0.35);
+.auth-shell--glass .auth-otp-box:focus-visible {
+  border-color: rgba(42, 92, 130, 0.45);
   box-shadow:
-    0 0 0 3px rgba(42, 92, 130, 0.12),
+    0 0 0 3px rgba(42, 92, 130, 0.14),
     0 1px 0 rgba(255, 255, 255, 0.5) inset;
 }
 

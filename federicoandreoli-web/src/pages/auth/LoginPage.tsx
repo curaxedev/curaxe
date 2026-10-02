@@ -9,6 +9,7 @@ import { loginWithPasskey, passkeysSupported } from '../../lib/adminPasskeyApi'
 import { isMockApiEnabled } from '../../lib/runtimeConfig'
 import { findMockAccountByEmail, DEMO_LOGIN_ACCOUNTS, type DemoLoginAccount } from '../../mocks/authFixtures'
 import { AuthShell } from '../../components/AuthShell'
+import { OtpCodeInput } from '../../components/OtpCodeInput'
 import { TurnstileWidget } from '../../components/TurnstileWidget'
 import {
   IconChevronLeft,
@@ -324,25 +325,17 @@ export function LoginPage() {
                   </>
                 ) : (
                   <>
-                    <label className="auth-field">
-                      <span className="auth-field__label">Codice a 6 cifre</span>
-                      <div className="auth-otp-chain">
-                        <input
-                          type="text"
-                          name="code"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={6}
-                          placeholder="000000"
-                          autoComplete="one-time-code"
-                          className="auth-otp-input"
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value)}
-                          required
-                          aria-label="Codice OTP a 6 cifre"
-                        />
-                      </div>
-                    </label>
+                    <div className="auth-field">
+                      <span className="auth-field__label" id="otp-code-label">
+                        Codice a 6 cifre
+                      </span>
+                      <OtpCodeInput
+                        value={otpCode}
+                        onChange={setOtpCode}
+                        name="code"
+                        aria-label="Codice OTP a 6 cifre"
+                      />
+                    </div>
                     <button
                       type="submit"
                       className="auth-btn-primary auth-btn-primary--block"
@@ -404,25 +397,15 @@ export function LoginPage() {
                 </div>
 
                 {totpNeeded && (
-                  <label className="auth-field">
+                  <div className="auth-field">
                     <span className="auth-field__label">Codice di verifica (app authenticator)</span>
-                    <div className="auth-otp-chain">
-                      <input
-                        type="text"
-                        name="totp"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={6}
-                        placeholder="000000"
-                        autoComplete="one-time-code"
-                        className="auth-otp-input"
-                        value={totpCode}
-                        onChange={(e) => setTotpCode(e.target.value)}
-                        required
-                        aria-label="Codice TOTP a 6 cifre"
-                      />
-                    </div>
-                  </label>
+                    <OtpCodeInput
+                      value={totpCode}
+                      onChange={setTotpCode}
+                      name="totp"
+                      aria-label="Codice TOTP a 6 cifre"
+                    />
+                  </div>
                 )}
 
                 <label className="auth-checkbox">

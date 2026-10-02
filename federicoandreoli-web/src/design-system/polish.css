@@ -2069,57 +2069,7 @@ textarea:focus-visible,
   flex-shrink: 0;
 }
 
-/* ── OTP digit chain ────────────────────────────────────────────── */
-.auth-otp-chain {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  padding: var(--space-2);
-  border-radius: var(--radius-md);
-  background:
-    repeating-linear-gradient(
-      90deg,
-      var(--color-surface) 0,
-      var(--color-surface) calc((100% / 6) - 6px),
-      var(--color-border) calc((100% / 6) - 6px),
-      var(--color-border) calc(100% / 6)
-    );
-  background-size: 100% 100%;
-  transition: box-shadow var(--duration-fast) var(--ease-out);
-}
-
-.auth-otp-chain:focus-within {
-  box-shadow: var(--focus-ring);
-}
-
-.auth-otp-chain .auth-otp-input {
-  width: 100%;
-  max-width: 300px;
-  min-height: var(--touch-target, 44px);
-  padding: 12px 8px;
-  border: none !important;
-  border-radius: var(--radius-sm);
-  background: transparent !important;
-  box-shadow: none !important;
-  text-align: center;
-  font-size: 1.65rem !important;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.62em;
-  font-weight: 700;
-  caret-color: var(--color-primary);
-  color: var(--color-ink-strong);
-}
-
-.auth-otp-chain .auth-otp-input::placeholder {
-  color: color-mix(in srgb, var(--color-text-muted) 45%, transparent);
-  letter-spacing: 0.62em;
-  font-weight: 600;
-}
-
-.auth-otp-chain .auth-otp-input:focus-visible {
-  outline: none;
-  box-shadow: none;
-}
+/* OTP boxes: stili in auth-pages.css (.auth-otp-boxes / .auth-otp-box) */
 
 /* ── Wizard — chips, pills, progress ──────────────────────────── */
 .wz-progress {
@@ -2391,7 +2341,6 @@ textarea:focus-visible,
 
 /* ── POLISH-06 reduced-motion consolidation ─────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .auth-otp-chain .auth-otp-input,
   .wz-chip:hover:not(.is-on),
   .wz-pill:hover:not(.is-on),
   .isl-proof__metric:hover {

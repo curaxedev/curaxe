@@ -334,11 +334,66 @@
   color: var(--color-text-muted);
 }
 
-.auth-otp-input {
+/* ── OTP: sei caselle distinte ───────────────────────────────────── */
+.auth-otp-boxes {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.auth-otp-box {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 56px;
+  padding: 0;
+  border: 1.5px solid color-mix(in srgb, var(--color-border) 85%, var(--home-ink-band) 15%);
+  border-radius: 12px;
+  background: var(--color-surface, #fff);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
   text-align: center;
-  font-size: 1.5rem !important;
-  letter-spacing: 0.35em;
-  font-weight: 700;
+  font-family: var(--font-heading, inherit);
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--home-ink-band, var(--color-ink-strong));
+  caret-color: var(--color-primary);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.auth-otp-box:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+}
+
+.auth-otp-box:focus,
+.auth-otp-box:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  background: #fff;
+}
+
+.auth-otp-box:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 420px) {
+  .auth-otp-boxes {
+    gap: 6px;
+  }
+
+  .auth-otp-box {
+    width: 42px;
+    height: 50px;
+    font-size: 1.3rem;
+    border-radius: 10px;
+  }
 }
 
 .auth-link-resend {
