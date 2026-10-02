@@ -1,20 +1,23 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getDashboardPathForRole } from '../auth/roleDashboard'
 import { useAuth } from '../auth/useAuth'
 import { BrandLogo } from './BrandLogo'
-import { IconClose, IconInfo, IconLogout, IconMenu } from './icons/DashboardIcons'
+import { IconClose, IconInfo, IconMenu } from './icons/DashboardIcons'
+import { LoggedInAccountMenu } from './LoggedInAccountMenu'
 import { assistenzaHeroCercoLink, assistenzaHeroOffroLink } from '../lib/assistenzaHeroMode'
 import { comeFunzionaPath, profilesDirectoryPath } from '../lib/siteRoutes'
 import { registerWorkerProfileHref } from '../pages/auth/registerQuery'
 
 function initialsFromName(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || '?'
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('') || '?'
+  )
 }
 
 export function SiteHeader() {
@@ -23,10 +26,7 @@ export function SiteHeader() {
   const { user, isAuthenticated, isLoading, signOut } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [accountOpen, setAccountOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
-  const accountMenuId = useId()
-  const accountWrapRef = useRef<HTMLDivElement>(null)
 
   const onIscriviti = pathname === '/iscriviti'
   const onLogin = pathname === '/accedi'
@@ -34,6 +34,9 @@ export function SiteHeader() {
   const registerStartHref = onIscriviti ? registerWorkerProfileHref : '/registrazione/intent'
   const onComeFunziona = pathname === comeFunzionaPath
   const dashboardPath = user ? getDashboardPathForRole(user.role) : '/dashboard'
+
+  const showGuestAuth = !isLoading && !isAuthenticated
+  const showAccount = !isLoading && isAuthenticated && !!user
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16)
@@ -44,7 +47,6 @@ export function SiteHeader() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- chiudi menu alla navigazione
     setMobileOpen(false)
-    setAccountOpen(false)
   }, [pathname])
 
   useEffect(() => {
@@ -57,27 +59,13 @@ export function SiteHeader() {
   }, [mobileOpen])
 
   useEffect(() => {
-    if (!mobileOpen && !accountOpen) return
+    if (!mobileOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setMobileOpen(false)
-        setAccountOpen(false)
-      }
+      if (e.key === 'Escape') setMobileOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [mobileOpen, accountOpen])
-
-  useEffect(() => {
-    if (!accountOpen) return
-    function onPointerDown(e: MouseEvent) {
-      if (!accountWrapRef.current?.contains(e.target as Node)) {
-        setAccountOpen(false)
-      }
-    }
-    window.addEventListener('mousedown', onPointerDown)
-    return () => window.removeEventListener('mousedown', onPointerDown)
-  }, [accountOpen])
+  }, [mobileOpen])
 
   function scrollToTopOfPage() {
     if (typeof window === 'undefined') return
@@ -93,7 +81,6 @@ export function SiteHeader() {
     setSigningOut(true)
     try {
       await signOut()
-      setAccountOpen(false)
       closeDrawer()
       navigate('/')
     } finally {
@@ -101,11 +88,17 @@ export function SiteHeader() {
     }
   }
 
-  const showGuestAuth = !isLoading && !isAuthenticated
-  const showAccount = !isLoading && isAuthenticated && user
+  const topbarClass = [
+    'topbar',
+    scrolled ? 'topbar--scrolled' : '',
+    mobileOpen ? 'topbar--drawer-open' : '',
+    showAccount ? 'topbar--authed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <header className={`topbar${scrolled ? ' topbar--scrolled' : ''}${mobileOpen ? ' topbar--drawer-open' : ''}`}>
+    <header className={topbarClass}>
       <div className="topbar__inner">
         <BrandLogo size="md" />
 
@@ -149,45 +142,7 @@ export function SiteHeader() {
             </div>
           ) : null}
 
-          {!onRegister && showAccount ? (
-            <div className="topbar__account" ref={accountWrapRef}>
-              <button
-                type="button"
-                className={`topbar__account-trigger${accountOpen ? ' is-open' : ''}`}
-                aria-expanded={accountOpen}
-                aria-controls={accountMenuId}
-                aria-haspopup="menu"
-                onClick={() => setAccountOpen((v) => !v)}
-              >
-                <span className="topbar__account-avatar" aria-hidden>
-                  {initialsFromName(user.name)}
-                </span>
-                <span className="topbar__account-name">{user.name}</span>
-              </button>
-              {accountOpen ? (
-                <div id={accountMenuId} className="topbar__account-menu" role="menu">
-                  <Link
-                    role="menuitem"
-                    className="topbar__account-item"
-                    to={dashboardPath}
-                    onClick={() => setAccountOpen(false)}
-                  >
-                    Area riservata
-                  </Link>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="topbar__account-item topbar__account-item--danger"
-                    disabled={signingOut}
-                    onClick={() => void handleSignOut()}
-                  >
-                    <IconLogout size={16} aria-hidden />
-                    {signingOut ? 'Uscita…' : 'Esci'}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+          {!onRegister && showAccount ? <LoggedInAccountMenu variant="site" /> : null}
         </div>
 
         {!onRegister && (
@@ -219,7 +174,7 @@ export function SiteHeader() {
                 Menu
               </p>
               <p className="topbar__drawer-head-sub">
-                {showAccount
+                {showAccount && user
                   ? `Ciao ${user.name.split(' ')[0]}, gestisci il tuo account.`
                   : 'Scegli una sezione o accedi al tuo account.'}
               </p>
@@ -282,10 +237,10 @@ export function SiteHeader() {
                 </div>
               ) : null}
 
-              {showAccount ? (
+              {showAccount && user ? (
                 <div className="topbar__drawer-actions topbar__drawer-actions--account" role="group">
                   <div className="topbar__drawer-user">
-                    <span className="topbar__account-avatar" aria-hidden>
+                    <span className="account-menu__avatar" aria-hidden>
                       {initialsFromName(user.name)}
                     </span>
                     <span className="topbar__drawer-user-name">{user.name}</span>

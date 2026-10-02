@@ -89,6 +89,20 @@
   z-index: 110;
 }
 
+/* Loggato: header sempre leggibile (non trasparente “come guest”) */
+.topbar--authed {
+  background: color-mix(in srgb, var(--color-page) 78%, #fff);
+  border-bottom-color: color-mix(in srgb, var(--color-border) 70%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.topbar--authed.topbar--scrolled {
+  background: color-mix(in srgb, #fff 88%, var(--color-page));
+  border-bottom-color: var(--color-border);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-text) 5%, transparent);
+}
+
 /* Shell neutra: barra “pill” su .topbar__inner (un solo blur, solo in scroll). */
 .topbar--scrolled {
   background: transparent;
@@ -315,25 +329,25 @@
 
 .topbar__register:active { transform: scale(0.97); }
 
-.topbar__account {
+/* Account menu (sito + dashboard) — stato loggato sempre visibile */
+.account-menu {
   position: relative;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
-.topbar__account-trigger {
+.account-menu__trigger {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  max-width: min(220px, 42vw);
-  padding: 4px 10px 4px 4px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 90%, transparent);
+  max-width: min(240px, 46vw);
+  padding: 4px 12px 4px 4px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 88%, #fff);
+  background: #fff;
   color: var(--color-text);
   font: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
   cursor: pointer;
   transition:
     border-color 0.16s ease,
@@ -341,19 +355,18 @@
     background 0.16s ease;
 }
 
-.topbar__account-trigger:hover,
-.topbar__account-trigger.is-open {
-  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
-  background: #fff;
+.account-menu__trigger:hover,
+.account-menu.is-open .account-menu__trigger {
+  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
   box-shadow: 0 4px 14px color-mix(in srgb, var(--color-text) 6%, transparent);
 }
 
-.topbar__account-avatar {
+.account-menu__avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--color-primary-soft);
   color: var(--color-primary);
@@ -363,18 +376,39 @@
   flex-shrink: 0;
 }
 
-.topbar__account-name {
+.account-menu__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.account-menu__name {
+  max-width: 9.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 700;
 }
 
-.topbar__account-menu {
+.account-menu__hint {
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  opacity: 0.85;
+}
+
+.account-menu__dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   z-index: 80;
-  min-width: 11.5rem;
+  min-width: 12rem;
   padding: 6px;
   border: 1px solid var(--color-border);
   border-radius: 14px;
@@ -382,7 +416,7 @@
   box-shadow: 0 12px 28px color-mix(in srgb, var(--color-text) 10%, transparent);
 }
 
-.topbar__account-item {
+.account-menu__item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -400,18 +434,22 @@
   cursor: pointer;
 }
 
-.topbar__account-item:hover {
+.account-menu__item:hover {
   background: var(--color-primary-softer);
   color: var(--color-primary);
 }
 
-.topbar__account-item--danger {
+.account-menu__item--danger {
   color: color-mix(in srgb, var(--color-text) 88%, #b42318);
 }
 
-.topbar__account-item--danger:hover {
+.account-menu__item--danger:hover {
   background: color-mix(in srgb, #b42318 8%, #fff);
   color: #b42318;
+}
+
+.account-menu--dashboard .account-menu__trigger {
+  background: color-mix(in srgb, var(--color-page) 45%, #fff);
 }
 
 .topbar__drawer-actions--account {
@@ -433,11 +471,11 @@
 }
 
 @media (max-width: 720px) {
-  .topbar__account-name {
+  .account-menu__meta {
     display: none;
   }
 
-  .topbar__account-trigger {
+  .account-menu__trigger {
     padding: 4px;
   }
 }

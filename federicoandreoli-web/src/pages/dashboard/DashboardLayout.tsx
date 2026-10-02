@@ -12,6 +12,7 @@ import {
 } from '../../components/icons/DashboardIcons'
 import { BrandLogo } from '../../components/BrandLogo'
 import { FamilyHeaderProfileSearch } from '../../components/FamilyHeaderProfileSearch'
+import { LoggedInAccountMenu } from '../../components/LoggedInAccountMenu'
 import { contattiPath } from '../../lib/siteRoutes'
 
 export type AccountType = 'professional' | 'family' | 'agency' | 'structure' | 'admin'
@@ -234,6 +235,7 @@ export function DashboardLayout({
           ) : null}
 
           <div className="dash-header__right">
+            <LoggedInAccountMenu variant="dashboard" />
             <span className={`dash-account-badge dash-account-badge--${accountType}`}>
               {ACCOUNT_BADGE_LABELS[accountType]}
             </span>
