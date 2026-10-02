@@ -84,6 +84,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware('role:professional')->group(function (): void {
             Route::get('/professionals/me/profile', [ProfessionalProfileController::class, 'show']);
+            Route::get('/professionals/me/stats', [ProfessionalProfileController::class, 'stats']);
             Route::patch('/professionals/me/profile', [ProfessionalProfileController::class, 'update']);
             Route::post('/professionals/me/photo', [ProfessionalProfileController::class, 'uploadPhoto']);
             Route::get('/professionals/me/documents', [ProfessionalDocumentController::class, 'index']);

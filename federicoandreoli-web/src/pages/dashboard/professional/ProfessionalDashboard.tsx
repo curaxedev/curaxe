@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../auth/useAuth'
+import { useApplications } from '../../../hooks/useApplications'
 import { useBillingSubscription } from '../../../hooks/useBillingSubscription'
 import { useMessaging } from '../../../hooks/useMessaging'
 import { useNotifications } from '../../../hooks/useNotifications'
@@ -18,6 +19,10 @@ import type { MessageThread, MessagingParticipantRole } from '../../../lib/messa
 import { showBillingDemoCopy } from '../../../lib/billingFeatures'
 import { BILLING_PRODUCTS, formatBillingAmount, formatBillingDate } from '../../../lib/billingApi'
 import type { PlanType } from '../../../lib/billingTypes'
+import {
+  fetchProfessionalHomeStats,
+  type ProfessionalHomeStats,
+} from '../../../lib/professionalStatsApi'
 import type {
   ProfessionalDocument,
   ProfessionalDocumentSlot,
@@ -154,6 +159,9 @@ function SectionHome({
   unreadNotifications,
   contactThreads,
   userId,
+  applicationsSent,
+  applicationsViewed,
+  profileViewStats,
 }: {
   onUpgrade: () => void
   onGoTo: (s: string) => void
@@ -167,6 +175,9 @@ function SectionHome({
   unreadNotifications: number
   contactThreads: MessageThread[]
   userId: string
+  applicationsSent: number
+  applicationsViewed: number
+  profileViewStats: ProfessionalHomeStats
 }) {
   const [barWidth, setBarWidth] = useState(0)
 
@@ -177,6 +188,28 @@ function SectionHome({
   }, [completionPercent, loading])
 
   const latestRequests = contactThreads.slice(0, 2)
+  const unreadMessages = contactThreads.reduce(
+    (sum, t) => sum + (t.unreadByUserId[userId] ?? 0),
+    0,
+  )
+
+  const viewsTrend =
+    profileViewStats.weekChangePercent === null
+      ? profileViewStats.profileViewsLast7Days > 0
+        ? `${profileViewStats.profileViewsLast7Days} questa settimana`
+        : 'Nessuna questa settimana'
+      : profileViewStats.weekChangePercent >= 0
+        ? `+${profileViewStats.weekChangePercent}% questa settimana`
+        : `${profileViewStats.weekChangePercent}% questa settimana`
+
+  const applicationsTrend =
+    applicationsSent === 0
+      ? 'Nessuna candidatura ancora'
+      : applicationsViewed === 1
+        ? '1 visualizzata'
+        : applicationsViewed > 1
+          ? `${applicationsViewed} visualizzate`
+          : 'In attesa di risposta'
 
   return (
     <div className="dash-home">
@@ -243,9 +276,14 @@ function SectionHome({
           <div className="dash-stat-card__icon" style={{ background: 'var(--color-primary-softer)', color: 'var(--color-primary)' }}>
             <IconEye size={18} />
           </div>
-          <div className="dash-stat-card__value">47</div>
+          <div className="dash-stat-card__value">{profileViewStats.profileViewsTotal}</div>
           <div className="dash-stat-card__label">Visualizzazioni profilo</div>
-          <div className="dash-stat-card__trend"><IconTrendUp size={14} /> +12% questa settimana</div>
+          <div className="dash-stat-card__trend">
+            {profileViewStats.weekChangePercent !== null && profileViewStats.weekChangePercent > 0 ? (
+              <IconTrendUp size={14} />
+            ) : null}{' '}
+            {viewsTrend}
+          </div>
         </div>
         <div className="dash-stat-card">
           <div className="dash-stat-card__icon" style={{ background: 'var(--color-sage-softer)', color: 'var(--color-sage)' }}>
@@ -253,17 +291,24 @@ function SectionHome({
           </div>
           <div className="dash-stat-card__value">{contactThreads.length}</div>
           <div className="dash-stat-card__label">Conversazioni aperte</div>
-          <div className="dash-stat-card__trend" style={{ color: 'var(--color-accent)' }}>
-            Inbox unificata con i messaggi
+          <div
+            className="dash-stat-card__trend"
+            style={{ color: unreadMessages > 0 ? 'var(--color-accent)' : undefined }}
+          >
+            {unreadMessages > 0
+              ? `${unreadMessages} non lett${unreadMessages === 1 ? 'o' : 'i'}`
+              : contactThreads.length === 0
+                ? 'Nessun messaggio ancora'
+                : 'Tutto letto'}
           </div>
         </div>
         <div className="dash-stat-card">
           <div className="dash-stat-card__icon" style={{ background: 'var(--color-accent-softer)', color: 'var(--color-accent)' }}>
             <IconSend size={18} />
           </div>
-          <div className="dash-stat-card__value">3</div>
+          <div className="dash-stat-card__value">{applicationsSent}</div>
           <div className="dash-stat-card__label">Candidature inviate</div>
-          <div className="dash-stat-card__trend">1 visualizzata</div>
+          <div className="dash-stat-card__trend">{applicationsTrend}</div>
         </div>
       </div>
 
@@ -1346,9 +1391,16 @@ export function ProfessionalDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const billing = useBillingSubscription('professional')
   const notifications = useNotifications()
+  const applications = useApplications()
   const threadParam = searchParams.get('thread')
   const messaging = useMessaging({ initialThreadId: threadParam })
   const [billingToast, setBillingToast] = useState<string | null>(null)
+  const [profileViewStats, setProfileViewStats] = useState<ProfessionalHomeStats>({
+    profileViewsTotal: 0,
+    profileViewsLast7Days: 0,
+    profileViewsPrevious7Days: 0,
+    weekChangePercent: null,
+  })
   const {
     profile,
     documents: profileDocuments,
@@ -1367,6 +1419,16 @@ export function ProfessionalDashboard() {
   } = useProfessionalProfile()
   const [activeSection, setActiveSection] = useState('home')
   const [showUpgrade, setShowUpgrade] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchProfessionalHomeStats().then((stats) => {
+      if (!cancelled) setProfileViewStats(stats)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [activeSection, user?.id])
 
   const billingParam = searchParams.get('billing')
   const billingSectionParam = searchParams.get('section')
@@ -1489,6 +1551,9 @@ export function ProfessionalDashboard() {
             unreadNotifications={notifications.unreadCount}
             contactThreads={contactThreads}
             userId={user?.id ?? ''}
+            applicationsSent={applications.stats.sentCount ?? 0}
+            applicationsViewed={applications.stats.viewedCount ?? 0}
+            profileViewStats={profileViewStats}
           />
         )
       case 'profilo':

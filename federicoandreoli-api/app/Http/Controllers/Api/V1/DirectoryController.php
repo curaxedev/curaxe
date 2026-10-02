@@ -9,6 +9,7 @@ use App\Http\Resources\DirectoryStructureResource;
 use App\Models\JobPosting;
 use App\Models\Organization;
 use App\Models\ProfessionalProfile;
+use App\Models\ProfessionalProfileView;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -99,7 +100,7 @@ class DirectoryController
         return response()->json($payload);
     }
 
-    public function showProfile(string $id): JsonResponse
+    public function showProfile(Request $request, string $id): JsonResponse
     {
         $profile = ProfessionalProfile::query()
             ->with('user')
@@ -111,9 +112,41 @@ class DirectoryController
             return ApiResponse::error('Profilo non trovato.', 404, [], 'not_found');
         }
 
+        $this->recordProfileView($request, $profile);
+
         return (new DirectoryProfessionalDetailResource($profile))
             ->response()
             ->setStatusCode(200);
+    }
+
+    /**
+     * Conta 1 visualizzazione / visitatore / giorno (no auto-view del titolare).
+     */
+    private function recordProfileView(Request $request, ProfessionalProfile $profile): void
+    {
+        try {
+            $viewer = $request->user('sanctum');
+            if ($viewer !== null && (int) $viewer->id === (int) $profile->user_id) {
+                return;
+            }
+
+            $viewerKey = $viewer !== null
+                ? 'u:'.$viewer->id
+                : 'a:'.hash('sha256', $request->ip().'|'.substr((string) $request->userAgent(), 0, 160));
+
+            ProfessionalProfileView::query()->firstOrCreate(
+                [
+                    'professional_profile_id' => $profile->id,
+                    'viewer_key' => $viewerKey,
+                    'viewed_on' => now()->toDateString(),
+                ],
+                [
+                    'viewer_user_id' => $viewer?->id,
+                ],
+            );
+        } catch (\Throwable) {
+            // Best-effort: non bloccare la scheda pubblica.
+        }
     }
 
     public function showStructure(string $id): JsonResponse

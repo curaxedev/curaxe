@@ -229,8 +229,15 @@ export function useApplications() {
 
   const stats = useMemo(() => {
     if (actorRole === 'professional') {
+      const viewed = outgoingApplications.filter((a) =>
+        ['viewed', 'shortlisted', 'interview', 'offer', 'hired', 'accepted'].includes(a.status),
+      ).length
       const active = outgoingApplications.filter((a) => a.status === 'submitted' || a.status === 'viewed')
-      return { sentCount: outgoingApplications.length, activeCount: active.length }
+      return {
+        sentCount: outgoingApplications.length,
+        activeCount: active.length,
+        viewedCount: viewed,
+      }
     }
     if (actorRole === 'agency' || actorRole === 'structure') {
       return {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Resources\ProfessionalProfileResource;
 use App\Models\ProfessionalProfile;
+use App\Models\ProfessionalProfileView;
 use App\Models\Registration;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,58 @@ class ProfessionalProfileController
         return (new ProfessionalProfileResource($this->profileFor($request->user())))
             ->response()
             ->setStatusCode(200);
+    }
+
+    /**
+     * Metriche home dashboard professionista (visualizzazioni profilo).
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $profile = ProfessionalProfile::query()
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if ($profile === null) {
+            return response()->json([
+                'profileViewsTotal' => 0,
+                'profileViewsLast7Days' => 0,
+                'profileViewsPrevious7Days' => 0,
+                'weekChangePercent' => null,
+            ]);
+        }
+
+        $total = ProfessionalProfileView::query()
+            ->where('professional_profile_id', $profile->id)
+            ->count();
+
+        $last7Start = now()->subDays(6)->startOfDay();
+        $prev7Start = now()->subDays(13)->startOfDay();
+        $prev7End = now()->subDays(7)->endOfDay();
+
+        $last7 = ProfessionalProfileView::query()
+            ->where('professional_profile_id', $profile->id)
+            ->whereDate('viewed_on', '>=', $last7Start->toDateString())
+            ->count();
+
+        $prev7 = ProfessionalProfileView::query()
+            ->where('professional_profile_id', $profile->id)
+            ->whereDate('viewed_on', '>=', $prev7Start->toDateString())
+            ->whereDate('viewed_on', '<=', $prev7End->toDateString())
+            ->count();
+
+        $weekChangePercent = null;
+        if ($prev7 > 0) {
+            $weekChangePercent = (int) round((($last7 - $prev7) / $prev7) * 100);
+        } elseif ($last7 > 0) {
+            $weekChangePercent = 100;
+        }
+
+        return response()->json([
+            'profileViewsTotal' => $total,
+            'profileViewsLast7Days' => $last7,
+            'profileViewsPrevious7Days' => $prev7,
+            'weekChangePercent' => $weekChangePercent,
+        ]);
     }
 
     public function update(Request $request): JsonResponse
