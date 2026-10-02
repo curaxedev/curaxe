@@ -184,13 +184,8 @@ export function HomelySearchExplorer({
     queueMicrotask(() => inputRef.current?.focus())
   }
 
-  const pickMode = (m: AssistenzaHeroMode) => {
-    onModeChange(m)
-    setOpen(null)
-    onFocusChange?.(false)
-  }
-
-  const runSearch = () => {
+  const runSearch = (nextMode?: AssistenzaHeroMode) => {
+    const effectiveMode = nextMode ?? mode
     const label = (place?.label ?? query).trim()
     if (label && !place) {
       remember({ label, q: label })
@@ -199,11 +194,17 @@ export function HomelySearchExplorer({
     const href = buildProfilesDirectoryHref({
       istat: place?.istat,
       q: place?.istat ? undefined : qText || undefined,
-      intent: listingIntentFromAssistenzaMode(mode),
+      intent: listingIntentFromAssistenzaMode(effectiveMode),
     })
     setOpen(null)
     onFocusChange?.(false)
     navigate(href)
+  }
+
+  const pickMode = (m: AssistenzaHeroMode) => {
+    onModeChange(m)
+    // Scelta Cerco/Offro → avvia subito la ricerca
+    runSearch(m)
   }
 
   const onSubmit = (e: FormEvent) => {
@@ -475,13 +476,8 @@ export function HomelySearchExplorer({
           ) : null}
         </div>
 
-        <button
-          type="submit"
-          className={`cx-explorer__submit${isOpen ? ' is-wide' : ''}`}
-          aria-label="Cerca"
-        >
+        <button type="submit" className="cx-explorer__submit" aria-label="Cerca">
           <IconSearch />
-          <span className="cx-explorer__submit-label">Cerca</span>
         </button>
       </form>
     </div>

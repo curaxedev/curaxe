@@ -10117,22 +10117,6 @@
   transform: scale(1.04);
 }
 
-.cx-explorer__submit.is-wide {
-  width: auto;
-  padding: 0 1.1rem;
-}
-
-.cx-explorer__submit-label {
-  display: none;
-  font-size: 0.9375rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.cx-explorer__submit.is-wide .cx-explorer__submit-label {
-  display: inline;
-}
-
 .cx-explorer__pop {
   position: absolute;
   top: calc(100% + 0.65rem);
@@ -10369,15 +10353,6 @@
     height: 3rem;
     margin: 0.65rem 0.75rem 0.85rem;
     justify-self: stretch;
-  }
-
-  .cx-explorer__submit.is-wide,
-  .cx-explorer__submit {
-    width: calc(100% - 1.5rem);
-  }
-
-  .cx-explorer__submit-label {
-    display: inline;
   }
 
   .cx-explorer__pop,
