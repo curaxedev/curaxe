@@ -9,9 +9,11 @@ Piattaforma: SPA React + API Laravel.
 
 ## Deploy sicuro
 
-Guida completa (Actions, chiave SSH, cosa mettere / non mettere nei secret):
+- Repo primario (private, secrets/deploy keys): **[BackSoftwareJR/bk-curaxe](https://github.com/BackSoftwareJR/bk-curaxe)**
+- Mirror org: [curaxedev/curaxe](https://github.com/curaxedev/curaxe)
 
-→ **[docs/GITHUB-DEPLOY-SECURE.md](docs/GITHUB-DEPLOY-SECURE.md)**
+Guida go-live SSH: **[docs/GO-LIVE-SSH.md](docs/GO-LIVE-SSH.md)**  
+Guida Actions: **[docs/GITHUB-DEPLOY-SECURE.md](docs/GITHUB-DEPLOY-SECURE.md)**
 
 Altre guide:
 
