@@ -42,6 +42,32 @@ class AdminTest extends TestCase
             ->assertJsonPath('status', 'active');
     }
 
+    public function test_admin_can_delete_user(): void
+    {
+        $admin = User::query()->where('email', 'admin@assistenzafacile.it')->firstOrFail();
+        $pro = User::query()->where('email', 'maria.rossi@email.it')->firstOrFail();
+        Sanctum::actingAs($admin);
+
+        $this->deleteJson('/api/v1/admin/users/'.$pro->id)->assertNoContent();
+
+        $this->assertDatabaseMissing('users', ['id' => $pro->id]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'user.delete',
+            'subject_id' => (string) $pro->id,
+        ]);
+    }
+
+    public function test_admin_cannot_delete_self_or_other_admin(): void
+    {
+        $admin = User::query()->where('email', 'admin@assistenzafacile.it')->firstOrFail();
+        Sanctum::actingAs($admin);
+
+        $this->deleteJson('/api/v1/admin/users/'.$admin->id)
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
     public function test_non_admin_cannot_access_admin_users(): void
     {
         $pro = User::query()->where('email', 'maria.rossi@email.it')->firstOrFail();

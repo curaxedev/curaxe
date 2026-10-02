@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domains\Auth\Enums\UserRole;
+use App\Mail\Registration\AccountDeletedMail;
 use App\Models\AuditLog;
 use App\Models\JobPosting;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class AdminController
 {
@@ -81,6 +84,35 @@ class AdminController
         AuditLog::record($request->user()->id, 'user.reactivate', 'user', (string) $u->id);
 
         return $this->showUser($id);
+    }
+
+    public function destroyUser(Request $request, int $id): JsonResponse
+    {
+        $actor = $request->user();
+        $u = User::query()->find($id);
+        if ($u === null) {
+            return ApiResponse::error('Utente non trovato.', 404, [], 'not_found');
+        }
+        if ((int) $u->id === (int) $actor->id) {
+            return ApiResponse::error('Non puoi eliminare il tuo stesso account da qui.', 422, [], 'validation');
+        }
+        if ($u->role === UserRole::PlatformAdmin) {
+            return ApiResponse::error('Non puoi eliminare un admin della piattaforma.', 422, [], 'validation');
+        }
+
+        $email = $u->email;
+        $name = $u->name;
+        $subjectId = (string) $u->id;
+
+        DB::transaction(function () use ($u, $actor, $subjectId) {
+            $u->tokens()->delete();
+            AuditLog::record($actor->id, 'user.delete', 'user', $subjectId);
+            $u->delete();
+        });
+
+        Mail::to($email)->send(new AccountDeletedMail($name));
+
+        return ApiResponse::noContent();
     }
 
     public function pendingJobs(): JsonResponse

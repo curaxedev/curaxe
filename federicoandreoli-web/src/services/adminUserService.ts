@@ -413,6 +413,25 @@ export async function reactivateAdminUser(
   return toListItem(user)
 }
 
+export async function deleteAdminUser(userId: string, actorEmail?: string): Promise<void> {
+  await delay(300)
+  if (shouldSimulateServerError(actorEmail)) {
+    throw new AdminUserError('server', 'Servizio temporaneamente non disponibile. Riprova tra poco.')
+  }
+
+  const store = loadAdminUserStore()
+  const user = store.users.find((u) => u.id === userId)
+  if (!user) {
+    throw new AdminUserError('not_found', 'Utente non trovato.')
+  }
+  if (user.role === 'admin') {
+    throw new AdminUserError('validation', 'Non puoi eliminare un admin della piattaforma.')
+  }
+
+  store.users = store.users.filter((u) => u.id !== userId)
+  writeStore(store)
+}
+
 export function formatAdminUserDate(iso: string): string {
   return new Date(iso).toLocaleDateString('it-IT', {
     day: '2-digit',

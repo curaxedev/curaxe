@@ -4,6 +4,7 @@ import {
   filterAdminUsers,
   getAdminUserDetail,
   getAdminUsers,
+  deleteAdminUser,
   postAdminUserReactivate,
   postAdminUserSuspend,
 } from '../lib/adminUserApi'
@@ -170,6 +171,32 @@ export function useAdminUsers() {
     [reactivate, suspend],
   )
 
+  const remove = useCallback(
+    async (userId: string): Promise<boolean> => {
+      setActionLoadingId(userId)
+      setActionError(null)
+      const previous = users.find((u) => u.id === userId)
+
+      try {
+        await deleteAdminUser(userId, actorEmail)
+        setUsers((prev) => prev.filter((u) => u.id !== userId))
+        if (detailTargetId === userId) {
+          setDetailTargetId(null)
+          setDetail(null)
+          setDetailError(null)
+        }
+        showToast(previous ? `Account di ${previous.name} eliminato.` : 'Account eliminato.')
+        return true
+      } catch (err) {
+        setActionError(userErrorMessage(err, "Impossibile eliminare l'account."))
+        return false
+      } finally {
+        setActionLoadingId(null)
+      }
+    },
+    [actorEmail, detailTargetId, showToast, users],
+  )
+
   const clearActionError = useCallback(() => {
     setActionError(null)
   }, [])
@@ -198,6 +225,7 @@ export function useAdminUsers() {
     suspend,
     reactivate,
     toggleStatus,
+    remove,
     clearActionError,
   }
 }

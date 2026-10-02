@@ -247,6 +247,7 @@ function UserDetailModal({
   actionLoading,
   onClose,
   onToggleStatus,
+  onDelete,
   onRetry,
 }: {
   detail: AdminUserDetail | null
@@ -255,6 +256,7 @@ function UserDetailModal({
   actionLoading: boolean
   onClose: () => void
   onToggleStatus: () => void
+  onDelete: () => void
   onRetry: () => void
 }) {
   const [activeDocId, setActiveDocId] = useState(detail?.kycDocuments[0]?.id ?? '')
@@ -393,9 +395,19 @@ function UserDetailModal({
                 type="button"
                 className={detail.status === 'suspended' ? 'dash-btn dash-btn--sage' : 'dash-btn dash-btn--ghost'}
                 onClick={onToggleStatus}
-                disabled={actionLoading}
+                disabled={actionLoading || detail.role === 'admin'}
               >
                 {actionLoading ? '…' : detail.status === 'suspended' ? 'Riattiva account' : 'Sospendi account'}
+              </button>
+            ) : null}
+            {detail.role !== 'admin' ? (
+              <button
+                type="button"
+                className="dash-btn dash-btn--danger"
+                onClick={onDelete}
+                disabled={actionLoading}
+              >
+                Elimina account
               </button>
             ) : null}
             <button type="button" className="dash-btn dash-btn--primary" onClick={onClose}>
@@ -552,7 +564,7 @@ function SectionUsers() {
                             type="button"
                             className="dash-btn dash-btn--ghost"
                             onClick={() => void adminUsers.toggleStatus(u.id, u.status)}
-                            disabled={busy}
+                            disabled={busy || u.role === 'admin'}
                           >
                             {busy ? '…' : u.status === 'suspended' ? 'Riattiva' : 'Sospendi'}
                           </button>
@@ -561,7 +573,19 @@ function SectionUsers() {
                             Verifica
                           </button>
                         )}
-                        <button type="button" className="dash-btn dash-btn--danger" disabled title="Disponibile in un prossimo sprint">
+                        <button
+                          type="button"
+                          className="dash-btn dash-btn--danger"
+                          disabled={busy || u.role === 'admin'}
+                          title={u.role === 'admin' ? 'Non puoi eliminare un admin' : 'Elimina definitivamente'}
+                          onClick={() => {
+                            const ok = window.confirm(
+                              `Eliminare definitivamente l'account di ${u.name} (${u.email})?\n\nL'operazione non si può annullare.`,
+                            )
+                            if (!ok) return
+                            void adminUsers.remove(u.id)
+                          }}
+                        >
                           Elimina
                         </button>
                       </div>
@@ -584,6 +608,15 @@ function SectionUsers() {
           onToggleStatus={() => {
             if (!adminUsers.detail) return
             void adminUsers.toggleStatus(adminUsers.detail.id, adminUsers.detail.status)
+          }}
+          onDelete={() => {
+            if (!adminUsers.detail) return
+            const u = adminUsers.detail
+            const ok = window.confirm(
+              `Eliminare definitivamente l'account di ${u.name} (${u.email})?\n\nL'operazione non si può annullare.`,
+            )
+            if (!ok) return
+            void adminUsers.remove(u.id)
           }}
           onRetry={() => {
             if (adminUsers.detailTargetId) {

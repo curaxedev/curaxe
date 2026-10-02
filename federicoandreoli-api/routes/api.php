@@ -172,6 +172,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/admin/users/{id}', [AdminController::class, 'showUser']);
             Route::post('/admin/users/{id}/suspend', [AdminController::class, 'suspendUser']);
             Route::post('/admin/users/{id}/reactivate', [AdminController::class, 'reactivateUser']);
+            Route::delete('/admin/users/{id}', [AdminController::class, 'destroyUser']);
             Route::get('/admin/job-postings/pending', [AdminController::class, 'pendingJobs']);
             Route::post('/admin/job-postings/{id}/approve', [AdminController::class, 'approveJob']);
             Route::post('/admin/job-postings/{id}/reject', [AdminController::class, 'rejectJob']);

@@ -6,6 +6,7 @@ import { AdminUserError } from './adminUserTypes'
 import {
   fetchAdminUserDetail,
   fetchAdminUsers,
+  deleteAdminUser as deleteAdminUserMock,
   reactivateAdminUser,
   suspendAdminUser,
   ADMIN_USER_ROLE_LABELS,
@@ -14,7 +15,7 @@ import {
   formatAdminUserDate,
   formatAdminUserDateTime,
 } from '../services/adminUserService'
-import { HttpError, httpGet, httpPost } from './http'
+import { HttpError, httpDelete, httpGet, httpPost } from './http'
 import { isMockApiEnabled } from './runtimeConfig'
 
 export type {
@@ -164,5 +165,14 @@ export async function postAdminUserReactivate(
     return mapListItem(row)
   } catch (err) {
     throw toAdminError(err, 'Riattivazione utente non riuscita.')
+  }
+}
+
+export async function deleteAdminUser(userId: string, actorEmail?: string): Promise<void> {
+  if (isMockApiEnabled()) return deleteAdminUserMock(userId, actorEmail)
+  try {
+    await httpDelete(`/api/v1/admin/users/${userId}`)
+  } catch (err) {
+    throw toAdminError(err, 'Eliminazione utente non riuscita.')
   }
 }
