@@ -12,9 +12,10 @@ const OFFER_FIELD_META: Record<string, { label: string; stepId: OfferStepId }> =
 }
 
 const SEEKER_FIELD_META: Record<string, { label: string; stepId: SeekerStepId }> = {
-  seekerCareType: { label: 'Tipo assistenza', stepId: 'chi-sei' },
-  seekerForWhom: { label: 'Per chi', stepId: 'chi-sei' },
-  addressLine: { label: 'Zona o comune', stepId: 'chi-sei' },
+  seekerOrgKind: { label: 'Tipo profilo', stepId: 'tipo' },
+  seekerCareType: { label: 'Tipo assistenza', stepId: 'figura' },
+  seekerForWhom: { label: 'Per chi', stepId: 'per-chi' },
+  addressLine: { label: 'Zona o comune', stepId: 'dove' },
   fullName: { label: 'Nome e cognome', stepId: 'account' },
   email: { label: 'Email', stepId: 'account' },
   consentTermini: { label: 'Termini di servizio', stepId: 'account' },

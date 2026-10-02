@@ -2,6 +2,9 @@ export type RegisterIntent = 'seeker' | 'offer'
 
 export type PrimaryRole = 'nurse' | 'oss' | 'caregiver' | 'other'
 
+/** Chi cerca assistenza: famiglia o agenzia per il lavoro. */
+export type SeekerOrgKind = 'family' | 'agency'
+
 export type DayKey = 'lun' | 'mar' | 'mer' | 'gio' | 'ven' | 'sab' | 'dom'
 
 export type SlotKey = 'morning' | 'afternoon' | 'evening'
@@ -45,6 +48,7 @@ export type RegisterDraft = {
   coverageMode?: OfferCoverageMode | null
   coverageRegions?: string[]
   coverageRadiusKm?: number | null
+  seekerOrgKind?: SeekerOrgKind
   seekerCareType?: string
   seekerForWhom?: string
   seekerFrequency?: string
