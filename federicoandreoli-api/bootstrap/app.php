@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserRole::class,
             'turnstile' => \App\Http\Middleware\VerifyTurnstile::class,
+            'step_up' => \App\Http\Middleware\EnsureAdminStepUp::class,
         ]);
 
         // Cloudflare: IP reale del client per rate-limit / audit (solo se abilitato).

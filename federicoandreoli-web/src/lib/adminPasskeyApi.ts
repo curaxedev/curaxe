@@ -12,7 +12,17 @@ export type AdminPasskey = {
   name: string
   createdAt: string
   lastUsedAt: string | null
+  transports?: string[]
+  aaguid?: string | null
 }
+
+export const PASSKEY_LABEL_PRESETS = [
+  'Mac / iCloud',
+  'iPhone / iCloud',
+  'Telefono Google',
+  'Chiavetta YubiKey',
+  'Questo dispositivo',
+] as const
 
 type PublicKeyCredentialJSON = Record<string, unknown>
 
@@ -118,7 +128,10 @@ export async function listAdminPasskeys(): Promise<AdminPasskey[]> {
   return raw.passkeys
 }
 
-export async function registerAdminPasskey(name: string): Promise<AdminPasskey> {
+export async function registerAdminPasskey(
+  name: string,
+  stepUpToken?: string,
+): Promise<AdminPasskey> {
   if (isMockApiEnabled()) {
     throw new AuthError('network', 'Passkey non disponibili in modalità mock.')
   }
@@ -128,7 +141,10 @@ export async function registerAdminPasskey(name: string): Promise<AdminPasskey> 
 
   const begin = await httpPost<{ challengeId: string; options: PublicKeyCredentialJSON }>(
     '/api/v1/admin/passkeys/register/options',
-    { body: { name } },
+    {
+      body: { name },
+      headers: stepUpToken ? { 'X-Step-Up-Token': stepUpToken } : undefined,
+    },
   )
   const publicKey = parseCreationOptions(begin.options)
   const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null
@@ -142,14 +158,23 @@ export async function registerAdminPasskey(name: string): Promise<AdminPasskey> 
   })
 }
 
-export async function renameAdminPasskey(id: string, name: string): Promise<void> {
+export async function renameAdminPasskey(
+  id: string,
+  name: string,
+  stepUpToken?: string,
+): Promise<void> {
   if (isMockApiEnabled()) return
-  await httpPatch(`/api/v1/admin/passkeys/${id}`, { body: { name } })
+  await httpPatch(`/api/v1/admin/passkeys/${id}`, {
+    body: { name },
+    headers: stepUpToken ? { 'X-Step-Up-Token': stepUpToken } : undefined,
+  })
 }
 
-export async function deleteAdminPasskey(id: string): Promise<void> {
+export async function deleteAdminPasskey(id: string, stepUpToken?: string): Promise<void> {
   if (isMockApiEnabled()) return
-  await httpDelete(`/api/v1/admin/passkeys/${id}`)
+  await httpDelete(`/api/v1/admin/passkeys/${id}`, {
+    headers: stepUpToken ? { 'X-Step-Up-Token': stepUpToken } : undefined,
+  })
 }
 
 export async function loginWithPasskey(email: string): Promise<AuthUser> {

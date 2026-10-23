@@ -5,17 +5,23 @@ namespace App\Http\Controllers\Api\V1;
 use App\Models\AuditLog;
 use App\Models\BillingSetting;
 use App\Models\Subscription;
+use App\Services\Auth\AdminStepUpService;
+use App\Services\Stripe\PlanCatalogLockService;
 use App\Services\Stripe\StripeDiagnosticService;
 use App\Services\Stripe\SubscriptionBillingService;
+use App\Support\AdminSensitiveAction;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AdminBillingController
 {
     public function __construct(
         private readonly StripeDiagnosticService $diagnostic,
         private readonly SubscriptionBillingService $billing,
+        private readonly AdminStepUpService $stepUp,
+        private readonly PlanCatalogLockService $planLocks,
     ) {}
 
     public function settings(): JsonResponse
@@ -53,6 +59,32 @@ class AdminBillingController
             'plans.*.active' => ['nullable', 'boolean'],
             'plans.*.sortOrder' => ['nullable', 'integer', 'min:0', 'max:100'],
         ]);
+
+        $touchesKeys = ! empty($data['secretKey'])
+            || ! empty($data['webhookSecret'])
+            || array_key_exists('publishableKey', $data);
+        $touchesPlans = isset($data['plans'])
+            || array_key_exists('priceProfessional', $data)
+            || array_key_exists('priceAgency', $data)
+            || array_key_exists('priceStructure', $data);
+
+        try {
+            if ($touchesKeys) {
+                $this->stepUp->requireIfEnabled($request, AdminSensitiveAction::BILLING_STRIPE_KEYS);
+            } elseif ($touchesPlans) {
+                $this->stepUp->requireIfEnabled($request, AdminSensitiveAction::BILLING_PLANS);
+            }
+        } catch (HttpException $e) {
+            $action = $touchesKeys
+                ? AdminSensitiveAction::BILLING_STRIPE_KEYS
+                : AdminSensitiveAction::BILLING_PLANS;
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error_code' => 'step_up_required',
+                'action' => $action,
+            ], 403);
+        }
 
         $settings = BillingSetting::current();
         $mode = $data['mode'] ?? $settings->mode ?? 'test';
@@ -183,6 +215,12 @@ class AdminBillingController
                     'sortOrder' => (int) ($plan['sortOrder'] ?? $i + 1),
                 ];
             }
+
+            $lockError = $this->planLocks->validateCatalogUpdate($settings, $normalized);
+            if ($lockError !== null) {
+                return ApiResponse::error($lockError, 422, [], 'plan_locked');
+            }
+
             $settings->plans_catalog = $normalized;
             $settings->syncLegacyColumnsFromCatalog();
         }

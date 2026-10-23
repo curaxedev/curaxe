@@ -12,6 +12,7 @@ import {
   isProfessionalKycVerified,
   KYC_DOCUMENT_TYPE_LABELS,
 } from '../services/adminKycService'
+import { withAdminStepUp } from './adminSecurityApi'
 import { HttpError, httpGet, httpPost } from './http'
 import { isMockApiEnabled } from './runtimeConfig'
 
@@ -25,6 +26,9 @@ export {
 }
 
 function toError(err: unknown, fallback: string): AdminKycError {
+  if (err instanceof HttpError && err.code === 'step_up_required') {
+    throw err
+  }
   if (err instanceof HttpError) {
     if (err.kind === 'not_found') return new AdminKycError('not_found', err.message)
     if (err.kind === 'validation') return new AdminKycError('validation', err.message)
@@ -48,7 +52,11 @@ export async function postAdminKycApprove(
 ): Promise<AdminKycQueueItem> {
   if (isMockApiEnabled()) return approveAdminKycItem(verificationId, actorEmail)
   try {
-    await httpPost(`/api/v1/admin/kyc/${verificationId}/approve`)
+    await withAdminStepUp('kyc.decide', (token) =>
+      httpPost(`/api/v1/admin/kyc/${verificationId}/approve`, {
+        headers: token ? { 'X-Step-Up-Token': token } : undefined,
+      }),
+    )
     return {
       id: verificationId,
       professionalId: verificationId,
@@ -71,7 +79,12 @@ export async function postAdminKycReject(
 ): Promise<AdminKycQueueItem> {
   if (isMockApiEnabled()) return rejectAdminKycItem(verificationId, input, actorEmail)
   try {
-    await httpPost(`/api/v1/admin/kyc/${verificationId}/reject`, { body: { reason: input.reason } })
+    await withAdminStepUp('kyc.decide', (token) =>
+      httpPost(`/api/v1/admin/kyc/${verificationId}/reject`, {
+        body: { reason: input.reason },
+        headers: token ? { 'X-Step-Up-Token': token } : undefined,
+      }),
+    )
     return {
       id: verificationId,
       professionalId: verificationId,

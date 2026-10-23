@@ -67,7 +67,7 @@ import { getApiBaseUrl } from '../../../lib/runtimeConfig'
 import { httpGetBlob } from '../../../lib/http'
 import { AdminStripeSetupSection } from './AdminStripeSetupSection'
 import { AdminPlansCatalogSection } from './AdminPlansCatalogSection'
-import { AdminPasskeysPanel } from './AdminPasskeysPanel'
+import { AdminSecuritySection } from './AdminSecuritySection'
 import {
   postAdminCancelSubscription,
   postAdminExtendTrial,
@@ -1988,7 +1988,7 @@ export function AdminDashboard() {
       case 'account':       return (
         <div className="dash-admin-account">
           <AccountSettingsSection title="Il mio account" subtitle="Email, password e notifiche personali" />
-          <AdminPasskeysPanel />
+          <AdminSecuritySection />
         </div>
       )
       default:              return null

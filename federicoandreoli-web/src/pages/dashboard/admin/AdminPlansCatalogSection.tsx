@@ -5,6 +5,7 @@ import {
   getAdminBillingSettings,
   putAdminBillingSettings,
   type PlanCatalogEntry,
+  type PlanLockInfo,
 } from '../../../lib/adminBillingSettingsApi'
 import {
   AUDIENCE_LABELS,
@@ -83,6 +84,7 @@ export function AdminPlansCatalogSection() {
   const [plans, setPlans] = useState<PlanCatalogEntry[]>(() =>
     DEFAULT_PLAN_CATALOG.map((p) => ({ ...p, features: [...p.features] })),
   )
+  const [locks, setLocks] = useState<Record<string, PlanLockInfo>>({})
   const [selectedKey, setSelectedKey] = useState<string>(DEFAULT_PLAN_CATALOG[0]?.key ?? '')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -97,6 +99,7 @@ export function AdminPlansCatalogSection() {
       const data = await getAdminBillingSettings()
       const next = normalizePlans(data.plans)
       setPlans(next)
+      setLocks(data.planLocks ?? {})
       setSelectedKey((prev) => (next.some((p) => p.key === prev) ? prev : next[0]?.key ?? ''))
       setDirty(false)
     } catch (err) {
@@ -121,6 +124,9 @@ export function AdminPlansCatalogSection() {
     [plans, selectedKey],
   )
 
+  const selectedLock = selected ? locks[selected.key] : undefined
+  const isLocked = Boolean(selectedLock?.locked)
+
   const activePreview = useMemo(
     () => plans.filter((p) => p.active).sort((a, b) => a.sortOrder - b.sortOrder),
     [plans],
@@ -128,10 +134,29 @@ export function AdminPlansCatalogSection() {
 
   function updateSelected(patch: Partial<PlanCatalogEntry>) {
     if (!selected) return
+    if (isLocked) {
+      const commercial: (keyof PlanCatalogEntry)[] = [
+        'amountCents',
+        'interval',
+        'stripePriceId',
+        'audience',
+        'key',
+        'currency',
+      ]
+      for (const k of commercial) {
+        if (k in patch) {
+          setError(
+            `«${selected.label}» ha ${selectedLock?.activeSubscribers ?? 0} iscritti attivi: prezzo, audience e Price ID non sono modificabili.`,
+          )
+          return
+        }
+      }
+    }
     setPlans((prev) =>
       prev.map((p) => (p.key === selected.key ? { ...p, ...patch } : p)),
     )
     setDirty(true)
+    setError(null)
   }
 
   function setFeature(index: number, value: string) {
@@ -159,6 +184,14 @@ export function AdminPlansCatalogSection() {
   }
 
   function removePlan(key: string) {
+    const lock = locks[key]
+    if (lock?.locked) {
+      setError(
+        `Non puoi eliminare questo piano: ha ${lock.activeSubscribers} iscritti attivi.`,
+      )
+      return
+    }
+    if (!confirm('Eliminare questo piano dal catalogo?')) return
     setPlans((prev) => {
       if (prev.length <= 1) return prev
       const next = prev.filter((p) => p.key !== key)
@@ -203,9 +236,10 @@ export function AdminPlansCatalogSection() {
       const saved = await putAdminBillingSettings({ plans: payload })
       const next = normalizePlans(saved.plans)
       setPlans(next)
+      setLocks(saved.planLocks ?? {})
       setSelectedKey((prev) => (next.some((p) => p.key === prev) ? prev : next[0]?.key ?? ''))
       setDirty(false)
-      setToast('Catalogo piani salvato. I clienti vedono gli stessi importi e feature.')
+      setToast('Catalogo salvato. Unica fonte per clienti e checkout Stripe.')
     } catch (err) {
       setError(billingSettingsError(err))
     } finally {
@@ -238,8 +272,9 @@ export function AdminPlansCatalogSection() {
         <div>
           <h2 className="dash-section__title">Catalogo piani</h2>
           <p className="dash-section__subtitle">
-            Stessi nomi, prezzi e feature che vedono i clienti in dashboard e su Come funziona.
-            L’importo in UI deve coincidere con il Price ID Stripe collegato.
+            Unica gestione: crea, modifica ed elimina piani (nome, prezzo, feature, prova, Stripe Price
+            ID). Quello che salvi qui è ciò che vedono i clienti. La sezione Stripe sotto serve solo
+            a collegare webhook e chiavi.
           </p>
         </div>
         <div className="dash-admin-plans__actions">
@@ -270,6 +305,7 @@ export function AdminPlansCatalogSection() {
         <aside className="dash-admin-plans__list" aria-label="Elenco piani">
           {plans.map((p) => {
             const isSel = p.key === selected?.key
+            const lock = locks[p.key]
             return (
               <button
                 key={p.key}
@@ -284,8 +320,10 @@ export function AdminPlansCatalogSection() {
                   <strong>{p.label}</strong>
                   <span>
                     {AUDIENCE_LABELS[p.audience]} · {formatPlanPriceLabel(p)}
+                    {lock?.locked ? ` · ${lock.activeSubscribers} iscritti` : ''}
                   </span>
                 </span>
+                {lock?.locked ? <span className="dash-admin-plans__pill">Bloccato</span> : null}
                 {!p.active ? <span className="dash-admin-plans__pill">Off</span> : null}
               </button>
             )
@@ -295,6 +333,15 @@ export function AdminPlansCatalogSection() {
         <div className="dash-admin-plans__editor">
           {selected ? (
             <>
+              {isLocked ? (
+                <div className="dash-stripe-security-note" role="status" style={{ marginBottom: 16 }}>
+                  <strong>Piano con iscritti attivi ({selectedLock?.activeSubscribers}).</strong> Prezzo,
+                  intervallo, audience e Stripe Price ID non sono modificabili. Puoi ancora aggiornare
+                  nome, tagline, feature e visibilità. Eliminazione bloccata fino a che non restano
+                  abbonamenti active/trialing.
+                </div>
+              ) : null}
+
               <div className="dash-admin-plans__editor-grid">
                 <div className="dash-form-field">
                   <label className="dash-form-label" htmlFor="plan-label">
@@ -307,9 +354,7 @@ export function AdminPlansCatalogSection() {
                     onChange={(e) => {
                       const label = e.target.value
                       const patch: Partial<PlanCatalogEntry> = { label }
-                      if (selected.key.includes('_custom_') || selected.key.endsWith('_monthly') === false) {
-                        /* keep key */
-                      } else if (!selected.stripePriceId) {
+                      if (!isLocked && !selected.stripePriceId) {
                         patch.key = slugifyKey(label, selected.audience)
                       }
                       updateSelected(patch)
@@ -324,6 +369,7 @@ export function AdminPlansCatalogSection() {
                     id="plan-audience"
                     className="dash-form-input"
                     value={selected.audience}
+                    disabled={isLocked}
                     onChange={(e) =>
                       updateSelected({ audience: e.target.value as BillingAudience })
                     }
@@ -343,6 +389,7 @@ export function AdminPlansCatalogSection() {
                     type="number"
                     min={0}
                     step={0.01}
+                    disabled={isLocked}
                     value={(selected.amountCents / 100).toFixed(2)}
                     onChange={(e) =>
                       updateSelected({
@@ -359,6 +406,7 @@ export function AdminPlansCatalogSection() {
                     id="plan-interval"
                     className="dash-form-input"
                     value={selected.interval}
+                    disabled={isLocked}
                     onChange={(e) =>
                       updateSelected({ interval: e.target.value === 'year' ? 'year' : 'month' })
                     }
@@ -418,11 +466,13 @@ export function AdminPlansCatalogSection() {
                     placeholder="price_…"
                     autoComplete="off"
                     spellCheck={false}
+                    disabled={isLocked}
                     onChange={(e) => updateSelected({ stripePriceId: e.target.value.trim() || null })}
                   />
                   <p className="dash-admin-plans__hint">
-                    Deve corrispondere all’importo sopra (best practice Stripe: un Price = un importo fisso).
-                    Se cambi il prezzo in UI, crea un nuovo Price su Stripe e aggiorna questo ID.
+                    Unico posto dove collegare Stripe: crea il Price in Dashboard Stripe (importo fisso),
+                    copia <code>price_…</code> qui. Se cambi il prezzo UI, crea un nuovo Price e aggiorna
+                    l’ID (solo se non ci sono iscritti attivi).
                   </p>
                 </div>
                 <div className="dash-form-field dash-admin-plans__span-2">
@@ -433,6 +483,7 @@ export function AdminPlansCatalogSection() {
                     id="plan-key"
                     className="dash-form-input"
                     value={selected.key}
+                    disabled={isLocked}
                     onChange={(e) => updateSelected({ key: e.target.value.trim() })}
                   />
                 </div>
@@ -469,8 +520,9 @@ export function AdminPlansCatalogSection() {
                 <button
                   type="button"
                   className="dash-btn dash-btn--ghost"
-                  disabled={plans.length <= 1}
+                  disabled={plans.length <= 1 || isLocked}
                   onClick={() => removePlan(selected.key)}
+                  title={isLocked ? 'Bloccato: ci sono iscritti attivi' : undefined}
                 >
                   Elimina piano
                 </button>

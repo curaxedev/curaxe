@@ -69,5 +69,11 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(20)->by($request->ip().'|'.$userId);
         });
+
+        RateLimiter::for('step-up', function (Request $request) {
+            $userId = $request->user()?->id ?? 'guest';
+
+            return Limit::perMinute(12)->by($request->ip().'|'.$userId);
+        });
     }
 }

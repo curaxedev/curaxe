@@ -2,6 +2,7 @@
  * Admin Stripe billing settings + diagnostic (landlord wizard).
  */
 import { HttpError, httpGet, httpPost, httpPut } from './http'
+import { withAdminStepUp } from './adminSecurityApi'
 import { isMockApiEnabled } from './runtimeConfig'
 import { DEFAULT_PLAN_CATALOG, type PlanCatalogEntry } from './planCatalog'
 
@@ -21,6 +22,8 @@ export type BillingSettingsPayload = {
   trialDaysAgency: number
   trialDaysStructure: number
   plans: PlanCatalogEntry[]
+  /** Blocco edit commerciale se ci sono iscritti active/trialing sul Price ID. */
+  planLocks?: Record<string, PlanLockInfo>
   portalConfigurationId: string | null
   webhookEndpointId: string | null
   webhookUrl: string
@@ -59,14 +62,19 @@ export const STRIPE_BILLING_EVENTS = [
   'customer.subscription.trial_will_end',
 ] as const
 
+/** Wizard Stripe: solo infrastruttura. I piani si gestiscono solo nel Catalogo piani. */
 export const STRIPE_WIZARD_STEPS = [
   { id: 'mode', label: 'Modalità' },
   { id: 'webhook', label: 'Webhook' },
   { id: 'keys', label: 'Chiavi' },
-  { id: 'prices', label: 'Piani' },
   { id: 'verify', label: 'Verifica' },
   { id: 'done', label: 'Fine' },
 ] as const
+
+export type PlanLockInfo = {
+  activeSubscribers: number
+  locked: boolean
+}
 
 const MOCK_SETTINGS: BillingSettingsPayload = {
   mode: 'test',
@@ -82,6 +90,7 @@ const MOCK_SETTINGS: BillingSettingsPayload = {
   trialDaysAgency: 14,
   trialDaysStructure: 14,
   plans: DEFAULT_PLAN_CATALOG.map((p) => ({ ...p, features: [...p.features] })),
+  planLocks: {},
   portalConfigurationId: null,
   webhookEndpointId: null,
   webhookUrl: 'https://api.curaxe.it/api/v1/webhooks/stripe',
@@ -123,6 +132,21 @@ export type UpdateBillingSettingsInput = {
   plans?: PlanCatalogEntry[]
 }
 
+function billingSettingsStepUpAction(input: UpdateBillingSettingsInput): string | null {
+  const touchesKeys =
+    Boolean(input.secretKey) ||
+    Boolean(input.webhookSecret) ||
+    input.publishableKey !== undefined
+  const touchesPlans =
+    input.plans !== undefined ||
+    input.priceProfessional !== undefined ||
+    input.priceAgency !== undefined ||
+    input.priceStructure !== undefined
+  if (touchesKeys) return 'billing.stripe_keys'
+  if (touchesPlans) return 'billing.plans'
+  return null
+}
+
 export async function putAdminBillingSettings(
   input: UpdateBillingSettingsInput,
 ): Promise<BillingSettingsPayload> {
@@ -146,7 +170,14 @@ export async function putAdminBillingSettings(
         : MOCK_SETTINGS.setupCompletedAt,
     }
   }
-  return httpPut<BillingSettingsPayload>('/api/v1/admin/billing/settings', { body: input })
+  const action = billingSettingsStepUpAction(input)
+  const put = (token?: string) =>
+    httpPut<BillingSettingsPayload>('/api/v1/admin/billing/settings', {
+      body: input,
+      headers: token ? { 'X-Step-Up-Token': token } : undefined,
+    })
+  if (!action) return put()
+  return withAdminStepUp(action, put)
 }
 
 export async function postAdminBillingDiagnostic(): Promise<DiagnosticResult> {
@@ -170,21 +201,31 @@ export async function postAdminSubscriptionRefund(
   reason?: string,
 ): Promise<void> {
   if (isMockApiEnabled()) return
-  await httpPost(`/api/v1/admin/billing/subscriptions/${id}/refund`, {
-    body: { amountCents, reason },
-  })
+  await withAdminStepUp('billing.refund', (token) =>
+    httpPost(`/api/v1/admin/billing/subscriptions/${id}/refund`, {
+      body: { amountCents, reason },
+      headers: token ? { 'X-Step-Up-Token': token } : undefined,
+    }),
+  )
 }
 
 export async function postAdminExtendTrial(id: string, days: number): Promise<void> {
   if (isMockApiEnabled()) return
-  await httpPost(`/api/v1/admin/billing/subscriptions/${id}/extend-trial`, {
-    body: { days },
-  })
+  await withAdminStepUp('billing.subscription', (token) =>
+    httpPost(`/api/v1/admin/billing/subscriptions/${id}/extend-trial`, {
+      body: { days },
+      headers: token ? { 'X-Step-Up-Token': token } : undefined,
+    }),
+  )
 }
 
 export async function postAdminCancelSubscription(id: string): Promise<void> {
   if (isMockApiEnabled()) return
-  await httpPost(`/api/v1/admin/billing/subscriptions/${id}/cancel`)
+  await withAdminStepUp('billing.subscription', (token) =>
+    httpPost(`/api/v1/admin/billing/subscriptions/${id}/cancel`, {
+      headers: token ? { 'X-Step-Up-Token': token } : undefined,
+    }),
+  )
 }
 
 export function billingSettingsError(err: unknown): string {

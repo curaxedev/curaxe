@@ -76,9 +76,9 @@ final class AdminPasskeyService
                 new PublicKeyCredentialParameters('public-key', -257),
             ],
             authenticatorSelection: new AuthenticatorSelectionCriteria(
-                authenticatorAttachment: AuthenticatorSelectionCriteria::AUTHENTICATOR_ATTACHMENT_PLATFORM,
+                authenticatorAttachment: AuthenticatorSelectionCriteria::AUTHENTICATOR_ATTACHMENT_NO_PREFERENCE,
                 userVerification: AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_REQUIRED,
-                residentKey: AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_REQUIRED,
+                residentKey: AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_PREFERRED,
             ),
             attestation: PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_NONE,
             excludeCredentials: $exclude,
@@ -314,7 +314,115 @@ final class AdminPasskeyService
     }
 
     /**
-     * @return list<array{id: string, name: string, createdAt: string, lastUsedAt: string|null}>
+     * Assertion per utente già autenticato (step-up / reauth).
+     *
+     * @return array{challengeId: string, options: array<string, mixed>}
+     */
+    public function beginAssertionForUser(User $user): array
+    {
+        $this->assertAdmin($user);
+        $passkeys = WebauthnCredential::query()->where('user_id', $user->id)->get();
+        if ($passkeys->isEmpty()) {
+            throw new InvalidArgumentException('Nessuna passkey registrata.');
+        }
+
+        $rpId = $this->getRpId();
+        $origin = $this->getOrigin();
+        $challenge = random_bytes(32);
+        $challengeId = Str::random(32);
+        $allow = $passkeys->map(fn (WebauthnCredential $c) => new PublicKeyCredentialDescriptor(
+            'public-key',
+            $this->base64UrlDecode($c->credential_id),
+            $c->transports ?? [],
+        ))->all();
+
+        $options = new PublicKeyCredentialRequestOptions(
+            challenge: $challenge,
+            rpId: $rpId,
+            allowCredentials: $allow,
+            userVerification: PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_REQUIRED,
+            timeout: 60000,
+        );
+
+        cache()->put($this->stepUpKey($challengeId), [
+            'user_id' => $user->id,
+            'rp_id' => $rpId,
+            'origin' => $origin,
+            'options' => $this->serializer()->serialize($options, 'json'),
+        ], now()->addMinutes(self::CHALLENGE_TTL_MINUTES));
+
+        return [
+            'challengeId' => $challengeId,
+            'options' => $this->serializeToArray($options),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $assertionResponse
+     */
+    public function completeAssertionForUser(User $user, string $challengeId, array $assertionResponse): void
+    {
+        $this->assertAdmin($user);
+        $stored = cache()->pull($this->stepUpKey($challengeId));
+        if (! is_array($stored) || (int) ($stored['user_id'] ?? 0) !== $user->id) {
+            throw new InvalidArgumentException('Challenge step-up scaduta o non valida.');
+        }
+
+        try {
+            $serializer = $this->serializer();
+            $credential = $serializer->deserialize(
+                json_encode($assertionResponse, JSON_THROW_ON_ERROR),
+                PublicKeyCredential::class,
+                'json',
+            );
+            if (! $credential instanceof PublicKeyCredential
+                || ! $credential->response instanceof AuthenticatorAssertionResponse) {
+                throw new InvalidArgumentException('Risposta WebAuthn non valida.');
+            }
+
+            $credentialId = $this->base64UrlEncode($credential->rawId);
+            $passkey = WebauthnCredential::query()
+                ->where('user_id', $user->id)
+                ->where('credential_id_hash', hash('sha256', $credentialId))
+                ->first();
+            if ($passkey === null || ! hash_equals($passkey->credential_id, $credentialId)) {
+                throw new InvalidArgumentException('Passkey non riconosciuta per questo account.');
+            }
+
+            $record = $serializer->deserialize($passkey->credential_record, CredentialRecord::class, 'json');
+            $options = $serializer->deserialize(
+                (string) $stored['options'],
+                PublicKeyCredentialRequestOptions::class,
+                'json',
+            );
+            if (! $record instanceof CredentialRecord || ! $options instanceof PublicKeyCredentialRequestOptions) {
+                throw new InvalidArgumentException('Credenziale passkey non valida.');
+            }
+
+            $factory = $this->ceremonyFactory((string) $stored['origin'], (string) $stored['rp_id']);
+            $validator = AuthenticatorAssertionResponseValidator::create($factory->requestCeremony());
+            $updated = $validator->check(
+                $record,
+                $credential->response,
+                $options,
+                (string) $stored['rp_id'],
+                $this->userHandle($user),
+            );
+        } catch (InvalidArgumentException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            report($e);
+            throw new InvalidArgumentException('Verifica passkey non riuscita.');
+        }
+
+        $passkey->credential_record = $this->serializer()->serialize($updated, 'json');
+        $passkey->sign_count = $updated->counter;
+        $passkey->last_used_at = now();
+        $passkey->save();
+    }
+
+    /**
+     * @return list<array{id: string, name: string, createdAt: string, lastUsedAt: string|null, transports: list<string>, aaguid: string|null}>
      */
     public function list(User $user): array
     {
@@ -329,6 +437,8 @@ final class AdminPasskeyService
                 'name' => $c->name,
                 'createdAt' => $c->created_at?->toIso8601String() ?? '',
                 'lastUsedAt' => $c->last_used_at?->toIso8601String(),
+                'transports' => array_values($c->transports ?? []),
+                'aaguid' => $c->aaguid,
             ])
             ->all();
     }
@@ -348,12 +458,23 @@ final class AdminPasskeyService
         return $passkey;
     }
 
-    public function delete(User $user, int $id): void
+    public function delete(User $user, int $id, bool $securityTotalEnabled = false): void
     {
         $this->assertAdmin($user);
+        $count = WebauthnCredential::query()->where('user_id', $user->id)->count();
+        if ($securityTotalEnabled && $count <= 1) {
+            throw new InvalidArgumentException(
+                'Con Sicurezza totale attiva non puoi rimuovere l’ultima passkey. Disattiva prima Sicurezza totale.',
+            );
+        }
         $passkey = WebauthnCredential::query()->where('user_id', $user->id)->where('id', $id)->firstOrFail();
         $passkey->delete();
         AuditLog::record($user->id, 'passkey.deleted', WebauthnCredential::class, (string) $id);
+    }
+
+    private function stepUpKey(string $challengeId): string
+    {
+        return "admin-passkey-stepup:{$challengeId}";
     }
 
     private function assertAdmin(User $user): void

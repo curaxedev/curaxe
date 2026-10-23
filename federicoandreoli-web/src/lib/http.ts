@@ -30,6 +30,8 @@ export class HttpError extends Error {
   readonly kind: HttpErrorKind
   /** Codice macchina di dominio (`error_code` nella risposta Laravel), se presente. */
   readonly code?: string
+  /** Azione step-up richiesta (`action` nella risposta 403), se presente. */
+  readonly action?: string
   /** Errori di validazione Laravel: campo -> messaggi. */
   readonly errors: Record<string, string[]>
 
@@ -38,7 +40,8 @@ export class HttpError extends Error {
     status: number,
     message: string,
     errors?: Record<string, string[]>,
-    code?: string
+    code?: string,
+    action?: string,
   ) {
     super(message)
     this.name = 'HttpError'
@@ -46,6 +49,7 @@ export class HttpError extends Error {
     this.status = status
     this.errors = errors ?? {}
     this.code = code
+    this.action = action
   }
 
   /** Primo messaggio di validazione per un campo, se presente. */
@@ -65,6 +69,8 @@ export type HttpRequestOptions = {
   signal?: AbortSignal
   /** Non allegare il Bearer token (endpoint pubblici, default: allegalo se presente). */
   anonymous?: boolean
+  /** Header extra (es. X-Step-Up-Token). */
+  headers?: Record<string, string>
 }
 
 function buildUrl(path: string, query?: QueryParams): string {
@@ -126,17 +132,19 @@ async function ensureCsrfCookie(): Promise<void> {
 
 async function parseErrorBody(
   res: Response
-): Promise<{ message: string; errors?: Record<string, string[]>; code?: string }> {
+): Promise<{ message: string; errors?: Record<string, string[]>; code?: string; action?: string }> {
   try {
     const data = (await res.json()) as {
       message?: string
       errors?: Record<string, string[]>
       error_code?: string
+      action?: string
     }
     return {
       message: data.message || `Errore ${res.status}`,
       errors: data.errors,
       code: data.error_code,
+      action: data.action,
     }
   } catch {
     return { message: `Errore ${res.status}` }
@@ -144,7 +152,15 @@ async function parseErrorBody(
 }
 
 export async function httpRequest<T>(method: string, path: string, options: HttpRequestOptions = {}): Promise<T> {
-  const { query, body, formData, timeoutMs = DEFAULT_TIMEOUT_MS, signal, anonymous = false } = options
+  const {
+    query,
+    body,
+    formData,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    signal,
+    anonymous = false,
+    headers: extraHeaders,
+  } = options
 
   if (isMutatingMethod(method)) {
     await ensureCsrfCookie()
@@ -153,6 +169,7 @@ export async function httpRequest<T>(method: string, path: string, options: Http
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
+    ...extraHeaders,
   }
   const xsrf = readXsrfToken()
   if (xsrf) headers['X-XSRF-TOKEN'] = xsrf
@@ -222,8 +239,8 @@ export async function httpRequest<T>(method: string, path: string, options: Http
   }
 
   if (!res.ok) {
-    const { message, errors, code } = await parseErrorBody(res)
-    throw new HttpError(kindForStatus(res.status), res.status, message, errors, code)
+    const { message, errors, code, action } = await parseErrorBody(res)
+    throw new HttpError(kindForStatus(res.status), res.status, message, errors, code, action)
   }
 
   if (res.status === 204) return undefined as T

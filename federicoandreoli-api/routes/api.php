@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AdminBillingController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminOpsController;
 use App\Http\Controllers\Api\V1\AdminPasskeyController;
+use App\Http\Controllers\Api\V1\AdminSecurityController;
 use App\Http\Controllers\Api\V1\ApplicationController;
 use App\Http\Controllers\Api\V1\AuthPoliciesController;
 use App\Http\Controllers\Api\V1\B2BJobPostingController;
@@ -164,9 +165,21 @@ Route::prefix('v1')->group(function (): void {
             Route::put('/admin/billing/settings', [AdminBillingController::class, 'updateSettings']);
             Route::post('/admin/billing/diagnostic', [AdminBillingController::class, 'diagnostic']);
             Route::get('/admin/billing/required-events', [AdminBillingController::class, 'requiredEvents']);
-            Route::post('/admin/billing/subscriptions/{id}/refund', [AdminBillingController::class, 'refund']);
-            Route::post('/admin/billing/subscriptions/{id}/extend-trial', [AdminBillingController::class, 'extendTrial']);
-            Route::post('/admin/billing/subscriptions/{id}/cancel', [AdminBillingController::class, 'adminCancel']);
+            Route::post('/admin/billing/subscriptions/{id}/refund', [AdminBillingController::class, 'refund'])
+                ->middleware('step_up:billing.refund');
+            Route::post('/admin/billing/subscriptions/{id}/extend-trial', [AdminBillingController::class, 'extendTrial'])
+                ->middleware('step_up:billing.subscription');
+            Route::post('/admin/billing/subscriptions/{id}/cancel', [AdminBillingController::class, 'adminCancel'])
+                ->middleware('step_up:billing.subscription');
+
+            Route::get('/admin/security/settings', [AdminSecurityController::class, 'settings']);
+            Route::put('/admin/security/settings', [AdminSecurityController::class, 'updateSettings']);
+            Route::post('/admin/security/step-up/options', [AdminSecurityController::class, 'beginStepUp'])
+                ->middleware('throttle:step-up');
+            Route::post('/admin/security/step-up/verify', [AdminSecurityController::class, 'verifyStepUp'])
+                ->middleware('throttle:step-up');
+            Route::post('/admin/security/revoke-sessions', [AdminSecurityController::class, 'revokeSessions']);
+
             Route::get('/admin/passkeys', [AdminPasskeyController::class, 'index']);
             Route::post('/admin/passkeys/register/options', [AdminPasskeyController::class, 'beginRegister']);
             Route::post('/admin/passkeys/register/verify', [AdminPasskeyController::class, 'completeRegister']);
@@ -174,9 +187,12 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('/admin/passkeys/{id}', [AdminPasskeyController::class, 'destroy']);
             Route::get('/admin/users', [AdminController::class, 'users']);
             Route::get('/admin/users/{id}', [AdminController::class, 'showUser']);
-            Route::post('/admin/users/{id}/suspend', [AdminController::class, 'suspendUser']);
-            Route::post('/admin/users/{id}/reactivate', [AdminController::class, 'reactivateUser']);
-            Route::delete('/admin/users/{id}', [AdminController::class, 'destroyUser']);
+            Route::post('/admin/users/{id}/suspend', [AdminController::class, 'suspendUser'])
+                ->middleware('step_up:users.mutate');
+            Route::post('/admin/users/{id}/reactivate', [AdminController::class, 'reactivateUser'])
+                ->middleware('step_up:users.mutate');
+            Route::delete('/admin/users/{id}', [AdminController::class, 'destroyUser'])
+                ->middleware('step_up:users.mutate');
             Route::get('/admin/job-postings/pending', [AdminController::class, 'pendingJobs']);
             Route::post('/admin/job-postings/{id}/approve', [AdminController::class, 'approveJob']);
             Route::post('/admin/job-postings/{id}/reject', [AdminController::class, 'rejectJob']);
@@ -184,15 +200,18 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/admin/overview', [AdminOpsController::class, 'overview']);
             Route::get('/admin/family-requests', [AdminOpsController::class, 'familyRequests']);
             Route::get('/admin/kyc/pending', [AdminOpsController::class, 'kycPending']);
-            Route::post('/admin/kyc/{id}/approve', [AdminOpsController::class, 'kycApprove']);
-            Route::post('/admin/kyc/{id}/reject', [AdminOpsController::class, 'kycReject']);
+            Route::post('/admin/kyc/{id}/approve', [AdminOpsController::class, 'kycApprove'])
+                ->middleware('step_up:kyc.decide');
+            Route::post('/admin/kyc/{id}/reject', [AdminOpsController::class, 'kycReject'])
+                ->middleware('step_up:kyc.decide');
             Route::get('/admin/kyc/documents/{id}/file', [AdminOpsController::class, 'kycDocumentFile']);
             Route::get('/admin/tickets', [AdminOpsController::class, 'tickets']);
             Route::get('/admin/tickets/{id}', [AdminOpsController::class, 'showTicket']);
             Route::post('/admin/tickets/{id}/take', [AdminOpsController::class, 'takeTicket']);
             Route::post('/admin/tickets/{id}/close', [AdminOpsController::class, 'closeTicket']);
             Route::get('/admin/settings', [AdminOpsController::class, 'settings']);
-            Route::patch('/admin/settings', [AdminOpsController::class, 'updateSettings']);
+            Route::patch('/admin/settings', [AdminOpsController::class, 'updateSettings'])
+                ->middleware('step_up:settings.platform');
         });
     });
 });

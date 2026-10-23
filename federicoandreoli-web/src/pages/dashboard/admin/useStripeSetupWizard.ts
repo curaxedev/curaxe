@@ -21,12 +21,6 @@ export function useStripeSetupWizard() {
   const [secretKey, setSecretKey] = useState('')
   const [publishableKey, setPublishableKey] = useState('')
   const [webhookSecret, setWebhookSecret] = useState('')
-  const [priceProfessional, setPriceProfessional] = useState('')
-  const [priceAgency, setPriceAgency] = useState('')
-  const [priceStructure, setPriceStructure] = useState('')
-  const [trialDaysProfessional, setTrialDaysProfessional] = useState(14)
-  const [trialDaysAgency, setTrialDaysAgency] = useState(14)
-  const [trialDaysStructure, setTrialDaysStructure] = useState(14)
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -35,12 +29,6 @@ export function useStripeSetupWizard() {
       const data = await getAdminBillingSettings()
       setSettings(data)
       setPublishableKey(data.publishableKey ?? '')
-      setPriceProfessional(data.priceProfessional ?? '')
-      setPriceAgency(data.priceAgency ?? '')
-      setPriceStructure(data.priceStructure ?? '')
-      setTrialDaysProfessional(data.trialDaysProfessional)
-      setTrialDaysAgency(data.trialDaysAgency)
-      setTrialDaysStructure(data.trialDaysStructure)
       setDiagnostic(data.lastDiagnostic)
       if (data.setupComplete) setStep(STRIPE_WIZARD_STEPS.length - 1)
     } catch (err) {
@@ -54,7 +42,6 @@ export function useStripeSetupWizard() {
     void reload()
   }, [reload])
 
-  // Non lasciare secret in memoria React dopo uscita dal wizard.
   useEffect(() => {
     return () => {
       setSecretKey('')
@@ -108,18 +95,6 @@ export function useStripeSetupWizard() {
     setPublishableKey,
     webhookSecret,
     setWebhookSecret,
-    priceProfessional,
-    setPriceProfessional,
-    priceAgency,
-    setPriceAgency,
-    priceStructure,
-    setPriceStructure,
-    trialDaysProfessional,
-    setTrialDaysProfessional,
-    trialDaysAgency,
-    setTrialDaysAgency,
-    trialDaysStructure,
-    setTrialDaysStructure,
     reload,
     save,
     runDiagnostic,

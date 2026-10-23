@@ -88,14 +88,14 @@ class StripeDiagnosticService
             $whSecret ? 'Configurato ('.$settings->webhook_secret_hint.')' : 'Mancante',
         );
 
-        $pricesOk = $settings->price_professional
-            && $settings->price_agency
-            && $settings->price_structure;
+        $pricesOk = $settings->catalogHasRequiredPrices();
         $checks[] = $this->check(
             'prices',
-            'Price ID piani',
-            (bool) $pricesOk,
-            $pricesOk ? 'Tutti e 3 i piani mappati' : 'Configura price professional/agency/structure',
+            'Price ID piani (catalogo)',
+            $pricesOk,
+            $pricesOk
+                ? 'Ogni audience attiva ha un Price ID nel Catalogo piani'
+                : 'Apri Catalogo piani e collega un price_… a Professionista, Agenzia e Struttura',
         );
 
         $webhookUrl = rtrim((string) config('app.url'), '/').'/api/v1/webhooks/stripe';

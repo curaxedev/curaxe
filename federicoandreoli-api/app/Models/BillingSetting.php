@@ -324,9 +324,28 @@ class BillingSetting extends Model
         return $this->setup_completed_at !== null
             && $this->decryptedSecretKey() !== null
             && $this->decryptedWebhookSecret() !== null
-            && $this->price_professional
-            && $this->price_agency
-            && $this->price_structure;
+            && $this->catalogHasRequiredPrices();
+    }
+
+    /**
+     * Setup completo se ogni audience attiva (professional/agency/structure)
+     * ha almeno un piano attivo con Stripe Price ID — fonte unica: catalogo.
+     */
+    public function catalogHasRequiredPrices(): bool
+    {
+        $needed = ['professional' => false, 'agency' => false, 'structure' => false];
+        foreach ($this->resolvedPlansCatalog() as $plan) {
+            if (! ($plan['active'] ?? true)) {
+                continue;
+            }
+            $audience = (string) ($plan['audience'] ?? '');
+            $priceId = is_string($plan['stripePriceId'] ?? null) ? trim((string) $plan['stripePriceId']) : '';
+            if ($priceId !== '' && array_key_exists($audience, $needed)) {
+                $needed[$audience] = true;
+            }
+        }
+
+        return $needed['professional'] && $needed['agency'] && $needed['structure'];
     }
 
     /**
@@ -348,6 +367,7 @@ class BillingSetting extends Model
             'trialDaysAgency' => $this->trial_days_agency,
             'trialDaysStructure' => $this->trial_days_structure,
             'plans' => $this->resolvedPlansCatalog(),
+            'planLocks' => app(\App\Services\Stripe\PlanCatalogLockService::class)->locksFor($this),
             'portalConfigurationId' => $this->portal_configuration_id,
             'webhookEndpointId' => $this->webhook_endpoint_id,
             'webhookUrl' => rtrim((string) config('app.url'), '/').'/api/v1/webhooks/stripe',

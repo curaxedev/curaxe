@@ -3,15 +3,20 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Resources\UserResource;
+use App\Services\Auth\AdminLoginAlertService;
 use App\Services\Auth\AdminPasskeyService;
+use App\Services\Auth\AdminStepUpService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AdminPasskeyController
 {
     public function __construct(
         private readonly AdminPasskeyService $passkeys,
+        private readonly AdminStepUpService $stepUp,
+        private readonly AdminLoginAlertService $loginAlerts,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -26,7 +31,14 @@ class AdminPasskeyController
         ]);
 
         try {
+            $this->stepUp->requireForPasskeyManage($request, isFirstRegistration: true);
             $result = $this->passkeys->beginRegistration($request->user(), $data['name']);
+        } catch (HttpException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error_code' => 'step_up_required',
+                'action' => 'passkey.manage',
+            ], $e->getStatusCode());
         } catch (\InvalidArgumentException $e) {
             return ApiResponse::error($e->getMessage(), 422, [], 'passkey_error');
         }
@@ -55,6 +67,9 @@ class AdminPasskeyController
             'id' => (string) $passkey->id,
             'name' => $passkey->name,
             'createdAt' => $passkey->created_at?->toIso8601String(),
+            'lastUsedAt' => null,
+            'transports' => $passkey->transports ?? [],
+            'aaguid' => $passkey->aaguid,
         ], 201);
     }
 
@@ -65,7 +80,14 @@ class AdminPasskeyController
         ]);
 
         try {
+            $this->stepUp->requireForPasskeyManage($request);
             $passkey = $this->passkeys->rename($request->user(), (int) $id, $data['name']);
+        } catch (HttpException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error_code' => 'step_up_required',
+                'action' => 'passkey.manage',
+            ], $e->getStatusCode());
         } catch (\InvalidArgumentException $e) {
             return ApiResponse::error($e->getMessage(), 422, [], 'passkey_error');
         }
@@ -79,7 +101,18 @@ class AdminPasskeyController
     public function destroy(Request $request, string $id): JsonResponse
     {
         try {
-            $this->passkeys->delete($request->user(), (int) $id);
+            $this->stepUp->requireForPasskeyManage($request);
+            $this->passkeys->delete(
+                $request->user(),
+                (int) $id,
+                $this->stepUp->securityTotalEnabled($request->user()),
+            );
+        } catch (HttpException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error_code' => 'step_up_required',
+                'action' => 'passkey.manage',
+            ], $e->getStatusCode());
         } catch (\InvalidArgumentException $e) {
             return ApiResponse::error($e->getMessage(), 422, [], 'passkey_error');
         }
@@ -116,7 +149,18 @@ class AdminPasskeyController
                 $data['challengeId'],
                 $data['credential'],
             );
+            $this->loginAlerts->recordLogin($result['user'], $request, 'passkey', 'success');
         } catch (\InvalidArgumentException $e) {
+            $user = \App\Models\User::query()->where('email', strtolower(trim($data['email'])))->first();
+            if ($user) {
+                $outcome = str_contains($e->getMessage(), 'sospeso') ? 'blocked' : 'failed';
+                if ($outcome === 'blocked') {
+                    $this->loginAlerts->recordLogin($user, $request, 'passkey', 'blocked');
+                } else {
+                    $this->loginAlerts->recordFailedAttempt($user, $request, 'passkey', $e->getMessage());
+                }
+            }
+
             return ApiResponse::error($e->getMessage(), 422, [], 'passkey_error');
         }
 

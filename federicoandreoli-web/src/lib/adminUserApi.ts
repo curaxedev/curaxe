@@ -15,6 +15,7 @@ import {
   formatAdminUserDate,
   formatAdminUserDateTime,
 } from '../services/adminUserService'
+import { withAdminStepUp } from './adminSecurityApi'
 import { HttpError, httpDelete, httpGet, httpPost } from './http'
 import { isMockApiEnabled } from './runtimeConfig'
 
@@ -36,6 +37,9 @@ export {
 }
 
 function toAdminError(err: unknown, fallback: string): AdminUserError {
+  if (err instanceof HttpError && err.code === 'step_up_required') {
+    throw err
+  }
   if (err instanceof HttpError) {
     if (err.kind === 'not_found') return new AdminUserError('not_found', err.message)
     return new AdminUserError('server', err.message || fallback)
@@ -156,14 +160,18 @@ export async function postAdminUserSuspend(
 ): Promise<AdminUserListItem> {
   if (isMockApiEnabled()) return suspendAdminUser(userId, actorEmail)
   try {
-    const row = await httpPost<{
-      id: string
-      name: string
-      email: string
-      role: string
-      status: string
-      createdAt?: string
-    }>(`/api/v1/admin/users/${userId}/suspend`)
+    const row = await withAdminStepUp('users.mutate', (token) =>
+      httpPost<{
+        id: string
+        name: string
+        email: string
+        role: string
+        status: string
+        createdAt?: string
+      }>(`/api/v1/admin/users/${userId}/suspend`, {
+        headers: token ? { 'X-Step-Up-Token': token } : undefined,
+      }),
+    )
     return mapListItem(row)
   } catch (err) {
     throw toAdminError(err, 'Sospensione utente non riuscita.')
@@ -176,14 +184,18 @@ export async function postAdminUserReactivate(
 ): Promise<AdminUserListItem> {
   if (isMockApiEnabled()) return reactivateAdminUser(userId, actorEmail)
   try {
-    const row = await httpPost<{
-      id: string
-      name: string
-      email: string
-      role: string
-      status: string
-      createdAt?: string
-    }>(`/api/v1/admin/users/${userId}/reactivate`)
+    const row = await withAdminStepUp('users.mutate', (token) =>
+      httpPost<{
+        id: string
+        name: string
+        email: string
+        role: string
+        status: string
+        createdAt?: string
+      }>(`/api/v1/admin/users/${userId}/reactivate`, {
+        headers: token ? { 'X-Step-Up-Token': token } : undefined,
+      }),
+    )
     return mapListItem(row)
   } catch (err) {
     throw toAdminError(err, 'Riattivazione utente non riuscita.')
@@ -193,7 +205,11 @@ export async function postAdminUserReactivate(
 export async function deleteAdminUser(userId: string, actorEmail?: string): Promise<void> {
   if (isMockApiEnabled()) return deleteAdminUserMock(userId, actorEmail)
   try {
-    await httpDelete(`/api/v1/admin/users/${userId}`)
+    await withAdminStepUp('users.mutate', (token) =>
+      httpDelete(`/api/v1/admin/users/${userId}`, {
+        headers: token ? { 'X-Step-Up-Token': token } : undefined,
+      }),
+    )
   } catch (err) {
     throw toAdminError(err, 'Eliminazione utente non riuscita.')
   }
