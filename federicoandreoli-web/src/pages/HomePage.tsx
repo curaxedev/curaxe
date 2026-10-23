@@ -241,16 +241,18 @@ export function HomePage() {
   const activeCategoryLabel =
     homeCercoPeopleCategories.find((c) => c.id === activeCategory)?.label ?? activeCategory
 
+  const stickyChromeOn = stickySearchVisible || stickyCityFocused
+
   return (
     <SiteShell>
       <HomeStickySearch
-        visible={stickySearchVisible || stickyCityFocused}
+        visible={stickyChromeOn}
         heroSearch={heroSearch}
         typewriterActive={typewriterActive}
         typewriterText={typewriterText}
         onStickyCityFocusChange={setStickyCityFocused}
       />
-      <main className="home-page">
+      <main className={`home-page${stickyChromeOn ? ' home-page--sticky-search' : ''}`}>
 
         {/* ── Hero ──────────────────────────────────────────── */}
         <section className="hero-sitly home-hero-animate" aria-label="Presentazione del servizio">

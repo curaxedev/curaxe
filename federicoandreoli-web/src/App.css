@@ -10,7 +10,11 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow-x: clip;
+  overflow-y: visible;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   /* Header fixed: riserva spazio così il contenuto non finisce sotto */
   padding-top: var(--header-h);
   font-family: var(--font-body);
@@ -801,7 +805,10 @@
     margin-top: 8px;
     height: calc(var(--header-h) - 12px);
     padding: 0 14px 0 16px;
-    max-width: calc(100vw - var(--space-4) * 2);
+    /* 100% non 100vw: evita overflow orizzontale / viewport “allargata” */
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    box-sizing: border-box;
     border-radius: 999px;
     overflow: visible;
     background: color-mix(in srgb, #fdfcfb 90%, rgba(255, 255, 255, 0.08));
@@ -2181,7 +2188,7 @@
   border-radius: 10px;
 }
 
-/* Barra ricerca sticky: fascia continua sotto l’header (header resta sticky) */
+/* Barra ricerca sticky: sotto header; su mobile copertura glass anti-bleed */
 .sticky-hero-search {
   position: fixed;
   top: var(--header-h);
@@ -2197,7 +2204,9 @@
   transition:
     opacity 0.32s var(--motion-ease),
     transform 0.32s var(--motion-ease);
-  overflow: visible;
+  overflow: hidden;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .sticky-hero-search--visible {
@@ -2207,7 +2216,6 @@
 }
 
 .sticky-hero-search--chrome {
-  /* Niente fascia bianca sotto la barra: solo vetro sulla pill */
   background: transparent;
   border-bottom: none;
   box-shadow: none;
@@ -2215,9 +2223,10 @@
 
 .sticky-hero-search__inner {
   width: 100%;
-  max-width: min(720px, 100%);
+  max-width: min(560px, 100%);
   overflow: visible;
   padding: 6px clamp(12px, 3.5vw, 20px) 8px;
+  box-sizing: border-box;
 }
 
 .sticky-hero-search__launch {
@@ -2225,8 +2234,9 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 44px;
-  padding: 0 6px 0 16px;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 0 6px 0 14px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, #fff 55%, var(--color-border) 45%);
   background: color-mix(in srgb, #fdfcfb 48%, rgba(255, 255, 255, 0.1));
@@ -2240,6 +2250,7 @@
   text-align: left;
   cursor: pointer;
   color: var(--color-text);
+  box-sizing: border-box;
 }
 
 .sticky-hero-search__launch-text {
@@ -2330,15 +2341,38 @@
   -webkit-backdrop-filter: saturate(2) blur(24px);
 }
 
+/* Hero / intro search nascoste quando la sticky è attiva: niente testo fantasma sotto */
+.home-page--sticky-search #search.cx-explorer,
+.home-page--sticky-search #prof-dir-geo-search {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--motion-ease);
+}
+
 @media (max-width: 859px) {
   .sticky-hero-search {
+    /* Copre da sotto l’header: blocca bleed del contenuto in scroll */
     top: var(--header-h);
+    left: 0;
+    right: 0;
     padding: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .sticky-hero-search--chrome.sticky-hero-search--visible {
+    background: color-mix(in srgb, var(--home-sky-band) 42%, rgba(253, 252, 251, 0.55));
+    backdrop-filter: saturate(1.55) blur(18px);
+    -webkit-backdrop-filter: saturate(1.55) blur(18px);
+    border-bottom: 1px solid color-mix(in srgb, #fff 40%, var(--color-border) 60%);
   }
 
   .sticky-hero-search__inner {
-    max-width: none;
-    padding: 4px 12px 8px;
+    /* Allineata alla pill header / contenuto, non full-bleed */
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    margin-inline: auto;
+    padding: 6px 0 10px;
   }
 
   .hero-search:not(.hero-search--sticky-bar) {
@@ -9670,7 +9704,7 @@ button.candidacy-auth-dialog__btn {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(420px, calc(100vw - 24px));
+  width: min(420px, calc(100% - 24px));
   max-height: min(86vh, 720px);
   overflow: auto;
   background: #f4f7fa;
@@ -12903,7 +12937,8 @@ button.candidacy-auth-dialog__btn {
   top: calc(100% + 0.65rem);
   left: 0;
   z-index: 50;
-  min-width: min(100vw - 2rem, 24rem);
+  min-width: min(calc(100% - 2rem), 24rem);
+  max-width: min(calc(100% - 1rem), 26rem);
   max-width: 26rem;
   max-height: min(78vh, 34rem);
   overflow-x: hidden;
@@ -12924,7 +12959,7 @@ button.candidacy-auth-dialog__btn {
 .cx-explorer__pop--mode {
   left: 50%;
   transform: translateX(-42%);
-  min-width: min(100vw - 2rem, 26rem);
+  min-width: min(calc(100% - 2rem), 26rem);
   max-width: 28rem;
   padding: 1.35rem 1.2rem 1.35rem;
 }

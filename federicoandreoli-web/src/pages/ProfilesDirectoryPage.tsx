@@ -274,7 +274,7 @@ export function ProfilesDirectoryPage() {
         stickyHero={stickyHero}
         onStickyFocusChange={setStickyBarGeoFocused}
       />
-      <main className="home-page prof-dir">
+      <main className={`home-page prof-dir${stickyOverlayVisible ? ' home-page--sticky-search' : ''}`}>
         <div className="prof-dir__intro">
           <h1 className="visually-hidden">Profili e organizzazioni</h1>
 
