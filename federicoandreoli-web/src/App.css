@@ -6547,6 +6547,18 @@ button.candidacy-auth-dialog__btn {
   flex: 1;
 }
 
+.dash-header__brand {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .dash-header__right {
   display: flex;
   align-items: center;

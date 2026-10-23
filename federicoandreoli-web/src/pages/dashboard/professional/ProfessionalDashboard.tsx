@@ -906,14 +906,16 @@ export function ProfessionalDashboard() {
   }
 
   const goToSection = (section: string) => {
-    if (
-      activeSection === 'profilo' &&
-      section !== 'profilo' &&
-      (profileDirty || profileEditorRef.current?.isDirty())
-    ) {
+    if (section === 'profilo') {
+      setLeavePrompt(null)
+      applySection(section)
+      return
+    }
+    if (activeSection === 'profilo' && (profileDirty || profileEditorRef.current?.isDirty())) {
       setLeavePrompt({ nextSection: section })
       return
     }
+    setLeavePrompt(null)
     applySection(section)
   }
 

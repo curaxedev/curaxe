@@ -230,7 +230,6 @@ ref,
   const photoInputRef = useRef<HTMLInputElement | null>(null)
   const editorTopRef = useRef<HTMLDivElement | null>(null)
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastSavedJson = useRef('')
   const patchJsonRef = useRef('')
 
   const [step, setStep] = useState<ProfileStepId>('dati')
@@ -239,6 +238,8 @@ ref,
   const [previewOpen, setPreviewOpen] = useState(false)
   const [formReady, setFormReady] = useState(false)
   const [baselineTick, setBaselineTick] = useState(0)
+  /** Snapshot salvato: null finché il form non è idratato (evita dirty falso al mount). */
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -269,8 +270,10 @@ ref,
   useEffect(() => {
     if (!profile) {
       setFormReady(false)
+      setSavedSnapshot(null)
       return
     }
+    setSavedSnapshot(null)
     setFirstName(profile.identity.firstName)
     setLastName(profile.identity.lastName)
     setProfessionalTitle(profile.identity.professionalTitle)
@@ -462,15 +465,16 @@ ref,
   ])
   patchJsonRef.current = patchJson
 
-  const dirty = formReady && patchJson !== lastSavedJson.current
+  const dirty = savedSnapshot !== null && patchJson !== savedSnapshot
 
   useEffect(() => {
-    if (!formReady) return
-    lastSavedJson.current = patchJsonRef.current
+    if (!formReady) {
+      setSavedSnapshot(null)
+      return
+    }
+    // Idrafa baseline dopo che gli state del profilo sono nel patch corrente.
+    setSavedSnapshot(patchJsonRef.current)
     setSaveStatus('idle')
-    onDirtyChange?.(false)
-    // Solo al load profilo / discard (baselineTick), non a ogni keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intenzionale
   }, [baselineTick, formReady])
 
   useEffect(() => {
@@ -489,8 +493,9 @@ ref,
 
   const persistNow = useCallback(async (): Promise<boolean> => {
     const json = patchJsonRef.current
-    if (json === lastSavedJson.current) {
+    if (savedSnapshot !== null && json === savedSnapshot) {
       setSaveStatus('idle')
+      onDirtyChange?.(false)
       return true
     }
     setSaveStatus('saving')
@@ -499,7 +504,7 @@ ref,
       setSaveStatus('error')
       return false
     }
-    lastSavedJson.current = json
+    setSavedSnapshot(json)
     setSaveStatus('saved')
     setSaved(true)
     onDirtyChange?.(false)
@@ -509,7 +514,7 @@ ref,
       setSaveStatus((s) => (s === 'saved' ? 'idle' : s))
     }, 2200)
     return true
-  }, [onSave, onDirtyChange])
+  }, [onSave, onDirtyChange, savedSnapshot])
 
   const discardNow = useCallback(() => {
     if (!profile) return
@@ -538,17 +543,23 @@ ref,
     setAvailableToMove(profile.availableToMove)
     setCertifications(certNorm.certifications)
     setSaveStatus('idle')
+    setSavedSnapshot(null)
     setBaselineTick((n) => n + 1)
-  }, [profile])
+    onDirtyChange?.(false)
+  }, [profile, onDirtyChange])
 
   useImperativeHandle(
     ref,
     () => ({
-      isDirty: () => patchJsonRef.current !== lastSavedJson.current,
+      isDirty: () => {
+        const snap = savedSnapshot
+        if (snap === null) return false
+        return patchJsonRef.current !== snap
+      },
       save: persistNow,
       discard: discardNow,
     }),
-    [persistNow, discardNow],
+    [persistNow, discardNow, savedSnapshot],
   )
 
   const saveStatusLabel =
@@ -602,7 +613,7 @@ ref,
 
   const goStep = async (id: ProfileStepId) => {
     if (id === step) return
-    if (patchJsonRef.current !== lastSavedJson.current) {
+    if (savedSnapshot !== null && patchJsonRef.current !== savedSnapshot) {
       const ok = await persistNow()
       if (!ok) return
     }

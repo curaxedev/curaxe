@@ -108,7 +108,6 @@ export function DashboardLayout({
     .join('')
     .toUpperCase()
 
-  const activeLabel = navItems.find((n) => n.id === activeSection)?.label ?? ''
   const totalUnread = navItems.reduce((sum, n) => sum + (n.badge ?? 0), 0)
 
   const handleNav = (id: string) => {
@@ -220,12 +219,14 @@ export function DashboardLayout({
       <div className="dash-main">
         <header className={`dash-header${accountType === 'family' ? ' dash-header--family-search' : ''}`}>
           <div className="dash-header__left">
-            <div className="dash-header__avatar">{initials}</div>
-            <nav className="dash-breadcrumb" aria-label="Breadcrumb">
-              <span>Dashboard</span>
-              <span className="dash-breadcrumb__sep">/</span>
-              <span className="dash-breadcrumb__current">{activeLabel}</span>
-            </nav>
+            <button
+              type="button"
+              className="dash-header__brand"
+              onClick={() => navigate(brandPath)}
+              aria-label="Torna alla home dashboard"
+            >
+              <BrandLogo link={false} size="sm" wordmarkOnly />
+            </button>
           </div>
 
           {accountType === 'family' ? (
