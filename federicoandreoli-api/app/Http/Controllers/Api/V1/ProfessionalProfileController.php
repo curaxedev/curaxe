@@ -9,6 +9,7 @@ use App\Models\Registration;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\DirectoryCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -181,6 +182,7 @@ class ProfessionalProfileController
         }
 
         $profile->save();
+        DirectoryCache::bump();
 
         return (new ProfessionalProfileResource($profile))
             ->response()

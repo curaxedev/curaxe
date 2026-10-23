@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useId, useMemo, useRef, type KeyboardEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ItaliaGeoSearchCombobox } from '../components/ItaliaGeoSearchCombobox'
 import { IconCheckMark, IconChevronRight } from '../components/icons/DashboardIcons'
@@ -74,7 +74,11 @@ function DirectoryProfileCard({ card }: { card: DirectoryProfileSummary }) {
 
   const cardClassName =
     'home-profile-carousel__card home-profile-carousel__card--sitly pro-card pro-card--link prof-dir-profile-card'
-  const ariaLabel = `${card.name}, ${card.role}, ${card.locationLabel}`
+  const distanceHint =
+    typeof card.distanceKm === 'number' && Number.isFinite(card.distanceKm)
+      ? ` · ~${Math.round(card.distanceKm)} km`
+      : ''
+  const ariaLabel = `${card.name}, ${card.role}, ${card.locationLabel}${distanceHint}`
 
   const cardChildren = (
     <>
@@ -93,7 +97,10 @@ function DirectoryProfileCard({ card }: { card: DirectoryProfileSummary }) {
         <div className="home-profile-carousel__scrim" aria-hidden />
         <div className="home-profile-carousel__overlay-top">
           <h3 className="home-profile-carousel__overlay-name">{card.name}</h3>
-          <p className="home-profile-carousel__overlay-area">{card.locationLabel}</p>
+          <p className="home-profile-carousel__overlay-area">
+            {card.locationLabel}
+            {distanceHint}
+          </p>
         </div>
         {card.online ? (
           <span className="prof-dir__online-cap" title="Online">
@@ -188,6 +195,9 @@ export function ProfilesDirectoryPage() {
     hasMore,
     reload,
     loadMore,
+    geoMode,
+    proximityOf,
+    maxKm,
   } = useDirectorySearch({ intent, place: selectedPlace })
 
   const comboboxKey = `geo-${istatParam}|${qParam}|${searchParams.get(PROFILI_INTENT_PARAM) ?? ''}`
@@ -334,6 +344,13 @@ export function ProfilesDirectoryPage() {
                 ({loading ? '…' : total} {total === 1 ? 'scheda' : 'schede'})
               </span>
             </h2>
+
+            {!loading && !error && geoMode === 'proximity' && visible.length > 0 ? (
+              <p className="prof-dir__proximity-note" role="status">
+                Nessun profilo esatto a {proximityOf ?? 'questa città'}: mostriamo chi opera entro circa{' '}
+                {maxKm ?? 40} km (nel raggio di copertura indicato sul profilo).
+              </p>
+            ) : null}
 
             {loading ? (
               <div className="prof-dir__grid prof-dir__grid--skeleton" aria-busy="true" aria-label="Caricamento profili">

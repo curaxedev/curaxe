@@ -49,6 +49,9 @@ export type DirectoryProfileSummary = {
   match: DirectoryGeoMatch
   /** KYC badge (UT-004) — from admin approval store when mock-backed. */
   verified?: boolean
+  /** Presente in modalità proximity: km dalla città cercata. */
+  distanceKm?: number
+  coverageKm?: number
 }
 
 /** Full professional profile for `/profili/:id` (UT-004). */
@@ -101,6 +104,10 @@ export type DirectorySearchMeta = {
   page: number
   pageSize: number
   totalPages: number
+  /** exact = match città; proximity = nessun match locale, risultati nel raggio copertura */
+  geoMode?: 'exact' | 'proximity'
+  proximityOf?: string
+  maxKm?: number
 }
 
 export type DirectorySearchResult = {

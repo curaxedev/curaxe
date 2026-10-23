@@ -1344,6 +1344,14 @@ button.topbar__drawer-link {
   font-size: 0.92em;
 }
 
+.prof-dir__proximity-note {
+  margin: calc(var(--space-3) * -1) 0 var(--space-5);
+  padding: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
 .prof-dir__empty {
   margin: 0;
   padding: var(--space-6);

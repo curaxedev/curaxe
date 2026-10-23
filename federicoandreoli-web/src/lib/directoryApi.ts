@@ -76,6 +76,7 @@ function asProfileList(raw: unknown): DirectoryProfileSummary[] {
 function normalizeSearchResult(raw: DirectorySearchResult | Record<string, unknown>): DirectorySearchResult {
   const metaRaw = (raw as DirectorySearchResult).meta
   const data = asProfileList((raw as DirectorySearchResult).data)
+  const geoMode = metaRaw?.geoMode === 'proximity' ? 'proximity' : 'exact'
   return {
     data,
     meta: {
@@ -83,6 +84,9 @@ function normalizeSearchResult(raw: DirectorySearchResult | Record<string, unkno
       page: Number(metaRaw?.page ?? 1) || 1,
       pageSize: Number(metaRaw?.pageSize ?? 12) || 12,
       totalPages: Number(metaRaw?.totalPages ?? 1) || 1,
+      geoMode,
+      proximityOf: metaRaw?.proximityOf,
+      maxKm: metaRaw?.maxKm != null ? Number(metaRaw.maxKm) : undefined,
     },
   }
 }

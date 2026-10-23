@@ -11,12 +11,31 @@ use App\Models\Organization;
 use App\Models\ProfessionalProfile;
 use App\Models\ProfessionalProfileView;
 use App\Support\ApiResponse;
+use App\Support\DirectoryCache;
+use App\Support\ItaliaGeoIndex;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class DirectoryController
 {
+    /** Raggio massimo di espansione quando la città cercata ha 0 match esatti. */
+    private const PROXIMITY_SEARCH_MAX_KM = 40.0;
+
+    /** Se il profilo non ha radius_km, copertura operativa di default. */
+    private const DEFAULT_PROFILE_COVERAGE_KM = 25.0;
+
+    /** Limite candidati SQL prima del filtro distanza (hosting condiviso). */
+    private const PROXIMITY_CANDIDATE_LIMIT = 200;
+
+    private ?ItaliaGeoIndex $geoIndex = null;
+
+    private function geo(): ItaliaGeoIndex
+    {
+        return $this->geoIndex ??= new ItaliaGeoIndex;
+    }
+
     public function profiles(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -32,64 +51,251 @@ class DirectoryController
 
         $page = (int) ($data['page'] ?? 1);
         $pageSize = (int) ($data['pageSize'] ?? 12);
-        $cacheKey = 'directory.profiles.'.md5(json_encode($data));
+        $cacheKey = DirectoryCache::profilesKey($data);
 
-        $payload = Cache::remember($cacheKey, 60, function () use ($data, $page, $pageSize) {
-            $profiles = ProfessionalProfile::query()
-                ->with('user')
-                ->where('is_published', true);
-
-            $this->applyGeoFilter($profiles, $data);
-
-            if (! empty($data['category'])) {
-                $profiles->where('category', 'like', '%'.$data['category'].'%');
-            }
-            if (! empty($data['q'])) {
-                $q = $data['q'];
-                $profiles->where(function ($builder) use ($q) {
-                    $builder->where('first_name', 'like', "%{$q}%")
-                        ->orWhere('last_name', 'like', "%{$q}%")
-                        ->orWhere('professional_title', 'like', "%{$q}%")
-                        ->orWhere('bio', 'like', "%{$q}%");
-                });
-            }
-
-            $orgs = Organization::query()->where('is_published', true);
-            $this->applyOrgGeoFilter($orgs, $data);
-
-            $profileItems = $profiles->orderByDesc('rating_avg')->get();
-            $orgItems = ($data['intent'] ?? 'cerco') === 'cerco' ? $orgs->orderByDesc('rating_avg')->get() : collect();
-
-            $merged = $profileItems
-                ->map(fn ($p) => (new DirectoryProfileSummaryResource($p))->resolve())
-                ->concat($orgItems->map(fn ($o) => (new DirectoryProfileSummaryResource($o))->resolve()))
-                ->values();
-
-            $total = $merged->count();
-            $totalPages = max(1, (int) ceil($total / $pageSize));
-            $safePage = min(max(1, $page), $totalPages);
-            $slice = $merged->slice(($safePage - 1) * $pageSize, $pageSize)->values();
-
-            return [
-                'data' => $slice->all(),
-                'meta' => [
-                    'total' => $total,
-                    'page' => $safePage,
-                    'pageSize' => $pageSize,
-                    'totalPages' => $totalPages,
-                ],
-            ];
+        $payload = Cache::remember($cacheKey, DirectoryCache::TTL_SECONDS, function () use ($data, $page, $pageSize) {
+            return $this->buildProfilesPayload($data, $page, $pageSize);
         });
 
         if (isset($payload['data'])) {
             $payload['data'] = array_values(
-                $payload['data'] instanceof \Illuminate\Support\Collection
+                $payload['data'] instanceof Collection
                     ? $payload['data']->all()
                     : (array) $payload['data']
             );
         }
 
         return response()->json($payload);
+    }
+
+    /**
+     * @param  array{istat?: string, comune?: string, regione?: string, category?: string, q?: string, intent?: string}  $data
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    private function buildProfilesPayload(array $data, int $page, int $pageSize): array
+    {
+        $exactMerged = $this->collectExactMatches($data);
+        $geoMode = 'exact';
+        $proximityMeta = [];
+
+        if ($exactMerged->isEmpty() && $this->hasGeoQuery($data)) {
+            $proximity = $this->collectProximityMatches($data);
+            $exactMerged = $proximity['items'];
+            if ($exactMerged->isNotEmpty()) {
+                $geoMode = 'proximity';
+                $proximityMeta = $proximity['meta'];
+            }
+        }
+
+        $total = $exactMerged->count();
+        $totalPages = max(1, (int) ceil($total / $pageSize));
+        $safePage = min(max(1, $page), $totalPages);
+        $slice = $exactMerged->slice(($safePage - 1) * $pageSize, $pageSize)->values();
+
+        return [
+            'data' => $slice->all(),
+            'meta' => array_filter([
+                'total' => $total,
+                'page' => $safePage,
+                'pageSize' => $pageSize,
+                'totalPages' => $totalPages,
+                'geoMode' => $geoMode,
+                'proximityOf' => $proximityMeta['proximityOf'] ?? null,
+                'maxKm' => $proximityMeta['maxKm'] ?? null,
+            ], static fn ($v) => $v !== null),
+        ];
+    }
+
+    /**
+     * @param  array{istat?: string, comune?: string, regione?: string, category?: string, q?: string, intent?: string}  $data
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function collectExactMatches(array $data): Collection
+    {
+        $profiles = ProfessionalProfile::query()
+            ->with('user')
+            ->where('is_published', true);
+        $this->applyGeoFilter($profiles, $data);
+        $this->applyCategoryAndQ($profiles, $data);
+
+        $orgs = Organization::query()->where('is_published', true);
+        $this->applyOrgGeoFilter($orgs, $data);
+
+        $profileItems = $profiles->orderByDesc('rating_avg')->limit(500)->get();
+        $orgItems = ($data['intent'] ?? 'cerco') === 'cerco'
+            ? $orgs->orderByDesc('rating_avg')->limit(200)->get()
+            : collect();
+
+        return $profileItems
+            ->map(fn ($p) => (new DirectoryProfileSummaryResource($p))->resolve())
+            ->concat($orgItems->map(fn ($o) => (new DirectoryProfileSummaryResource($o))->resolve()))
+            ->values();
+    }
+
+    /**
+     * Fallback: città senza risultati → profili la cui copertura (radius_km) raggiunge
+     * il comune cercato, entro PROXIMITY_SEARCH_MAX_KM.
+     *
+     * Regola: distanza(search, sede_profilo) <= min(radius_km profilo, maxKm ricerca)
+     *
+     * @param  array{istat?: string, comune?: string, regione?: string, category?: string, q?: string, intent?: string}  $data
+     * @return array{items: Collection<int, array<string, mixed>>, meta: array{proximityOf: string, maxKm: float}}
+     */
+    private function collectProximityMatches(array $data): array
+    {
+        $origin = $this->geo()->resolve(
+            $data['istat'] ?? null,
+            $data['comune'] ?? null,
+        );
+
+        if ($origin === null) {
+            return ['items' => collect(), 'meta' => ['proximityOf' => '', 'maxKm' => self::PROXIMITY_SEARCH_MAX_KM]];
+        }
+
+        $neighbors = $this->geo()->withinKm($origin['istat'], self::PROXIMITY_SEARCH_MAX_KM, 100);
+        $neighborIstats = array_values(array_unique(array_map(
+            static fn ($n) => $n['istat'],
+            $neighbors,
+        )));
+        $neighborNames = array_values(array_unique(array_map(
+            static fn ($n) => $n['n'],
+            array_slice($neighbors, 0, 40),
+        )));
+
+        $profiles = ProfessionalProfile::query()
+            ->with('user')
+            ->where('is_published', true)
+            ->where(function ($builder) use ($neighborIstats, $neighborNames) {
+                if ($neighborIstats !== []) {
+                    $builder->whereIn('istat', $neighborIstats);
+                }
+                foreach ($neighborNames as $name) {
+                    $builder->orWhere('comune', 'like', '%'.$name.'%')
+                        ->orWhere('primary_zone', 'like', '%'.$name.'%');
+                }
+            });
+        $this->applyCategoryAndQ($profiles, $data);
+
+        $candidates = $profiles->limit(self::PROXIMITY_CANDIDATE_LIMIT)->get();
+
+        $orgCandidates = collect();
+        if (($data['intent'] ?? 'cerco') === 'cerco') {
+            $orgs = Organization::query()
+                ->where('is_published', true)
+                ->where(function ($builder) use ($neighborIstats, $neighborNames) {
+                    if ($neighborIstats !== []) {
+                        $builder->whereIn('istat', $neighborIstats);
+                    }
+                    foreach ($neighborNames as $name) {
+                        $builder->orWhere('comune', 'like', '%'.$name.'%')
+                            ->orWhere('location_label', 'like', '%'.$name.'%');
+                    }
+                })
+                ->limit(100)
+                ->get();
+            $orgCandidates = $orgs;
+        }
+
+        $items = collect();
+
+        foreach ($candidates as $profile) {
+            $loc = $this->geo()->resolve(
+                (string) $profile->istat,
+                (string) $profile->comune,
+                (string) $profile->primary_zone,
+            );
+            if ($loc === null) {
+                continue;
+            }
+            $distanceKm = ItaliaGeoIndex::haversineKm(
+                $origin['lat'],
+                $origin['lng'],
+                $loc['lat'],
+                $loc['lng'],
+            );
+            $coverageKm = $profile->radius_km !== null
+                ? (float) $profile->radius_km
+                : self::DEFAULT_PROFILE_COVERAGE_KM;
+
+            // La sede del professionista deve coprire il comune cercato col suo raggio,
+            // e restare entro il tetto di espansione della ricerca.
+            if ($distanceKm > $coverageKm || $distanceKm > self::PROXIMITY_SEARCH_MAX_KM) {
+                continue;
+            }
+
+            $card = (new DirectoryProfileSummaryResource($profile))->resolve();
+            $card['distanceKm'] = round($distanceKm, 1);
+            $card['coverageKm'] = $coverageKm;
+            $items->push($card);
+        }
+
+        foreach ($orgCandidates as $org) {
+            $loc = $this->geo()->resolve(
+                (string) $org->istat,
+                (string) $org->comune,
+                (string) $org->location_label,
+            );
+            if ($loc === null) {
+                continue;
+            }
+            $distanceKm = ItaliaGeoIndex::haversineKm(
+                $origin['lat'],
+                $origin['lng'],
+                $loc['lat'],
+                $loc['lng'],
+            );
+            $coverageKm = self::DEFAULT_PROFILE_COVERAGE_KM;
+            if ($distanceKm > $coverageKm || $distanceKm > self::PROXIMITY_SEARCH_MAX_KM) {
+                continue;
+            }
+            $card = (new DirectoryProfileSummaryResource($org))->resolve();
+            $card['distanceKm'] = round($distanceKm, 1);
+            $card['coverageKm'] = $coverageKm;
+            $items->push($card);
+        }
+
+        $sorted = $items
+            ->sortBy([
+                ['distanceKm', 'asc'],
+                ['stars', 'desc'],
+            ])
+            ->values();
+
+        return [
+            'items' => $sorted,
+            'meta' => [
+                'proximityOf' => $origin['n'],
+                'maxKm' => self::PROXIMITY_SEARCH_MAX_KM,
+            ],
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\ProfessionalProfile>  $query
+     * @param  array{category?: string, q?: string}  $data
+     */
+    private function applyCategoryAndQ($query, array $data): void
+    {
+        if (! empty($data['category'])) {
+            $query->where('category', 'like', '%'.$data['category'].'%');
+        }
+        if (! empty($data['q'])) {
+            $q = $data['q'];
+            $query->where(function ($builder) use ($q) {
+                $builder->where('first_name', 'like', "%{$q}%")
+                    ->orWhere('last_name', 'like', "%{$q}%")
+                    ->orWhere('professional_title', 'like', "%{$q}%")
+                    ->orWhere('bio', 'like', "%{$q}%");
+            });
+        }
+    }
+
+    /** @param  array{istat?: string, comune?: string, regione?: string}  $data */
+    private function hasGeoQuery(array $data): bool
+    {
+        return trim((string) ($data['istat'] ?? '')) !== ''
+            || trim((string) ($data['comune'] ?? '')) !== ''
+            || trim((string) ($data['regione'] ?? '')) !== '';
     }
 
     public function showProfile(Request $request, string $id): JsonResponse
@@ -113,8 +319,6 @@ class DirectoryController
 
     /**
      * Geo directory: OR su istat / comune / primary_zone / regione.
-     * Molti profili hanno solo primary_zone (es. "torino") con comune/regione vuoti —
-     * un AND su comune+regione li escludeva tutti.
      *
      * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\ProfessionalProfile>  $query
      * @param  array{istat?: string, comune?: string, regione?: string}  $data
@@ -137,7 +341,6 @@ class DirectoryController
                 $builder->orWhere('comune', 'like', '%'.$comune.'%')
                     ->orWhere('primary_zone', 'like', '%'.$comune.'%');
             }
-            // Regione solo se non abbiamo già un comune: evita di stringere troppo
             if ($regione !== '' && $comune === '') {
                 $builder->orWhere('regione', 'like', '%'.$regione.'%')
                     ->orWhere('primary_zone', 'like', '%'.$regione.'%');
@@ -174,9 +377,6 @@ class DirectoryController
         });
     }
 
-    /**
-     * Conta 1 visualizzazione / visitatore / giorno (no auto-view del titolare).
-     */
     private function recordProfileView(Request $request, ProfessionalProfile $profile): void
     {
         try {
@@ -235,9 +435,9 @@ class DirectoryController
 
         $page = (int) ($data['page'] ?? 1);
         $pageSize = (int) ($data['pageSize'] ?? 12);
-        $cacheKey = 'directory.open_positions.'.md5(json_encode($data));
+        $cacheKey = DirectoryCache::openPositionsKey($data);
 
-        $payload = Cache::remember($cacheKey, 60, function () use ($data, $page, $pageSize) {
+        $payload = Cache::remember($cacheKey, DirectoryCache::TTL_SECONDS, function () use ($data, $page, $pageSize) {
             $query = JobPosting::query()
                 ->where('status', 'active')
                 ->whereNotNull('published_at');

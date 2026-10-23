@@ -7,9 +7,9 @@ use App\Models\Application;
 use App\Models\JobPosting;
 use App\Models\Organization;
 use App\Support\ApiResponse;
+use App\Support\DirectoryCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class B2BJobPostingController
 {
@@ -74,7 +74,7 @@ class B2BJobPostingController
             'published_at' => $status === 'active' ? now() : null,
         ]);
 
-        Cache::flush();
+        DirectoryCache::bump();
 
         return response()->json($this->toJobPosting($job, $ownerType), 201);
     }
@@ -99,7 +99,7 @@ class B2BJobPostingController
                 $job->published_at = now();
             }
             $job->save();
-            Cache::flush();
+            DirectoryCache::bump();
 
             return response()->json($this->toJobPosting($job, $ownerType));
         }
@@ -140,7 +140,7 @@ class B2BJobPostingController
         ];
         $job->change_history = $history;
         $job->save();
-        Cache::flush();
+        DirectoryCache::bump();
 
         return response()->json($this->toJobPosting($job->fresh(), $ownerType));
     }
@@ -152,7 +152,7 @@ class B2BJobPostingController
             return ApiResponse::error('Annuncio non trovato.', 404, [], 'not_found');
         }
         $job->delete();
-        Cache::flush();
+        DirectoryCache::bump();
 
         return ApiResponse::noContent();
     }

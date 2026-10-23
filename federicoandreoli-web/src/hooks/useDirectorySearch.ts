@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ItaliaGeoRow } from '../lib/italiaGeo/italiaComuniTypes'
 import { searchDirectoryProfiles } from '../lib/directoryApi'
-import type { DirectoryProfileSummary, ListingIntent } from '../lib/directoryTypes'
+import type { DirectoryProfileSummary, DirectorySearchMeta, ListingIntent } from '../lib/directoryTypes'
 import { DirectoryError } from '../lib/directoryTypes'
 import { HttpError } from '../lib/http'
 
@@ -39,6 +39,9 @@ export function useDirectorySearch({ intent, place }: UseDirectorySearchOptions)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [meta, setMeta] = useState<Pick<DirectorySearchMeta, 'geoMode' | 'proximityOf' | 'maxKm'>>({
+    geoMode: 'exact',
+  })
 
   const placeKey = place ? `${place.id}|${place.comune}` : ''
 
@@ -62,12 +65,18 @@ export function useDirectorySearch({ intent, place }: UseDirectorySearchOptions)
         setTotal(result.meta?.total ?? rows.length)
         setPage(result.meta?.page ?? targetPage)
         setTotalPages(result.meta?.totalPages ?? 1)
+        setMeta({
+          geoMode: result.meta?.geoMode ?? 'exact',
+          proximityOf: result.meta?.proximityOf,
+          maxKm: result.meta?.maxKm,
+        })
         setItems((prev) => (append ? [...prev, ...rows] : rows))
         setError(null)
       } catch (err) {
         if (!append) {
           setItems([])
           setTotal(0)
+          setMeta({ geoMode: 'exact' })
         }
         setError(directoryErrorMessage(err))
       } finally {
@@ -105,5 +114,8 @@ export function useDirectorySearch({ intent, place }: UseDirectorySearchOptions)
     hasMore,
     reload,
     loadMore,
+    geoMode: meta.geoMode ?? 'exact',
+    proximityOf: meta.proximityOf,
+    maxKm: meta.maxKm,
   }
 }
