@@ -66,6 +66,7 @@ import { getAdminOverview, type AdminOverviewPayload } from '../../../lib/adminO
 import { getApiBaseUrl } from '../../../lib/runtimeConfig'
 import { httpGetBlob } from '../../../lib/http'
 import { AdminStripeSetupSection } from './AdminStripeSetupSection'
+import { AdminPlansCatalogSection } from './AdminPlansCatalogSection'
 import { AdminPasskeysPanel } from './AdminPasskeysPanel'
 import {
   postAdminCancelSubscription,
@@ -248,7 +249,7 @@ function SectionOverview() {
           <RevenueChart data={chartData} labels={chartLabels} />
           <p className="dash-chart-footnote">
             <IconTrendUp size={14} />
-            Stima MRR da abbonamenti attivi/trial (× €29)
+            Stima MRR da catalogo piani × abbonamenti attivi/trial
           </p>
         </div>
       ) : null}
@@ -720,6 +721,8 @@ function SectionSubscriptions() {
 
   return (
     <div className="dash-admin-billing">
+      <AdminPlansCatalogSection />
+
       <AdminStripeSetupSection />
 
       <div className="dash-section-header" style={{ marginTop: 32 }}>
@@ -1634,7 +1637,7 @@ const EMAIL_NOTIFICATION_KEYS = Object.keys(
 ) as AdminEmailNotificationKey[]
 
 /* ── Section: Settings ──────────────────────────────────────── */
-function SectionSettings() {
+function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
   const settingsHook = useAdminSettings()
   const s = settingsHook.settings
 
@@ -1687,51 +1690,13 @@ function SectionSettings() {
 
       <div className="dash-settings-grid dash-admin-settings-grid">
         <div className="dash-settings-card">
-          <div className="dash-settings-card__title">Prezzi piani</div>
-          <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
-            <label className="dash-form-label" htmlFor="adm-premium-monthly">
-              Piano Premium (€/mese)
-            </label>
-            <input
-              id="adm-premium-monthly"
-              className="dash-form-input"
-              type="number"
-              step="0.01"
-              min="0"
-              value={s.pricing.premiumMonthlyEur}
-              onChange={(e) =>
-                settingsHook.updateLocal({
-                  pricing: { ...s.pricing, premiumMonthlyEur: Number(e.target.value) },
-                })
-              }
-            />
-          </div>
-          <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
-            <label className="dash-form-label" htmlFor="adm-premium-yearly">
-              Piano Premium (€/anno)
-            </label>
-            <input
-              id="adm-premium-yearly"
-              className="dash-form-input"
-              type="number"
-              step="0.01"
-              min="0"
-              value={s.pricing.premiumYearlyEur}
-              onChange={(e) =>
-                settingsHook.updateLocal({
-                  pricing: { ...s.pricing, premiumYearlyEur: Number(e.target.value) },
-                })
-              }
-            />
-          </div>
-          <button
-            type="button"
-            className="dash-btn dash-btn--primary"
-            style={{ marginTop: 'var(--space-2)' }}
-            disabled={settingsHook.saving}
-            onClick={() => void settingsHook.save({ pricing: s.pricing }, 'Prezzi piani salvati.')}
-          >
-            {settingsHook.saving ? 'Salvataggio…' : 'Salva prezzi'}
+          <div className="dash-settings-card__title">Piani e prezzi</div>
+          <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.45 }}>
+            Il catalogo piani (nomi, importi, feature, Stripe Price ID) si gestisce in{' '}
+            <strong>Abbonamenti → Catalogo piani</strong>, allineato a ciò che vedono i clienti.
+          </p>
+          <button type="button" className="dash-btn dash-btn--ghost" onClick={onGoToPlans}>
+            Vai al catalogo piani
           </button>
         </div>
 
@@ -2019,7 +1984,7 @@ export function AdminDashboard() {
       case 'dispute':       return <SectionTickets />
       case 'verifica':      return <SectionVerify />
       case 'moderazione':   return <SectionJobModeration />
-      case 'impostazioni':  return <SectionSettings />
+      case 'impostazioni':  return <SectionSettings onGoToPlans={() => setActiveSection('abbonamenti')} />
       case 'account':       return (
         <div className="dash-admin-account">
           <AccountSettingsSection title="Il mio account" subtitle="Email, password e notifiche personali" />

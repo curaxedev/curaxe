@@ -43,7 +43,13 @@ class AdminOpsController
             ->count();
         $openTickets = SupportTicket::query()->whereIn('status', ['open', 'in-progress'])->count();
 
-        $mrrEstimate = $activeSubs * 29;
+        $billing = \App\Models\BillingSetting::current();
+        $mrrEstimate = (int) round(
+            Subscription::query()
+                ->whereIn('status', ['active', 'trialing'])
+                ->get(['audience'])
+                ->sum(fn ($s) => $billing->amountCentsForAudience((string) $s->audience)) / 100
+        );
 
         $months = [];
         for ($i = 9; $i >= 0; $i--) {

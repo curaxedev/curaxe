@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Crypt;
     'trial_days_professional',
     'trial_days_agency',
     'trial_days_structure',
+    'plans_catalog',
     'portal_configuration_id',
     'webhook_endpoint_id',
     'last_diagnostic',
@@ -30,10 +31,78 @@ class BillingSetting extends Model
     {
         return [
             'last_diagnostic' => 'array',
+            'plans_catalog' => 'array',
             'setup_completed_at' => 'datetime',
             'trial_days_professional' => 'integer',
             'trial_days_agency' => 'integer',
             'trial_days_structure' => 'integer',
+        ];
+    }
+
+    /**
+     * Catalogo piani unico (admin + clienti). Importi = ciò che mostriamo in UI;
+     * stripePriceId = ciò che Stripe addebita.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function defaultPlansCatalog(): array
+    {
+        return [
+            [
+                'key' => 'professional_premium_monthly',
+                'audience' => 'professional',
+                'label' => 'Premium',
+                'tagline' => 'Per assistenti familiari e caregiver',
+                'amountCents' => 1990,
+                'currency' => 'eur',
+                'interval' => 'month',
+                'trialDays' => 14,
+                'stripePriceId' => null,
+                'features' => [
+                    'Contatto WhatsApp e telefono in chat',
+                    'Candidature illimitate',
+                    'Visibilità prioritaria nelle ricerche',
+                    'Badge verificato in evidenza',
+                ],
+                'active' => true,
+                'sortOrder' => 1,
+            ],
+            [
+                'key' => 'agency_business_monthly',
+                'audience' => 'agency',
+                'label' => 'Business',
+                'tagline' => 'Per agenzie di assistenza',
+                'amountCents' => 4990,
+                'currency' => 'eur',
+                'interval' => 'month',
+                'trialDays' => 14,
+                'stripePriceId' => null,
+                'features' => [
+                    'Annunci illimitati',
+                    'Gestione team e candidature',
+                    'Supporto prioritario',
+                ],
+                'active' => true,
+                'sortOrder' => 2,
+            ],
+            [
+                'key' => 'structure_premium_monthly',
+                'audience' => 'structure',
+                'label' => 'Premium RSA',
+                'tagline' => 'Per strutture e RSA',
+                'amountCents' => 7990,
+                'currency' => 'eur',
+                'interval' => 'month',
+                'trialDays' => 14,
+                'stripePriceId' => null,
+                'features' => [
+                    'Turni e annunci illimitati',
+                    'Candidature e messaging',
+                    'Supporto dedicato',
+                ],
+                'active' => true,
+                'sortOrder' => 3,
+            ],
         ];
     }
 
@@ -105,8 +174,114 @@ class BillingSetting extends Model
         return is_string($env) && $env !== '' ? $env : null;
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function resolvedPlansCatalog(): array
+    {
+        $stored = is_array($this->plans_catalog) ? $this->plans_catalog : [];
+        $defaults = self::defaultPlansCatalog();
+        if ($stored === []) {
+            return $this->hydrateCatalogFromLegacyColumns($defaults);
+        }
+
+        $byKey = [];
+        foreach ($defaults as $row) {
+            $byKey[$row['key']] = $row;
+        }
+        foreach ($stored as $row) {
+            if (! is_array($row) || empty($row['key'])) {
+                continue;
+            }
+            $key = (string) $row['key'];
+            $byKey[$key] = array_replace($byKey[$key] ?? [
+                'key' => $key,
+                'audience' => $row['audience'] ?? 'professional',
+                'label' => $row['label'] ?? $key,
+                'tagline' => '',
+                'amountCents' => 0,
+                'currency' => 'eur',
+                'interval' => 'month',
+                'trialDays' => 14,
+                'stripePriceId' => null,
+                'features' => [],
+                'active' => true,
+                'sortOrder' => 99,
+            ], $row);
+        }
+
+        $plans = array_values($byKey);
+        usort($plans, static fn ($a, $b) => ((int) ($a['sortOrder'] ?? 99)) <=> ((int) ($b['sortOrder'] ?? 99)));
+
+        return $this->hydrateCatalogFromLegacyColumns($plans);
+    }
+
+    /**
+     * Allinea colonne legacy price_* / trial_* con il catalogo (fonte unica).
+     *
+     * @param  list<array<string, mixed>>  $plans
+     * @return list<array<string, mixed>>
+     */
+    private function hydrateCatalogFromLegacyColumns(array $plans): array
+    {
+        foreach ($plans as &$plan) {
+            $audience = (string) ($plan['audience'] ?? '');
+            $legacyPrice = match ($audience) {
+                'agency' => $this->price_agency,
+                'structure' => $this->price_structure,
+                default => $this->price_professional,
+            };
+            $legacyTrial = match ($audience) {
+                'agency' => $this->trial_days_agency,
+                'structure' => $this->trial_days_structure,
+                default => $this->trial_days_professional,
+            };
+            if (empty($plan['stripePriceId']) && is_string($legacyPrice) && $legacyPrice !== '') {
+                $plan['stripePriceId'] = $legacyPrice;
+            }
+            if (! isset($plan['trialDays']) || $plan['trialDays'] === null) {
+                $plan['trialDays'] = (int) $legacyTrial;
+            }
+        }
+        unset($plan);
+
+        return $plans;
+    }
+
+    /** Scrive price_* e trial_* dalle entry catalogo (checkout Stripe resta invariato). */
+    public function syncLegacyColumnsFromCatalog(): void
+    {
+        foreach ($this->resolvedPlansCatalog() as $plan) {
+            $audience = (string) ($plan['audience'] ?? '');
+            $priceId = is_string($plan['stripePriceId'] ?? null) ? trim((string) $plan['stripePriceId']) : '';
+            $trial = (int) ($plan['trialDays'] ?? 14);
+            if ($audience === 'agency') {
+                if ($priceId !== '') {
+                    $this->price_agency = $priceId;
+                }
+                $this->trial_days_agency = $trial;
+            } elseif ($audience === 'structure') {
+                if ($priceId !== '') {
+                    $this->price_structure = $priceId;
+                }
+                $this->trial_days_structure = $trial;
+            } elseif ($audience === 'professional') {
+                if ($priceId !== '') {
+                    $this->price_professional = $priceId;
+                }
+                $this->trial_days_professional = $trial;
+            }
+        }
+    }
+
     public function priceIdForAudience(string $audience): ?string
     {
+        foreach ($this->resolvedPlansCatalog() as $plan) {
+            if (($plan['audience'] ?? '') === $audience && ! empty($plan['stripePriceId']) && ($plan['active'] ?? true)) {
+                return (string) $plan['stripePriceId'];
+            }
+        }
+
         return match ($audience) {
             'agency' => $this->price_agency ?: null,
             'structure' => $this->price_structure ?: null,
@@ -116,10 +291,31 @@ class BillingSetting extends Model
 
     public function trialDaysForAudience(string $audience): int
     {
+        foreach ($this->resolvedPlansCatalog() as $plan) {
+            if (($plan['audience'] ?? '') === $audience && ($plan['active'] ?? true)) {
+                return (int) ($plan['trialDays'] ?? 14);
+            }
+        }
+
         return match ($audience) {
             'agency' => (int) $this->trial_days_agency,
             'structure' => (int) $this->trial_days_structure,
             default => (int) $this->trial_days_professional,
+        };
+    }
+
+    public function amountCentsForAudience(string $audience): int
+    {
+        foreach ($this->resolvedPlansCatalog() as $plan) {
+            if (($plan['audience'] ?? '') === $audience && ($plan['active'] ?? true)) {
+                return (int) ($plan['amountCents'] ?? 0);
+            }
+        }
+
+        return match ($audience) {
+            'agency' => 4990,
+            'structure' => 7990,
+            default => 1990,
         };
     }
 
@@ -151,6 +347,7 @@ class BillingSetting extends Model
             'trialDaysProfessional' => $this->trial_days_professional,
             'trialDaysAgency' => $this->trial_days_agency,
             'trialDaysStructure' => $this->trial_days_structure,
+            'plans' => $this->resolvedPlansCatalog(),
             'portalConfigurationId' => $this->portal_configuration_id,
             'webhookEndpointId' => $this->webhook_endpoint_id,
             'webhookUrl' => rtrim((string) config('app.url'), '/').'/api/v1/webhooks/stripe',
@@ -158,6 +355,34 @@ class BillingSetting extends Model
             'setupCompletedAt' => $this->setup_completed_at?->toIso8601String(),
             'setupComplete' => $this->isSetupComplete(),
         ];
+    }
+
+    /**
+     * Payload pubblico per clienti (niente secret / hint).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function publicPlansPayload(): array
+    {
+        return array_values(array_map(static function (array $plan) {
+            return [
+                'key' => $plan['key'],
+                'audience' => $plan['audience'],
+                'label' => $plan['label'],
+                'tagline' => $plan['tagline'] ?? '',
+                'amountCents' => (int) ($plan['amountCents'] ?? 0),
+                'currency' => $plan['currency'] ?? 'eur',
+                'interval' => $plan['interval'] ?? 'month',
+                'trialDays' => (int) ($plan['trialDays'] ?? 0),
+                'features' => array_values($plan['features'] ?? []),
+                'active' => (bool) ($plan['active'] ?? true),
+                'sortOrder' => (int) ($plan['sortOrder'] ?? 0),
+                // stripePriceId omesso in pubblico (non serve al client; checkout usa ruolo server-side)
+            ];
+        }, array_filter(
+            $this->resolvedPlansCatalog(),
+            static fn (array $p) => (bool) ($p['active'] ?? true),
+        )));
     }
 
     private function mask(string $value): string

@@ -3,6 +3,9 @@
  */
 import { HttpError, httpGet, httpPost, httpPut } from './http'
 import { isMockApiEnabled } from './runtimeConfig'
+import { DEFAULT_PLAN_CATALOG, type PlanCatalogEntry } from './planCatalog'
+
+export type { PlanCatalogEntry }
 
 export type BillingSettingsPayload = {
   mode: 'test' | 'live'
@@ -17,6 +20,7 @@ export type BillingSettingsPayload = {
   trialDaysProfessional: number
   trialDaysAgency: number
   trialDaysStructure: number
+  plans: PlanCatalogEntry[]
   portalConfigurationId: string | null
   webhookEndpointId: string | null
   webhookUrl: string
@@ -77,6 +81,7 @@ const MOCK_SETTINGS: BillingSettingsPayload = {
   trialDaysProfessional: 14,
   trialDaysAgency: 14,
   trialDaysStructure: 14,
+  plans: DEFAULT_PLAN_CATALOG.map((p) => ({ ...p, features: [...p.features] })),
   portalConfigurationId: null,
   webhookEndpointId: null,
   webhookUrl: 'https://api.curaxe.it/api/v1/webhooks/stripe',
@@ -86,8 +91,20 @@ const MOCK_SETTINGS: BillingSettingsPayload = {
 }
 
 export async function getAdminBillingSettings(): Promise<BillingSettingsPayload> {
-  if (isMockApiEnabled()) return { ...MOCK_SETTINGS }
-  return httpGet<BillingSettingsPayload>('/api/v1/admin/billing/settings')
+  if (isMockApiEnabled()) {
+    return {
+      ...MOCK_SETTINGS,
+      plans: DEFAULT_PLAN_CATALOG.map((p) => ({ ...p, features: [...p.features] })),
+    }
+  }
+  const data = await httpGet<BillingSettingsPayload>('/api/v1/admin/billing/settings')
+  return {
+    ...data,
+    plans:
+      Array.isArray(data.plans) && data.plans.length > 0
+        ? data.plans
+        : DEFAULT_PLAN_CATALOG.map((p) => ({ ...p, features: [...p.features] })),
+  }
 }
 
 export type UpdateBillingSettingsInput = {
@@ -103,6 +120,7 @@ export type UpdateBillingSettingsInput = {
   trialDaysStructure?: number
   portalConfigurationId?: string
   markSetupComplete?: boolean
+  plans?: PlanCatalogEntry[]
 }
 
 export async function putAdminBillingSettings(
@@ -113,6 +131,9 @@ export async function putAdminBillingSettings(
       ...MOCK_SETTINGS,
       ...input,
       mode: input.mode ?? MOCK_SETTINGS.mode,
+      plans: input.plans
+        ? input.plans.map((p) => ({ ...p, features: [...p.features] }))
+        : MOCK_SETTINGS.plans.map((p) => ({ ...p, features: [...p.features] })),
       hasSecretKey: Boolean(input.secretKey) || MOCK_SETTINGS.hasSecretKey,
       hasWebhookSecret: Boolean(input.webhookSecret) || MOCK_SETTINGS.hasWebhookSecret,
       secretKeyHint: input.secretKey ? `${input.secretKey.slice(0, 7)}…` : MOCK_SETTINGS.secretKeyHint,

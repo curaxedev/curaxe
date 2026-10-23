@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../auth/useAuth'
 import { showBillingDemoCopy } from '../../../lib/billingFeatures'
-import { BILLING_PRODUCTS, formatBillingAmount, productKeyForAudience } from '../../../lib/billingApi'
 import { completeCheckoutSession } from '../../../services/billingService'
 import type { BillingAudience } from '../../../lib/billingTypes'
 import { BillingError } from '../../../lib/billingTypes'
+import { usePlanCatalog } from '../../../hooks/usePlanCatalog'
+import { formatPlanEuro } from '../../../lib/planCatalog'
 
 type BillingMockCheckoutPageProps = {
   audience: BillingAudience
@@ -25,8 +26,10 @@ export function BillingMockCheckoutPage({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const productKey = productKeyForAudience(audience)
-  const product = BILLING_PRODUCTS[productKey]
+  const planCatalog = usePlanCatalog()
+  const plan = planCatalog.getForAudience(audience)
+  const amountLabel = plan ? formatPlanEuro(plan.amountCents) : '—'
+  const planLabel = plan?.label ?? 'Premium'
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -73,8 +76,10 @@ export function BillingMockCheckoutPage({
         <p className="billing-checkout-page__user">{user?.name ?? 'Utente'}</p>
 
         <div className="billing-checkout-page__line">
-          <span>{product.label}</span>
-          <strong>{formatBillingAmount(productKey)} / mese</strong>
+          <span>{planLabel}</span>
+          <strong>
+            {amountLabel} / {plan?.interval === 'year' ? 'anno' : 'mese'}
+          </strong>
         </div>
 
         {showBillingDemoCopy() && (
@@ -110,7 +115,7 @@ export function BillingMockCheckoutPage({
             disabled={submitting}
             onClick={() => void handlePay()}
           >
-            {submitting ? 'Elaborazione…' : `Paga ${formatBillingAmount(productKey)}`}
+            {submitting ? 'Elaborazione…' : `Paga ${amountLabel}`}
           </button>
         </div>
       </div>

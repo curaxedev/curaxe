@@ -20,7 +20,9 @@ import {
 import { getProfileCompletionChecklist } from '../../../services/professionalProfileService'
 import type { MessageThread, MessagingParticipantRole } from '../../../lib/messagingTypes'
 import { showBillingDemoCopy } from '../../../lib/billingFeatures'
-import { BILLING_PRODUCTS, formatBillingAmount, formatBillingDate } from '../../../lib/billingApi'
+import { formatBillingDate } from '../../../lib/billingApi'
+import { usePlanCatalog } from '../../../hooks/usePlanCatalog'
+import { formatPlanEuro, type PlanCatalogEntry } from '../../../lib/planCatalog'
 import type { PlanType } from '../../../lib/billingTypes'
 import {
   fetchProfessionalHomeStats,
@@ -105,6 +107,8 @@ function SectionHome({
   applicationsSent,
   applicationsViewed,
   profileViewStats,
+  planPriceLabel,
+  planName,
 }: {
   onUpgrade: () => void
   onGoTo: (s: string) => void
@@ -119,6 +123,8 @@ function SectionHome({
   applicationsSent: number
   applicationsViewed: number
   profileViewStats: ProfessionalHomeStats
+  planPriceLabel: string
+  planName: string
 }) {
   const [barWidth, setBarWidth] = useState(0)
 
@@ -355,7 +361,7 @@ function SectionHome({
                 </li>
               </ul>
               <button className="dash-btn dash-btn--accent dash-btn--lg" style={{ width: '100%' }} onClick={onUpgrade}>
-                Passa a Premium — €19,90/mese
+                Passa a {planName} — {planPriceLabel}
               </button>
             </>
           )}
@@ -569,6 +575,7 @@ function SectionPlan({
   onCancel,
   cancelLoading,
   onPortal,
+  plan,
 }: {
   onUpgrade: () => void
   planType: PlanType
@@ -580,16 +587,22 @@ function SectionPlan({
   onCancel: () => void
   cancelLoading: boolean
   onPortal?: () => void
+  plan: PlanCatalogEntry | null
 }) {
-  const features = [
-    { label: 'Profilo visibile nelle ricerche', free: 'Limitato', premium: 'Prioritario' },
-    { label: 'Richieste ricevibili / mese', free: '3', premium: 'Illimitate' },
-    { label: 'Badge "Verificato"', free: false, premium: true },
-    { label: 'Statistiche avanzate profilo', free: false, premium: true },
-    { label: 'Supporto prioritario', free: false, premium: true },
-    { label: 'Candidature attive', free: '5', premium: 'Illimitate' },
-    { label: 'Apparire in cima ai risultati', free: false, premium: true },
-  ]
+  const planLabel = plan?.label ?? 'Premium'
+  const priceLabel = plan ? formatPlanEuro(plan.amountCents) : '—'
+  const periodNote =
+    plan?.interval === 'year' ? 'all’anno' : 'al mese'
+  const trialNote = plan && plan.trialDays > 0 ? ` · ${plan.trialDays} giorni di prova` : ''
+  const premiumFeatures =
+    plan?.features?.length
+      ? plan.features
+      : [
+          'Contatto WhatsApp e telefono in chat',
+          'Candidature illimitate',
+          'Visibilità prioritaria nelle ricerche',
+          'Badge verificato in evidenza',
+        ]
 
   return (
     <div>
@@ -601,8 +614,8 @@ function SectionPlan({
               ? 'Caricamento piano…'
               : isPremium
                 ? cancelAtPeriodEnd && periodEndLabel
-                  ? `Premium attivo fino al ${periodEndLabel}`
-                  : 'Piano Premium attivo'
+                  ? `${planLabel} attivo fino al ${periodEndLabel}`
+                  : `Piano ${planLabel} attivo`
                 : 'Attualmente sei nel Piano FREE'}
           </p>
         </div>
@@ -616,24 +629,18 @@ function SectionPlan({
           <div className="dash-plan__price-free">Gratis</div>
           <div className="dash-plan__price-note">Per sempre</div>
           <ul className="dash-plan__features">
-            {features.map((f) => (
-              <li key={f.label} className="dash-plan__feature">
-                {f.free === false ? (
-                  <span className="dash-plan__feature-icon--cross"><IconClose size={14} /></span>
-                ) : (
-                  <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
-                )}
-                <span>
-                  {f.label}
-                  {f.free !== false && f.free !== true && (
-                    <strong style={{ color: 'var(--color-text-muted)', marginLeft: 4 }}>({f.free})</strong>
-                  )}
-                  {f.free === false && (
-                    <span style={{ color: '#D95F5F', marginLeft: 4 }}>Non disponibile</span>
-                  )}
-                </span>
-              </li>
-            ))}
+            <li className="dash-plan__feature">
+              <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
+              <span>Profilo visibile nelle ricerche <strong style={{ color: 'var(--color-text-muted)', marginLeft: 4 }}>(Limitato)</strong></span>
+            </li>
+            <li className="dash-plan__feature">
+              <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
+              <span>Richieste ricevibili / mese <strong style={{ color: 'var(--color-text-muted)', marginLeft: 4 }}>(3)</strong></span>
+            </li>
+            <li className="dash-plan__feature">
+              <span className="dash-plan__feature-icon--cross"><IconClose size={14} /></span>
+              <span>Funzioni {planLabel} <span style={{ color: '#D95F5F', marginLeft: 4 }}>Non disponibili</span></span>
+            </li>
           </ul>
           <button className="dash-btn dash-btn--ghost dash-btn--lg" style={{ width: '100%' }} disabled>
             Piano attuale
@@ -643,19 +650,17 @@ function SectionPlan({
         {/* PREMIUM */}
         <div className="dash-plan-card dash-plan-card--featured">
           {isPremium && <div className="dash-plan__current-badge">Piano attuale</div>}
-          <div className="dash-plan__name">Piano PREMIUM</div>
-          <div className="dash-plan__price">€19,90</div>
-          <div className="dash-plan__price-note">al mese · annullabile in qualsiasi momento</div>
+          <div className="dash-plan__name">Piano {planLabel}</div>
+          <div className="dash-plan__price">{priceLabel}</div>
+          <div className="dash-plan__price-note">
+            {periodNote} · annullabile in qualsiasi momento{trialNote}
+          </div>
+          {plan?.tagline ? <p className="dash-plan__price-note" style={{ marginTop: 4 }}>{plan.tagline}</p> : null}
           <ul className="dash-plan__features">
-            {features.map((f) => (
-              <li key={f.label} className="dash-plan__feature">
+            {premiumFeatures.map((f) => (
+              <li key={f} className="dash-plan__feature">
                 <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
-                <span>
-                  {f.label}
-                  {f.premium !== true && (
-                    <strong style={{ color: 'var(--color-primary)', marginLeft: 4 }}>({f.premium as string})</strong>
-                  )}
-                </span>
+                <span>{f}</span>
               </li>
             ))}
           </ul>
@@ -682,7 +687,7 @@ function SectionPlan({
             </div>
           ) : (
             <button className="dash-btn dash-btn--primary dash-btn--lg" style={{ width: '100%' }} onClick={onUpgrade}>
-              Attiva Premium
+              Attiva {planLabel}
               <IconChevronRight size={16} />
             </button>
           )}
@@ -719,15 +724,17 @@ function UpgradeModal({
   onPay,
   checkoutLoading,
   error,
+  plan,
 }: {
   onClose: () => void
   onPay: () => Promise<boolean>
   checkoutLoading: boolean
   error: string | null
+  plan: PlanCatalogEntry | null
 }) {
   const [activated, setActivated] = useState(false)
-  const product = BILLING_PRODUCTS.professional_premium_monthly
-  const amountLabel = formatBillingAmount(product.key)
+  const amountLabel = plan ? formatPlanEuro(plan.amountCents) : '—'
+  const planLabel = plan?.label ?? 'Premium'
 
   const handleActivate = async () => {
     const ok = await onPay()
@@ -743,18 +750,21 @@ function UpgradeModal({
           <div className="dash-modal-success">
             <div className="dash-modal-success__icon"><IconCheck size={40} /></div>
             <div className="dash-modal-success__title">Abbonamento attivato!</div>
-            <div className="dash-modal-success__sub">Benvenuta nel Piano Premium.</div>
+            <div className="dash-modal-success__sub">Benvenuta nel Piano {planLabel}.</div>
           </div>
         ) : (
           <>
             <div className="dash-modal__header">
-              <span className="dash-modal__title">Attiva Piano Premium</span>
+              <span className="dash-modal__title">Attiva Piano {planLabel}</span>
               <button className="dash-modal__close" onClick={onClose} aria-label="Chiudi"><IconClose size={18} /></button>
             </div>
             <div className="dash-modal__body">
               <div className="dash-modal-plan-recap">
-                <div className="dash-modal-plan-recap__name">Piano PREMIUM</div>
-                <div className="dash-modal-plan-recap__price">{amountLabel} <span>/mese</span></div>
+                <div className="dash-modal-plan-recap__name">Piano {planLabel}</div>
+                <div className="dash-modal-plan-recap__price">
+                  {amountLabel}{' '}
+                  <span>/{plan?.interval === 'year' ? 'anno' : 'mese'}</span>
+                </div>
                 <div className="dash-modal-plan-recap__note">Annullabile in qualsiasi momento · Nessun vincolo</div>
               </div>
               {showBillingDemoCopy() && (
@@ -801,7 +811,9 @@ function UpgradeModal({
                 disabled={checkoutLoading}
                 onClick={() => void handleActivate()}
               >
-                {checkoutLoading ? 'Elaborazione…' : `Attiva ora — ${amountLabel}/mese`}
+                {checkoutLoading
+                  ? 'Elaborazione…'
+                  : `Attiva ora — ${amountLabel}/${plan?.interval === 'year' ? 'anno' : 'mese'}`}
               </button>
             </div>
           </>
@@ -816,6 +828,12 @@ export function ProfessionalDashboard() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const billing = useBillingSubscription('professional')
+  const planCatalog = usePlanCatalog()
+  const catalogPlan = planCatalog.byAudience.professional
+  const planName = catalogPlan?.label ?? 'Premium'
+  const planPriceLabel = catalogPlan
+    ? `${formatPlanEuro(catalogPlan.amountCents)}/${catalogPlan.interval === 'year' ? 'anno' : 'mese'}`
+    : '—'
   const notifications = useNotifications()
   const applications = useApplications()
   const threadParam = searchParams.get('thread')
@@ -1048,6 +1066,8 @@ export function ProfessionalDashboard() {
             applicationsSent={applications.stats.sentCount ?? 0}
             applicationsViewed={applications.stats.viewedCount ?? 0}
             profileViewStats={profileViewStats}
+            planPriceLabel={planPriceLabel}
+            planName={planName}
           />
         )
       case 'profilo':
@@ -1112,13 +1132,14 @@ export function ProfessionalDashboard() {
             onUpgrade={() => void handleUpgrade()}
             planType={billing.planType}
             isPremium={billing.isPremium}
-            loading={billing.loading}
+            loading={billing.loading || planCatalog.loading}
             history={billing.subscription?.history ?? []}
             cancelAtPeriodEnd={billing.subscription?.cancelAtPeriodEnd ?? false}
             periodEndLabel={periodEndLabel}
             onCancel={handleCancelSubscription}
             cancelLoading={billing.cancelLoading}
             onPortal={() => void billing.openPortal()}
+            plan={catalogPlan}
           />
         )
       case 'notifiche':
@@ -1229,6 +1250,7 @@ export function ProfessionalDashboard() {
           onPay={handlePayInModal}
           checkoutLoading={billing.checkoutLoading}
           error={billing.error}
+          plan={catalogPlan}
         />
       )}
     </>

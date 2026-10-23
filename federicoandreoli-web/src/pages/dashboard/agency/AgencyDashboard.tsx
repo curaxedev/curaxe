@@ -9,7 +9,9 @@ import { useAuth } from '../../../auth/useAuth'
 import { useBillingSubscription } from '../../../hooks/useBillingSubscription'
 import { useMessaging } from '../../../hooks/useMessaging'
 import { showBillingDemoCopy } from '../../../lib/billingFeatures'
-import { BILLING_PRODUCTS, formatBillingAmount, formatBillingDate } from '../../../lib/billingApi'
+import { formatBillingDate } from '../../../lib/billingApi'
+import { usePlanCatalog } from '../../../hooks/usePlanCatalog'
+import { formatPlanEuro, type PlanCatalogEntry } from '../../../lib/planCatalog'
 import { openApplicationContactThread } from '../../../lib/messagingApi'
 import { B2BCandidatesSection } from '../b2b/B2BCandidatesSection'
 import { B2BPostingsSection } from '../b2b/B2BPostingsSection'
@@ -347,6 +349,7 @@ function SectionBilling({
   cancelAtPeriodEnd,
   periodEndLabel,
   trialEndsLabel,
+  plan,
 }: {
   isPremium: boolean
   isTrialing?: boolean
@@ -358,9 +361,17 @@ function SectionBilling({
   cancelAtPeriodEnd: boolean
   periodEndLabel: string | null
   trialEndsLabel?: string | null
+  plan: PlanCatalogEntry | null
 }) {
-  const product = BILLING_PRODUCTS.agency_business_monthly
-  const amountLabel = formatBillingAmount(product.key)
+  const planLabel = plan?.label ?? 'Business'
+  const amountLabel = plan ? formatPlanEuro(plan.amountCents) : '—'
+  const period = plan?.interval === 'year' ? 'anno' : 'mese'
+  const features =
+    plan?.features?.length
+      ? plan.features
+      : ['Annunci illimitati', 'Gestione team e candidature', 'Supporto prioritario']
+  const trialNote =
+    plan && plan.trialDays > 0 ? ` · ${plan.trialDays} giorni di prova` : ' · prova con carta'
 
   return (
     <div>
@@ -374,8 +385,8 @@ function SectionBilling({
                 ? `Periodo di prova fino al ${trialEndsLabel}`
                 : isPremium
                   ? cancelAtPeriodEnd && periodEndLabel
-                    ? `Piano Business attivo fino al ${periodEndLabel}`
-                    : 'Piano Business attivo'
+                    ? `Piano ${planLabel} attivo fino al ${periodEndLabel}`
+                    : `Piano ${planLabel} attivo`
                   : 'Piano gratuito — funzionalità base per agenzie'}
           </p>
         </div>
@@ -403,22 +414,19 @@ function SectionBilling({
 
         <div className="dash-plan-card dash-plan-card--featured">
           {isPremium && <div className="dash-plan__current-badge">{isTrialing ? 'In prova' : 'Piano attuale'}</div>}
-          <div className="dash-plan__name">Business</div>
+          <div className="dash-plan__name">{planLabel}</div>
           <div className="dash-plan__price">{amountLabel}</div>
-          <div className="dash-plan__price-note">al mese · annullabile · prova con carta</div>
+          <div className="dash-plan__price-note">
+            al {period} · annullabile{trialNote}
+          </div>
+          {plan?.tagline ? <p className="dash-plan__price-note" style={{ marginTop: 4 }}>{plan.tagline}</p> : null}
           <ul className="dash-plan__features">
-            <li className="dash-plan__feature">
-              <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
-              <span>Annunci illimitati e visibilità prioritaria</span>
-            </li>
-            <li className="dash-plan__feature">
-              <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
-              <span>Team esteso e statistiche avanzate</span>
-            </li>
-            <li className="dash-plan__feature">
-              <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
-              <span>Supporto dedicato B2B</span>
-            </li>
+            {features.map((f) => (
+              <li key={f} className="dash-plan__feature">
+                <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
+                <span>{f}</span>
+              </li>
+            ))}
           </ul>
           {isPremium ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -438,7 +446,7 @@ function SectionBilling({
             </div>
           ) : (
             <button type="button" className="dash-btn dash-btn--primary dash-btn--lg" style={{ width: '100%' }} onClick={onUpgrade}>
-              Attiva Business
+              Attiva {planLabel}
               <IconChevronRight size={16} />
             </button>
           )}
@@ -474,6 +482,8 @@ export function AgencyDashboard() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const billing = useBillingSubscription('agency')
+  const planCatalog = usePlanCatalog()
+  const catalogPlan = planCatalog.byAudience.agency
   const notifications = useNotifications()
   const sectionParam = searchParams.get('section')
   const threadParam = searchParams.get('thread')
@@ -620,7 +630,7 @@ export function AgencyDashboard() {
           <SectionBilling
             isPremium={billing.isPremium}
             isTrialing={billing.isTrialing}
-            loading={billing.loading}
+            loading={billing.loading || planCatalog.loading}
             onUpgrade={() => void handleUpgrade()}
             onCancel={() => void billing.cancel()}
             onPortal={() => void billing.openPortal()}
@@ -632,6 +642,7 @@ export function AgencyDashboard() {
                 ? formatBillingDate(billing.subscription.trialEndsAt)
                 : null
             }
+            plan={catalogPlan}
           />
         )
       case 'impostazioni':

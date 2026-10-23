@@ -74,6 +74,9 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/open-positions', [DirectoryController::class, 'openPositions']);
     Route::get('/open-positions/{id}', [DirectoryController::class, 'showOpenPosition']);
 
+    /** Catalogo piani pubblico (allineato admin ↔ clienti; nessun secret). */
+    Route::get('/billing/plans', [BillingController::class, 'plans']);
+
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/user', fn (Request $request) => new UserResource($request->user()));
         Route::post('/auth/logout', [PasswordLoginController::class, 'logout']);

@@ -17,6 +17,8 @@ import {
   IconUsers,
 } from '../components/icons/DashboardIcons'
 import { SiteShell } from '../components/SiteShell'
+import { usePlanCatalog } from '../hooks/usePlanCatalog'
+import { formatPlanEuro } from '../lib/planCatalog'
 
 type Audience = 'cerco' | 'offro' | 'agenzia'
 type IconComponent = () => ReactElement
@@ -285,6 +287,23 @@ const faqItems: FaqItem[] = [
 export function ComeFunzionaPage() {
   const [audience, setAudience] = useState<Audience>('cerco')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const planCatalog = usePlanCatalog()
+  const premiumPlan = planCatalog.byAudience.professional
+  const premiumPrice = premiumPlan
+    ? formatPlanEuro(premiumPlan.amountCents)
+    : '19,90€'
+  const premiumPeriod = premiumPlan?.interval === 'year' ? 'anno' : 'mese'
+  const premiumFeatures =
+    premiumPlan?.features?.length
+      ? premiumPlan.features
+      : [
+          'Visibilità prioritaria',
+          'Contatti illimitati',
+          'Badge verificato',
+          'Statistiche profilo',
+        ]
+  const premiumName = premiumPlan?.label ?? 'Premium'
+  const premiumTagline = premiumPlan?.tagline || 'Per massimizzare le opportunità'
 
   useEffect(() => {
     const els = document.querySelectorAll<HTMLElement>('.home-reveal')
@@ -531,34 +550,31 @@ export function ComeFunzionaPage() {
                 </Link>
               </div>
 
-              {/* Premium */}
+              {/* Premium — allineato al catalogo admin */}
               <div className="cf-plan-card cf-plan-card--premium">
                 <div className="cf-plan-card__badge" aria-label="Piano consigliato">Più popolare</div>
                 <div className="cf-plan-card__header">
-                  <p className="cf-plan-card__name">Premium</p>
+                  <p className="cf-plan-card__name">{premiumName}</p>
                   <p className="cf-plan-card__price">
-                    <span className="cf-plan-card__price-amount">Da 9,90€</span>
-                    <span className="cf-plan-card__price-period"> / mese</span>
+                    <span className="cf-plan-card__price-amount">{premiumPrice}</span>
+                    <span className="cf-plan-card__price-period"> / {premiumPeriod}</span>
                   </p>
-                  <p className="cf-plan-card__tagline">Per massimizzare le opportunità</p>
+                  <p className="cf-plan-card__tagline">{premiumTagline}</p>
                 </div>
                 <ul className="cf-plan-card__features" role="list">
-                  {planFeatures.map((f) => (
-                    <li key={f.label} className="cf-plan-card__feature">
+                  {premiumFeatures.map((label) => (
+                    <li key={label} className="cf-plan-card__feature">
                       <span className="cf-plan-card__feature-icon" aria-hidden>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                           <path d="M3 8l4 4 6-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
-                      <span className="cf-plan-card__feature-label">{f.label}</span>
-                      {typeof f.premium === 'string' && (
-                        <span className="cf-plan-card__feature-value">{f.premium}</span>
-                      )}
+                      <span className="cf-plan-card__feature-label">{label}</span>
                     </li>
                   ))}
                 </ul>
                 <Link to="/iscriviti?piano=premium" className="cf-plan-card__cta cf-plan-card__cta--premium">
-                  Inizia con Premium
+                  Inizia con {premiumName}
                 </Link>
               </div>
             </div>

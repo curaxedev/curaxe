@@ -329,6 +329,10 @@ export function AdminStripeSetupSection() {
       {stepId === 'prices' && (
         <div className="dash-settings-card">
           <h3 className="dash-settings-card__title">4 · Prodotti e Price ID</h3>
+          <p className="dash-stripe-security-note" style={{ marginTop: 0 }}>
+            Nomi, importi e feature per i clienti si gestiscono nel <strong>Catalogo piani</strong> sopra.
+            Qui colleghi solo i Price ID Stripe (best practice: un Price = un importo fisso).
+          </p>
           <ol className="dash-stripe-steps">
             <li>
               Apri{' '}
@@ -338,7 +342,8 @@ export function AdminStripeSetupSection() {
               .
             </li>
             <li>
-              Crea 3 prodotti (o prezzi) ricorrenti: Professionista, Agenzia, Struttura.
+              Crea 3 prodotti (o prezzi) ricorrenti: Professionista, Agenzia, Struttura — allineati agli
+              importi del catalogo.
             </li>
             <li>
               Per ogni prezzo copia l’ID che inizia con <code>price_</code> (non il Product ID{' '}

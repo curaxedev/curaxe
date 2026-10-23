@@ -38,6 +38,20 @@ class AdminBillingController
             'trialDaysStructure' => ['nullable', 'integer', 'min:0', 'max:90'],
             'portalConfigurationId' => ['nullable', 'string', 'max:120'],
             'markSetupComplete' => ['sometimes', 'boolean'],
+            'plans' => ['sometimes', 'array', 'min:1'],
+            'plans.*.key' => ['required_with:plans', 'string', 'max:80'],
+            'plans.*.audience' => ['required_with:plans', 'in:professional,agency,structure'],
+            'plans.*.label' => ['required_with:plans', 'string', 'max:80'],
+            'plans.*.tagline' => ['nullable', 'string', 'max:200'],
+            'plans.*.amountCents' => ['required_with:plans', 'integer', 'min:0', 'max:10000000'],
+            'plans.*.currency' => ['nullable', 'in:eur'],
+            'plans.*.interval' => ['nullable', 'in:month,year'],
+            'plans.*.trialDays' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'plans.*.stripePriceId' => ['nullable', 'string', 'max:120'],
+            'plans.*.features' => ['nullable', 'array'],
+            'plans.*.features.*' => ['string', 'max:160'],
+            'plans.*.active' => ['nullable', 'boolean'],
+            'plans.*.sortOrder' => ['nullable', 'integer', 'min:0', 'max:100'],
         ]);
 
         $settings = BillingSetting::current();
@@ -137,6 +151,40 @@ class AdminBillingController
             if (array_key_exists($input, $data)) {
                 $settings->{$column} = $data[$input];
             }
+        }
+
+        if (isset($data['plans']) && is_array($data['plans'])) {
+            $normalized = [];
+            foreach ($data['plans'] as $i => $plan) {
+                $priceId = isset($plan['stripePriceId']) ? trim((string) $plan['stripePriceId']) : '';
+                if ($priceId !== '' && ! str_starts_with($priceId, 'price_')) {
+                    return ApiResponse::error(
+                        'Ogni Stripe Price ID deve iniziare con price_.',
+                        422,
+                        ["plans.{$i}.stripePriceId" => ['Formato non valido.']],
+                        'validation',
+                    );
+                }
+                $normalized[] = [
+                    'key' => (string) $plan['key'],
+                    'audience' => (string) $plan['audience'],
+                    'label' => (string) $plan['label'],
+                    'tagline' => (string) ($plan['tagline'] ?? ''),
+                    'amountCents' => (int) $plan['amountCents'],
+                    'currency' => (string) ($plan['currency'] ?? 'eur'),
+                    'interval' => (string) ($plan['interval'] ?? 'month'),
+                    'trialDays' => (int) ($plan['trialDays'] ?? 14),
+                    'stripePriceId' => $priceId !== '' ? $priceId : null,
+                    'features' => array_values(array_filter(
+                        array_map('strval', $plan['features'] ?? []),
+                        static fn ($f) => trim($f) !== '',
+                    )),
+                    'active' => (bool) ($plan['active'] ?? true),
+                    'sortOrder' => (int) ($plan['sortOrder'] ?? $i + 1),
+                ];
+            }
+            $settings->plans_catalog = $normalized;
+            $settings->syncLegacyColumnsFromCatalog();
         }
 
         if (! empty($data['markSetupComplete'])) {

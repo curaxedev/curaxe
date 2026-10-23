@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domains\Auth\Enums\UserRole;
+use App\Models\BillingSetting;
 use App\Models\Subscription;
 use App\Services\Stripe\SubscriptionBillingService;
 use App\Support\ApiResponse;
@@ -137,6 +138,15 @@ class BillingController
             return ApiResponse::error('Non autorizzato.', 403, [], 'forbidden');
         }
 
+        $settings = BillingSetting::current();
+        $mrrCents = 0;
+        Subscription::query()
+            ->whereIn('status', ['active', 'trialing'])
+            ->get(['audience'])
+            ->each(function (Subscription $s) use ($settings, &$mrrCents) {
+                $mrrCents += $settings->amountCentsForAudience((string) $s->audience);
+            });
+
         $active = Subscription::query()->whereIn('status', ['active', 'trialing'])->count();
         $canceling = Subscription::query()->where('cancel_at_period_end', true)->count();
         $pastDue = Subscription::query()->where('status', 'past_due')->count();
@@ -147,7 +157,16 @@ class BillingController
             'cancelingAtPeriodEnd' => $canceling,
             'pastDue' => $pastDue,
             'trialing' => $trialing,
-            'mrrEstimate' => $active * 29,
+            'mrrEstimate' => (int) round($mrrCents / 100),
+            'mrrCents' => $mrrCents,
+        ]);
+    }
+
+    /** Catalogo piani pubblico (allineato a ciò che vede il cliente). */
+    public function plans(): JsonResponse
+    {
+        return response()->json([
+            'plans' => BillingSetting::current()->publicPlansPayload(),
         ]);
     }
 }

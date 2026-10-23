@@ -4,7 +4,9 @@ import { useAuth } from '../../../auth/useAuth'
 import { useBillingSubscription } from '../../../hooks/useBillingSubscription'
 import { useMessaging } from '../../../hooks/useMessaging'
 import { showBillingDemoCopy } from '../../../lib/billingFeatures'
-import { BILLING_PRODUCTS, formatBillingAmount, formatBillingDate } from '../../../lib/billingApi'
+import { formatBillingDate } from '../../../lib/billingApi'
+import { usePlanCatalog } from '../../../hooks/usePlanCatalog'
+import { formatPlanEuro, type PlanCatalogEntry } from '../../../lib/planCatalog'
 import { openApplicationContactThread } from '../../../lib/messagingApi'
 import { B2BCandidatesSection } from '../b2b/B2BCandidatesSection'
 import { B2BPostingsSection } from '../b2b/B2BPostingsSection'
@@ -371,6 +373,7 @@ function SectionBilling({
   cancelLoading,
   cancelAtPeriodEnd,
   periodEndLabel,
+  plan,
 }: {
   isPremium: boolean
   loading: boolean
@@ -379,22 +382,28 @@ function SectionBilling({
   cancelLoading: boolean
   cancelAtPeriodEnd: boolean
   periodEndLabel: string | null
+  plan: PlanCatalogEntry | null
 }) {
-  const product = BILLING_PRODUCTS.structure_premium_monthly
-  const amountLabel = formatBillingAmount(product.key)
+  const planLabel = plan?.label ?? 'Premium RSA'
+  const amountLabel = plan ? formatPlanEuro(plan.amountCents) : '—'
+  const period = plan?.interval === 'year' ? 'anno' : 'mese'
+  const features =
+    plan?.features?.length
+      ? plan.features
+      : ['Turni e annunci illimitati', 'Candidature e messaging', 'Supporto dedicato']
 
   return (
     <div>
       <div className="dash-section-header">
         <div>
-          <h2 className="dash-section__title">Abbonamento Premium RSA</h2>
+          <h2 className="dash-section__title">Abbonamento {planLabel}</h2>
           <p className="dash-section__subtitle">
             {loading
               ? 'Caricamento…'
               : isPremium
                 ? cancelAtPeriodEnd && periodEndLabel
-                  ? `Piano Premium RSA attivo fino al ${periodEndLabel}`
-                  : 'Piano Premium RSA attivo'
+                  ? `Piano ${planLabel} attivo fino al ${periodEndLabel}`
+                  : `Piano ${planLabel} attivo`
                 : 'Piano gratuito — funzionalità base per strutture RSA'}
           </p>
         </div>
@@ -422,22 +431,20 @@ function SectionBilling({
 
         <div className="dash-plan-card dash-plan-card--featured dash-plan-card--structure">
           {isPremium && <div className="dash-plan__current-badge">Piano attuale</div>}
-          <div className="dash-plan__name">Premium RSA</div>
+          <div className="dash-plan__name">{planLabel}</div>
           <div className="dash-plan__price">{amountLabel}</div>
-          <div className="dash-plan__price-note">al mese · annullabile</div>
+          <div className="dash-plan__price-note">
+            al {period} · annullabile
+            {plan && plan.trialDays > 0 ? ` · ${plan.trialDays} giorni di prova` : ''}
+          </div>
+          {plan?.tagline ? <p className="dash-plan__price-note" style={{ marginTop: 4 }}>{plan.tagline}</p> : null}
           <ul className="dash-plan__features">
-            <li className="dash-plan__feature">
-              <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
-              <span>Annunci illimitati e priorità in directory</span>
-            </li>
-            <li className="dash-plan__feature">
-              <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
-              <span>Analytics avanzate per reparto e sede</span>
-            </li>
-            <li className="dash-plan__feature">
-              <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
-              <span>Team collaboratori e supporto dedicato RSA</span>
-            </li>
+            {features.map((f) => (
+              <li key={f} className="dash-plan__feature">
+                <span className="dash-plan__feature-icon--check"><IconCheckMark size={14} /></span>
+                <span>{f}</span>
+              </li>
+            ))}
           </ul>
           {isPremium ? (
             <button
@@ -451,7 +458,7 @@ function SectionBilling({
             </button>
           ) : (
             <button type="button" className="dash-btn dash-btn--primary dash-btn--lg" style={{ width: '100%' }} onClick={onUpgrade}>
-              Attiva Premium RSA
+              Attiva {planLabel}
               <IconChevronRight size={16} />
             </button>
           )}
@@ -486,6 +493,8 @@ export function StructureDashboard() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const billing = useBillingSubscription('structure', { dashboardPath: STRUCTURE_DASHBOARD_PATH })
+  const planCatalog = usePlanCatalog()
+  const catalogPlan = planCatalog.byAudience.structure
   const notifications = useNotifications()
   const sectionParam = searchParams.get('section')
   const threadParam = searchParams.get('thread')
@@ -633,12 +642,13 @@ export function StructureDashboard() {
         return (
           <SectionBilling
             isPremium={billing.isPremium}
-            loading={billing.loading}
+            loading={billing.loading || planCatalog.loading}
             onUpgrade={() => void billing.startCheckout()}
             onCancel={() => void billing.cancel()}
             cancelLoading={billing.cancelLoading}
             cancelAtPeriodEnd={billing.subscription?.cancelAtPeriodEnd ?? false}
             periodEndLabel={periodEndLabel}
+            plan={catalogPlan}
           />
         )
       case 'impostazioni':
