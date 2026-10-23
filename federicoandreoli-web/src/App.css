@@ -11,6 +11,8 @@
   display: flex;
   flex-direction: column;
   overflow: visible;
+  /* Header fixed: riserva spazio così il contenuto non finisce sotto */
+  padding-top: var(--header-h);
   font-family: var(--font-body);
   font-size: var(--text-body);
   color: var(--color-text);
@@ -70,8 +72,11 @@
    HEADER
    ══════════════════════════════════════════════════════════════ */
 .topbar {
-  position: sticky;
+  /* fixed: resta sempre visibile in scroll (sticky falliva con overflow su body) */
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   width: 100%;
   height: var(--header-h);
@@ -831,10 +836,12 @@
   }
 
   .hero-search.hero-search--sticky-bar,
-  .hero-search.hero-search--sticky-bar:focus-within {
+  .hero-search.hero-search--sticky-bar:focus-within,
+  .sticky-hero-search__launch,
+  .cx-explorer__pill {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+    background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   }
 }
 
@@ -1497,12 +1504,12 @@
     radial-gradient(ellipse 55% 45% at 70% 88%, color-mix(in srgb, var(--color-accent-soft) 42%, transparent) 0%, transparent 58%),
     linear-gradient(
       168deg,
-      color-mix(in srgb, var(--color-primary-softer) 92%, #fff) 0%,
-      color-mix(in srgb, var(--home-sky-band) 52%, var(--color-surface)) 38%,
-      color-mix(in srgb, var(--color-page) 55%, var(--home-sky-band)) 72%,
-      var(--color-page) 100%
+      color-mix(in srgb, var(--color-primary-softer) 88%, var(--home-sky-band)) 0%,
+      color-mix(in srgb, var(--home-sky-band) 62%, var(--color-primary-softer)) 42%,
+      color-mix(in srgb, var(--home-sky-band) 70%, var(--color-page)) 78%,
+      color-mix(in srgb, var(--home-sky-band) 35%, var(--color-page)) 100%
     );
-  padding: clamp(2rem, 4vw, 3rem) var(--space-5) clamp(2.75rem, 5.5vw, 4.25rem);
+  padding: clamp(1.5rem, 3.5vw, 2.75rem) var(--space-5) clamp(2rem, 4.5vw, 3.5rem);
   /* visible: il menu Dove (cx-explorer__pop) non deve essere tagliato sotto */
   overflow: visible;
   text-align: center;
@@ -2200,31 +2207,35 @@
 }
 
 .sticky-hero-search--chrome {
-  background: color-mix(in srgb, #fdfcfb 94%, #fff);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-text) 5%, transparent);
+  /* Niente fascia bianca sotto la barra: solo vetro sulla pill */
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
 }
 
 .sticky-hero-search__inner {
   width: 100%;
   max-width: min(720px, 100%);
   overflow: visible;
-  padding: 10px clamp(12px, 3.5vw, 20px);
+  padding: 6px clamp(12px, 3.5vw, 20px) 8px;
 }
 
 .sticky-hero-search__launch {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  min-height: 52px;
-  padding: 0 8px 0 18px;
+  min-height: 44px;
+  padding: 0 6px 0 16px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
-  background: #fff;
+  border: 1px solid color-mix(in srgb, #fff 55%, var(--color-border) 45%);
+  background: color-mix(in srgb, #fdfcfb 48%, rgba(255, 255, 255, 0.1));
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 6px 20px rgba(42, 92, 130, 0.1);
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 8px 28px rgba(42, 92, 130, 0.12),
+    0 2px 8px rgba(42, 44, 42, 0.04);
+  backdrop-filter: saturate(1.9) blur(22px);
+  -webkit-backdrop-filter: saturate(1.9) blur(22px);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -2250,8 +2261,8 @@
 .sticky-hero-search__launch-icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   border-radius: 50%;
   background: var(--color-primary);
@@ -2260,17 +2271,18 @@
 
 .hero-search--sticky-bar {
   align-items: stretch;
-  padding: 6px 6px 6px 16px;
+  padding: 4px 4px 4px 14px;
   gap: 0;
-  min-height: 52px;
+  min-height: 44px;
   border-radius: 999px;
-  background: #fff;
-  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  background: color-mix(in srgb, #fdfcfb 48%, rgba(255, 255, 255, 0.1));
+  border: 1px solid color-mix(in srgb, #fff 55%, var(--color-border) 45%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.65) inset,
-    0 6px 20px rgba(42, 92, 130, 0.1);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 8px 28px rgba(42, 92, 130, 0.12),
+    0 2px 8px rgba(42, 44, 42, 0.04);
+  backdrop-filter: saturate(1.9) blur(22px);
+  -webkit-backdrop-filter: saturate(1.9) blur(22px);
 }
 
 .hero-search--sticky-bar .hero-search__field--city-only {
@@ -2303,19 +2315,19 @@
 }
 
 .hero-search--sticky-bar .hero-search__btn--sticky-icon {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
 }
 
 .hero-search.hero-search--sticky-bar:focus-within {
-  background: #fff;
+  background: color-mix(in srgb, #fdfcfb 58%, rgba(255, 255, 255, 0.14));
   border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 8px 24px rgba(42, 92, 130, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.65) inset,
+    0 8px 24px rgba(42, 92, 130, 0.14),
     0 0 0 2px color-mix(in srgb, var(--color-primary) 14%, transparent);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: saturate(2) blur(24px);
+  -webkit-backdrop-filter: saturate(2) blur(24px);
 }
 
 @media (max-width: 859px) {
@@ -2326,63 +2338,65 @@
 
   .sticky-hero-search__inner {
     max-width: none;
-    padding: 8px 12px 10px;
+    padding: 4px 12px 8px;
   }
 
   .hero-search:not(.hero-search--sticky-bar) {
     flex-direction: column;
     border-radius: 22px;
-    padding: var(--space-4) var(--space-4) var(--space-3);
-    gap: var(--space-3);
-    /* Bianco quasi pieno: contrasto su hero con foto */
-    background: color-mix(in srgb, var(--color-surface) 97%, #fff 3%);
-    border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+    padding: var(--space-3) var(--space-3) var(--space-2);
+    gap: var(--space-2);
+    background: color-mix(in srgb, #fdfcfb 52%, rgba(255, 255, 255, 0.1));
+    border: 1px solid color-mix(in srgb, #fff 55%, var(--color-border) 45%);
     box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.65) inset,
-      0 14px 40px rgba(42, 92, 130, 0.14);
+      0 1px 0 rgba(255, 255, 255, 0.55) inset,
+      0 10px 32px rgba(42, 92, 130, 0.12);
+    backdrop-filter: saturate(1.85) blur(20px);
+    -webkit-backdrop-filter: saturate(1.85) blur(20px);
   }
 
   .hero-search:not(.hero-search--sticky-bar):focus-within {
-    background: var(--color-surface);
+    background: color-mix(in srgb, #fdfcfb 62%, rgba(255, 255, 255, 0.14));
     border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
   }
 
   .hero-search:not(.hero-search--sticky-bar) .hero-search__compose {
-    min-height: 52px;
+    min-height: 44px;
     align-items: center;
   }
 
   .hero-search:not(.hero-search--sticky-bar) .hero-search__cerca-mark-inner {
-    padding: 8px 11px;
+    padding: 6px 10px;
   }
 
   .hero-search:not(.hero-search--sticky-bar) .hero-search__city {
-    min-height: 52px;
-    padding: 14px 10px 14px 4px;
-    font-size: 1.0625rem;
+    min-height: 44px;
+    padding: 10px 8px 10px 4px;
+    font-size: 1rem;
     line-height: 1.35;
   }
 
   .hero-search--sticky-bar {
     flex-direction: row;
     align-items: stretch;
-    border-radius: 22px;
-    padding: 3px 3px 3px 10px;
+    border-radius: 999px;
+    padding: 3px 3px 3px 12px;
     gap: 0;
-    background: color-mix(in srgb, #fdfcfb 50%, rgba(255, 255, 255, 0.08));
+    min-height: 44px;
+    background: color-mix(in srgb, #fdfcfb 48%, rgba(255, 255, 255, 0.1));
     border: 1px solid color-mix(in srgb, #fff 55%, var(--color-border) 45%);
     box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.58) inset,
-      0 10px 40px rgba(42, 92, 130, 0.13),
-      0 2px 10px rgba(42, 44, 42, 0.05);
-    backdrop-filter: saturate(2.05) blur(30px);
-    -webkit-backdrop-filter: saturate(2.05) blur(30px);
+      0 1px 0 rgba(255, 255, 255, 0.55) inset,
+      0 8px 28px rgba(42, 92, 130, 0.12),
+      0 2px 8px rgba(42, 44, 42, 0.04);
+    backdrop-filter: saturate(1.9) blur(22px);
+    -webkit-backdrop-filter: saturate(1.9) blur(22px);
   }
 
   .hero-search--sticky-bar .hero-search__btn--sticky-icon {
-    width: 44px;
+    width: 36px;
     min-height: 0;
-    min-width: 44px;
+    min-width: 36px;
     flex-shrink: 0;
     align-self: stretch;
   }
@@ -12711,22 +12725,27 @@ button.candidacy-auth-dialog__btn {
   grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.2fr) 3.5rem;
   align-items: stretch;
   width: 100%;
-  min-height: 4.15rem;
+  min-height: 3.35rem;
   margin: 0;
   padding: 0;
-  background: #fff;
-  border: 1px solid rgba(15, 23, 20, 0.08);
+  background: color-mix(in srgb, #fdfcfb 50%, rgba(255, 255, 255, 0.12));
+  border: 1px solid color-mix(in srgb, #fff 58%, rgba(15, 23, 20, 0.12) 42%);
   border-radius: 999px;
   box-shadow:
-    0 1px 2px rgba(28, 43, 40, 0.04),
-    0 8px 28px rgba(28, 43, 40, 0.1);
-  transition: background 240ms ease, box-shadow 240ms ease;
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 8px 28px rgba(42, 92, 130, 0.12),
+    0 2px 8px rgba(28, 43, 40, 0.05);
+  backdrop-filter: saturate(1.85) blur(20px);
+  -webkit-backdrop-filter: saturate(1.85) blur(20px);
+  transition: background 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
 }
 
 .cx-explorer.is-open .cx-explorer__pill {
-  background: #e8ebe9;
-  border-color: transparent;
-  box-shadow: none;
+  background: color-mix(in srgb, #fdfcfb 62%, rgba(255, 255, 255, 0.16));
+  border-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 10px 32px rgba(42, 92, 130, 0.14);
 }
 
 .cx-explorer__seg {
@@ -13166,78 +13185,76 @@ button.candidacy-auth-dialog__btn {
     max-width: none;
   }
 
+  /* Pill sottile orizzontale + glass (niente card bianca a due piani) */
   .cx-explorer.is-mobile .cx-explorer__pill {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 3.5rem;
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      'dove submit'
-      'mode submit';
-    border-radius: 1.55rem;
-    min-height: 5.35rem;
-    overflow: hidden;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.15fr) 2.85rem;
+    grid-template-rows: auto;
+    grid-template-areas: none;
+    border-radius: 999px;
+    min-height: 3.15rem;
+    overflow: visible;
     align-items: stretch;
   }
 
-  .cx-explorer.is-mobile .cx-explorer__seg--dove {
-    grid-area: dove;
-  }
-
+  .cx-explorer.is-mobile .cx-explorer__seg--dove,
   .cx-explorer.is-mobile .cx-explorer__seg--mode {
-    grid-area: mode;
+    grid-area: auto;
   }
 
   .cx-explorer.is-mobile .cx-explorer__submit {
-    grid-area: submit;
+    grid-area: auto;
     align-self: center;
-    justify-self: center;
-    width: 3.05rem;
-    height: 3.05rem;
-    margin: 0 0.6rem 0 0;
+    justify-self: end;
+    width: 2.45rem;
+    height: 2.45rem;
+    margin: 0 0.35rem 0 0;
   }
 
   .cx-explorer.is-open .cx-explorer__pill {
-    background: #fff;
-    border: 1px solid rgba(15, 23, 20, 0.08);
+    background: color-mix(in srgb, #fdfcfb 62%, rgba(255, 255, 255, 0.16));
+    border: 1px solid color-mix(in srgb, #fff 55%, rgba(15, 23, 20, 0.12) 45%);
     box-shadow:
-      0 1px 2px rgba(28, 43, 40, 0.04),
-      0 8px 28px rgba(28, 43, 40, 0.1);
+      0 1px 0 rgba(255, 255, 255, 0.55) inset,
+      0 8px 28px rgba(42, 92, 130, 0.12);
   }
 
   .cx-explorer__seg {
-    border-radius: 0;
+    border-radius: 999px;
     flex-direction: column;
   }
 
   .cx-explorer__seg.is-active {
-    box-shadow: none;
-    background: transparent;
+    box-shadow:
+      0 1px 2px rgba(28, 43, 40, 0.05),
+      0 6px 16px rgba(28, 43, 40, 0.08);
+    background: color-mix(in srgb, #fff 72%, transparent);
   }
 
   .cx-explorer__seg.is-idle {
-    opacity: 1;
+    opacity: 0.88;
   }
 
   .cx-explorer__seg + .cx-explorer__seg::before {
-    left: 1.1rem;
-    right: 0.35rem;
-    top: 0;
-    width: auto;
-    height: 1px;
-    transform: none;
+    left: 0;
+    top: 50%;
+    width: 1px;
+    height: 1.35rem;
+    transform: translateY(-50%);
   }
 
   .cx-explorer__seg-btn {
-    padding: 0.85rem 0.75rem 0.85rem 1.15rem;
+    padding: 0.45rem 0.65rem 0.45rem 0.9rem;
+    gap: 0.1rem;
   }
 
   .cx-explorer__kicker {
-    font-size: 0.78rem;
+    font-size: 0.65rem;
   }
 
   .cx-explorer__value,
   .cx-explorer__input {
-    font-size: 0.9rem;
+    font-size: 0.8125rem;
   }
 
   .cx-explorer__pop,

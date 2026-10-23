@@ -11,6 +11,8 @@
 }
 
 html {
+  /* Un solo scroll root: overflow su body rompe position:sticky dell’header */
+  overflow-x: clip;
   overflow-y: auto;
   -webkit-text-size-adjust: 100%;
 }
@@ -18,8 +20,7 @@ html {
 body {
   margin: 0;
   min-height: 100%;
-  overflow-x: clip;
-  overflow-y: auto;
+  overflow: visible;
   font-family: var(--font-body);
   font-size: var(--text-body);
   line-height: var(--leading-body);
