@@ -54,6 +54,14 @@ export function useStripeSetupWizard() {
     void reload()
   }, [reload])
 
+  // Non lasciare secret in memoria React dopo uscita dal wizard.
+  useEffect(() => {
+    return () => {
+      setSecretKey('')
+      setWebhookSecret('')
+    }
+  }, [])
+
   const save = useCallback(async (patch: UpdateBillingSettingsInput) => {
     setBusy(true)
     setError(null)

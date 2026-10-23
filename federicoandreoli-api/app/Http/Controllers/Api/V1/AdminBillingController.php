@@ -41,6 +41,77 @@ class AdminBillingController
         ]);
 
         $settings = BillingSetting::current();
+        $mode = $data['mode'] ?? $settings->mode ?? 'test';
+        $expectLive = $mode === 'live';
+
+        if (! empty($data['publishableKey'])) {
+            $pk = trim((string) $data['publishableKey']);
+            $okPk = $expectLive
+                ? str_starts_with($pk, 'pk_live_')
+                : str_starts_with($pk, 'pk_test_');
+            if (! $okPk) {
+                return ApiResponse::error(
+                    $expectLive
+                        ? 'In modalità Live serve una Publishable key pk_live_…'
+                        : 'In modalità Test serve una Publishable key pk_test_…',
+                    422,
+                    ['publishableKey' => ['Prefisso non valido per la modalità scelta.']],
+                    'validation',
+                );
+            }
+            $data['publishableKey'] = $pk;
+        }
+
+        if (! empty($data['secretKey'])) {
+            $sk = trim((string) $data['secretKey']);
+            $okSk = $expectLive
+                ? str_starts_with($sk, 'sk_live_')
+                : str_starts_with($sk, 'sk_test_');
+            if (! $okSk) {
+                return ApiResponse::error(
+                    $expectLive
+                        ? 'In modalità Live serve una Secret key sk_live_…'
+                        : 'In modalità Test serve una Secret key sk_test_…',
+                    422,
+                    ['secretKey' => ['Prefisso non valido per la modalità scelta.']],
+                    'validation',
+                );
+            }
+            // Mai accettare chiavi publishable nel campo secret.
+            if (str_starts_with($sk, 'pk_')) {
+                return ApiResponse::error(
+                    'Hai incollato una Publishable key nel campo Secret. Usa sk_test_ / sk_live_.',
+                    422,
+                    ['secretKey' => ['Chiave errata.']],
+                    'validation',
+                );
+            }
+            $data['secretKey'] = $sk;
+        }
+
+        if (! empty($data['webhookSecret'])) {
+            $wh = trim((string) $data['webhookSecret']);
+            if (! str_starts_with($wh, 'whsec_')) {
+                return ApiResponse::error(
+                    'Il webhook signing secret deve iniziare con whsec_.',
+                    422,
+                    ['webhookSecret' => ['Formato non valido.']],
+                    'validation',
+                );
+            }
+            $data['webhookSecret'] = $wh;
+        }
+
+        foreach (['priceProfessional', 'priceAgency', 'priceStructure'] as $priceField) {
+            if (! empty($data[$priceField]) && ! str_starts_with(trim((string) $data[$priceField]), 'price_')) {
+                return ApiResponse::error(
+                    'I Price ID devono iniziare con price_.',
+                    422,
+                    [$priceField => ['Formato non valido.']],
+                    'validation',
+                );
+            }
+        }
 
         if (isset($data['mode'])) {
             $settings->mode = $data['mode'];

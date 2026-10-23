@@ -13871,3 +13871,40 @@ button.candidacy-auth-dialog__btn {
     columns: 1 !important;
   }
 }
+
+/* Stripe wizard clarity */
+.dash-stripe-security-note {
+  background: color-mix(in srgb, var(--color-sage, #5a8f7b) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-sage, #5a8f7b) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.dash-stripe-steps {
+  margin: 12px 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 10px;
+  line-height: 1.45;
+}
+.dash-stripe-checklist {
+  margin: 12px 0 0;
+  padding-left: 1.25rem;
+  line-height: 1.5;
+}
+.dash-stripe-copy {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.dash-stripe-copy__label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.dash-btn--sm {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  width: fit-content;
+}
