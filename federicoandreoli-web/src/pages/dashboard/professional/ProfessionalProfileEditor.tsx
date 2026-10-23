@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { Link } from 'react-router-dom'
 import { ItaliaGeoSearchCombobox } from '../../../components/ItaliaGeoSearchCombobox'
 import { MultiSelectSearchPicker } from '../../../components/MultiSelectSearchPicker'
@@ -180,6 +189,12 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
   )
 }
 
+export type ProfileEditorHandle = {
+  isDirty: () => boolean
+  save: () => Promise<boolean>
+  discard: () => void
+}
+
 type Props = {
   profile: ProfessionalProfile | null
   loading: boolean
@@ -192,9 +207,11 @@ type Props = {
   onReload: () => void
   onSave: (patch: ProfessionalProfilePatch) => Promise<boolean>
   onUploadPhoto: (file: File) => Promise<boolean>
+  onDirtyChange?: (dirty: boolean) => void
 }
 
-export function ProfessionalProfileEditor({
+export const ProfessionalProfileEditor = forwardRef<ProfileEditorHandle, Props>(function ProfessionalProfileEditor(
+{
   profile,
   loading,
   error,
@@ -206,18 +223,22 @@ export function ProfessionalProfileEditor({
   onReload,
   onSave,
   onUploadPhoto,
-}: Props) {
+  onDirtyChange,
+},
+ref,
+) {
   const photoInputRef = useRef<HTMLInputElement | null>(null)
   const editorTopRef = useRef<HTMLDivElement | null>(null)
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const skipAutosave = useRef(true)
   const lastSavedJson = useRef('')
+  const patchJsonRef = useRef('')
 
   const [step, setStep] = useState<ProfileStepId>('dati')
   const [saved, setSaved] = useState(false)
-  const [autoStatus, setAutoStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [previewOpen, setPreviewOpen] = useState(false)
   const [formReady, setFormReady] = useState(false)
+  const [baselineTick, setBaselineTick] = useState(0)
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -274,8 +295,10 @@ export function ProfessionalProfileEditor({
     setPrimaryPlace(null)
     setAvailableToMove(profile.availableToMove)
     setCertifications(certNorm.certifications)
-    skipAutosave.current = true
     setFormReady(true)
+    setSaveStatus('idle')
+    // Baseline aggiornata dopo il primo render con i nuovi valori (vedi effect sotto).
+    setBaselineTick((n) => n + 1)
   }, [profile])
 
   const draftProfile = useMemo((): ProfessionalProfile | null => {
@@ -437,51 +460,106 @@ export function ProfessionalProfileEditor({
     certifications,
     isPremium,
   ])
+  patchJsonRef.current = patchJson
+
+  const dirty = formReady && patchJson !== lastSavedJson.current
 
   useEffect(() => {
-    if (!formReady || !profile) return
+    if (!formReady) return
+    lastSavedJson.current = patchJsonRef.current
+    setSaveStatus('idle')
+    onDirtyChange?.(false)
+    // Solo al load profilo / discard (baselineTick), non a ogni keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intenzionale
+  }, [baselineTick, formReady])
 
-    if (skipAutosave.current) {
-      skipAutosave.current = false
-      lastSavedJson.current = patchJson
-      setAutoStatus('idle')
-      return
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
+
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
     }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
 
-    if (patchJson === lastSavedJson.current) return
+  const persistNow = useCallback(async (): Promise<boolean> => {
+    const json = patchJsonRef.current
+    if (json === lastSavedJson.current) {
+      setSaveStatus('idle')
+      return true
+    }
+    setSaveStatus('saving')
+    const ok = await onSave(JSON.parse(json) as ProfessionalProfilePatch)
+    if (!ok) {
+      setSaveStatus('error')
+      return false
+    }
+    lastSavedJson.current = json
+    setSaveStatus('saved')
+    setSaved(true)
+    onDirtyChange?.(false)
+    if (toastTimeout.current) clearTimeout(toastTimeout.current)
+    toastTimeout.current = setTimeout(() => {
+      setSaved(false)
+      setSaveStatus((s) => (s === 'saved' ? 'idle' : s))
+    }, 2200)
+    return true
+  }, [onSave, onDirtyChange])
 
-    setAutoStatus('pending')
-    const timer = setTimeout(() => {
-      void (async () => {
-        setAutoStatus('saving')
-        const ok = await onSave(JSON.parse(patchJson) as ProfessionalProfilePatch)
-        if (!ok) {
-          setAutoStatus('error')
-          return
-        }
-        lastSavedJson.current = patchJson
-        setAutoStatus('saved')
-        setSaved(true)
-        if (toastTimeout.current) clearTimeout(toastTimeout.current)
-        toastTimeout.current = setTimeout(() => {
-          setSaved(false)
-          setAutoStatus((s) => (s === 'saved' ? 'idle' : s))
-        }, 2500)
-      })()
-    }, 900)
+  const discardNow = useCallback(() => {
+    if (!profile) return
+    setFirstName(profile.identity.firstName)
+    setLastName(profile.identity.lastName)
+    setProfessionalTitle(profile.identity.professionalTitle)
+    setBio(profile.identity.bio)
+    setPhone(profile.identity.phone ?? '')
+    setCategory(profile.professional.category)
+    setExperienceYears(profile.professional.experienceYears)
+    setSpecializations(normalizeSpecializations(profile.professional.specializations))
+    setLanguages(profile.professional.languages)
+    const certNorm = normalizeCertifications(profile.certifications)
+    setHasLicense(profile.professional.hasLicense || certNorm.hadDriverLicense)
+    setHasCar(profile.professional.hasCar)
+    setEmploymentTypes(profile.availability.employmentTypes)
+    setSelectedDays(profile.availability.days)
+    setShifts(profile.availability.shifts)
+    setAvailableFrom(profile.availability.availableFrom)
+    setHourlyRate(profile.rates.hourly)
+    setMonthlyRate(profile.rates.monthlyLiveIn)
+    setZones(profile.zones)
+    setPrimaryZone(profile.primaryZone)
+    setRadiusKm(effectiveRadiusKm(profile.primaryZone, profile.radiusKm ?? null))
+    setPrimaryPlace(null)
+    setAvailableToMove(profile.availableToMove)
+    setCertifications(certNorm.certifications)
+    setSaveStatus('idle')
+    setBaselineTick((n) => n + 1)
+  }, [profile])
 
-    return () => clearTimeout(timer)
-  }, [formReady, profile, patchJson, onSave])
+  useImperativeHandle(
+    ref,
+    () => ({
+      isDirty: () => patchJsonRef.current !== lastSavedJson.current,
+      save: persistNow,
+      discard: discardNow,
+    }),
+    [persistNow, discardNow],
+  )
 
-  const autoSaveLabel =
-    autoStatus === 'pending'
-      ? 'Modifiche in sospeso…'
-      : autoStatus === 'saving' || saving
-        ? 'Salvataggio automatico…'
-        : autoStatus === 'saved'
-          ? 'Salvato'
-          : autoStatus === 'error'
-            ? 'Salvataggio non riuscito'
+  const saveStatusLabel =
+    saveStatus === 'saving' || saving
+      ? 'Salvataggio…'
+      : saveStatus === 'saved'
+        ? 'Salvato'
+        : saveStatus === 'error'
+          ? 'Salvataggio non riuscito'
+          : dirty
+            ? 'Modifiche non salvate'
             : null
 
   const addCoverageLabel = (label: string) => {
@@ -522,7 +600,12 @@ export function ProfessionalProfileEditor({
     editorTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }
 
-  const goStep = (id: ProfileStepId) => {
+  const goStep = async (id: ProfileStepId) => {
+    if (id === step) return
+    if (patchJsonRef.current !== lastSavedJson.current) {
+      const ok = await persistNow()
+      if (!ok) return
+    }
     setStep(id)
   }
 
@@ -630,8 +713,8 @@ export function ProfessionalProfileEditor({
                 <button
                   type="button"
                   className={`dash-prof-checklist__item${item.done ? ' is-done' : ''}`}
-                  onClick={() => {
-                    goStep(sectionToStep(item.id))
+                    onClick={() => {
+                    void goStep(sectionToStep(item.id))
                     setPreviewOpen(false)
                   }}
                 >
@@ -659,12 +742,12 @@ export function ProfessionalProfileEditor({
           <p className="dash-prof-editor__sub">
             Come appare a famiglie, strutture e agenzie — completa le sezioni per aumentare i contatti.
           </p>
-          {autoSaveLabel ? (
+          {saveStatusLabel ? (
             <p
-              className={`dash-prof-autosave${autoStatus === 'error' ? ' dash-prof-autosave--error' : ''}${autoStatus === 'saved' ? ' dash-prof-autosave--ok' : ''}`}
+              className={`dash-prof-autosave${saveStatus === 'error' ? ' dash-prof-autosave--error' : ''}${saveStatus === 'saved' ? ' dash-prof-autosave--ok' : ''}${dirty && saveStatus === 'idle' ? ' dash-prof-autosave--dirty' : ''}`}
               aria-live="polite"
             >
-              {autoSaveLabel}
+              {saveStatusLabel}
             </p>
           ) : null}
         </div>
@@ -705,7 +788,8 @@ export function ProfessionalProfileEditor({
             key={s.id}
             type="button"
             className={`dash-prof-steps__item${step === s.id ? ' is-active' : ''}${stepDone[s.id] ? ' is-done' : ''}`}
-            onClick={() => goStep(s.id)}
+            onClick={() => void goStep(s.id)}
+            disabled={saveStatus === 'saving' || saving}
           >
             <span className="dash-prof-steps__num" aria-hidden>
               {stepDone[s.id] ? <IconCheckMark size={14} /> : i + 1}
@@ -721,7 +805,7 @@ export function ProfessionalProfileEditor({
       <button
         type="button"
         className="dash-prof-zone-summary"
-        onClick={() => goStep('zone')}
+        onClick={() => void goStep('zone')}
       >
         <div className="dash-prof-zone-summary__copy">
           <span className="dash-prof-zone-summary__kicker">Zona scelta · Raggio</span>
@@ -1261,20 +1345,39 @@ export function ProfessionalProfileEditor({
 
           <div className="dash-prof-panel__footer">
             {prevStep ? (
-              <button type="button" className="dash-btn dash-btn--ghost" onClick={() => goStep(prevStep.id)}>
+              <button
+                type="button"
+                className="dash-btn dash-btn--ghost"
+                disabled={saveStatus === 'saving' || saving}
+                onClick={() => void goStep(prevStep.id)}
+              >
                 Indietro
               </button>
             ) : (
               <span />
             )}
             {nextStep ? (
-              <button type="button" className="dash-btn dash-btn--primary" onClick={() => goStep(nextStep.id)}>
-                Prosegui: {nextStep.short}
+              <button
+                type="button"
+                className="dash-btn dash-btn--primary"
+                disabled={saveStatus === 'saving' || saving}
+                onClick={() => void goStep(nextStep.id)}
+              >
+                {dirty ? 'Salva e prosegui' : `Prosegui: ${nextStep.short}`}
                 <IconChevronRight size={16} />
+              </button>
+            ) : dirty ? (
+              <button
+                type="button"
+                className="dash-btn dash-btn--primary"
+                disabled={saveStatus === 'saving' || saving}
+                onClick={() => void persistNow()}
+              >
+                {saveStatus === 'saving' || saving ? 'Salvataggio…' : 'Salva modifiche'}
               </button>
             ) : (
               <span className="dash-prof-panel__footer-hint">
-                {autoSaveLabel ?? 'Le modifiche si salvano da sole'}
+                {saveStatusLabel ?? 'Nessuna modifica da salvare'}
               </span>
             )}
           </div>
@@ -1291,12 +1394,12 @@ export function ProfessionalProfileEditor({
         >
           <IconEye size={16} /> Anteprima
         </button>
-        {autoSaveLabel ? (
+        {saveStatusLabel ? (
           <span
-            className={`dash-prof-autosave dash-prof-autosave--inline${autoStatus === 'error' ? ' dash-prof-autosave--error' : ''}${autoStatus === 'saved' ? ' dash-prof-autosave--ok' : ''}`}
+            className={`dash-prof-autosave dash-prof-autosave--inline${saveStatus === 'error' ? ' dash-prof-autosave--error' : ''}${saveStatus === 'saved' ? ' dash-prof-autosave--ok' : ''}${dirty && saveStatus === 'idle' ? ' dash-prof-autosave--dirty' : ''}`}
             aria-live="polite"
           >
-            {autoSaveLabel}
+            {saveStatusLabel}
           </span>
         ) : null}
       </div>
@@ -1324,4 +1427,4 @@ export function ProfessionalProfileEditor({
       <Toast message="Profilo aggiornato con successo!" visible={saved} />
     </div>
   )
-}
+})

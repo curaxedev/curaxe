@@ -10191,6 +10191,58 @@ button.candidacy-auth-dialog__btn {
   margin: 0;
 }
 
+.dash-prof-autosave--dirty {
+  color: var(--color-accent, #c45c26);
+}
+
+.dash-leave-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.dash-leave-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(18, 47, 67, 0.45);
+  cursor: pointer;
+}
+
+.dash-leave-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: 18px;
+  padding: 20px 18px 16px;
+  box-shadow: 0 18px 48px rgba(18, 47, 67, 0.22);
+}
+
+.dash-leave-dialog__title {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  font-weight: 750;
+}
+
+.dash-leave-dialog__text {
+  margin: 0 0 18px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.dash-leave-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .dash-prof-panel__footer-hint {
   font-size: 0.85rem;
   color: var(--color-text-muted);

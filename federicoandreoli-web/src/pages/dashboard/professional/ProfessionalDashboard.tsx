@@ -1,4 +1,4 @@
-import { useState, useEffect, type CSSProperties } from 'react'
+import { useState, useEffect, useRef, type CSSProperties, type Ref } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../auth/useAuth'
 import { useApplications } from '../../../hooks/useApplications'
@@ -13,7 +13,10 @@ import {
   SectionApplications,
   SectionOpenPositions,
 } from './ProfessionalApplicationsSections'
-import { ProfessionalProfileEditor } from './ProfessionalProfileEditor'
+import {
+  ProfessionalProfileEditor,
+  type ProfileEditorHandle,
+} from './ProfessionalProfileEditor'
 import { getProfileCompletionChecklist } from '../../../services/professionalProfileService'
 import type { MessageThread, MessagingParticipantRole } from '../../../lib/messagingTypes'
 import { showBillingDemoCopy } from '../../../lib/billingFeatures'
@@ -444,8 +447,11 @@ function SectionProfile(props: {
   onReload: () => void
   onSave: (patch: ProfessionalProfilePatch) => Promise<boolean>
   onUploadPhoto: (file: File) => Promise<boolean>
+  onDirtyChange?: (dirty: boolean) => void
+  editorRef?: Ref<ProfileEditorHandle>
 }) {
-  return <ProfessionalProfileEditor {...props} />
+  const { editorRef, ...rest } = props
+  return <ProfessionalProfileEditor ref={editorRef} {...rest} />
 }
 
 /* ── Section C: Contact inbox (messaging threads) ───────────── */
@@ -835,6 +841,10 @@ export function ProfessionalDashboard() {
   } = useProfessionalProfile()
   const [activeSection, setActiveSection] = useState('home')
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [profileDirty, setProfileDirty] = useState(false)
+  const [leavePrompt, setLeavePrompt] = useState<{ nextSection: string } | null>(null)
+  const [leaveBusy, setLeaveBusy] = useState(false)
+  const profileEditorRef = useRef<ProfileEditorHandle>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -863,21 +873,69 @@ export function ProfessionalDashboard() {
   ])
 
   useEffect(() => {
-    if (sectionParam && PROF_SECTIONS.has(sectionParam)) {
+    if (leavePrompt) return
+    if (sectionParam && PROF_SECTIONS.has(sectionParam) && sectionParam !== activeSection) {
+      if (
+        activeSection === 'profilo' &&
+        (profileDirty || profileEditorRef.current?.isDirty())
+      ) {
+        setLeavePrompt({ nextSection: sectionParam })
+        return
+      }
       setActiveSection(sectionParam)
     }
     if (threadParam) {
       messaging.selectThread(threadParam)
     }
-  }, [sectionParam, threadParam, messaging.selectThread])
+  }, [
+    sectionParam,
+    threadParam,
+    messaging.selectThread,
+    activeSection,
+    profileDirty,
+    leavePrompt,
+  ])
 
-  const goToSection = (section: string) => {
+  const applySection = (section: string) => {
     setActiveSection(section)
     if (section === 'messaggi') {
       setSearchParams({ section: 'messaggi' }, { replace: true })
       return
     }
     setSearchParams({ section }, { replace: true })
+  }
+
+  const goToSection = (section: string) => {
+    if (
+      activeSection === 'profilo' &&
+      section !== 'profilo' &&
+      (profileDirty || profileEditorRef.current?.isDirty())
+    ) {
+      setLeavePrompt({ nextSection: section })
+      return
+    }
+    applySection(section)
+  }
+
+  const confirmLeaveSave = async () => {
+    if (!leavePrompt) return
+    setLeaveBusy(true)
+    const ok = (await profileEditorRef.current?.save()) ?? false
+    setLeaveBusy(false)
+    if (!ok) return
+    const next = leavePrompt.nextSection
+    setLeavePrompt(null)
+    setProfileDirty(false)
+    applySection(next)
+  }
+
+  const confirmLeaveDiscard = () => {
+    if (!leavePrompt) return
+    profileEditorRef.current?.discard()
+    const next = leavePrompt.nextSection
+    setLeavePrompt(null)
+    setProfileDirty(false)
+    applySection(next)
   }
 
   useEffect(() => {
@@ -993,6 +1051,7 @@ export function ProfessionalDashboard() {
       case 'profilo':
         return (
           <SectionProfile
+            editorRef={profileEditorRef}
             profile={profile}
             loading={profileLoading}
             error={profileError}
@@ -1004,6 +1063,7 @@ export function ProfessionalDashboard() {
             onReload={() => void reloadProfile()}
             onSave={saveProfile}
             onUploadPhoto={uploadProfilePhoto}
+            onDirtyChange={setProfileDirty}
           />
         )
       case 'richieste':
@@ -1105,6 +1165,59 @@ export function ProfessionalDashboard() {
         {renderSection()}
       </DashboardLayout>
       <Toast message={billingToast ?? ''} visible={Boolean(billingToast)} />
+      {leavePrompt ? (
+        <div className="dash-leave-dialog" role="presentation">
+          <button
+            type="button"
+            className="dash-leave-dialog__backdrop"
+            aria-label="Chiudi"
+            disabled={leaveBusy}
+            onClick={() => setLeavePrompt(null)}
+          />
+          <div
+            className="dash-leave-dialog__panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dash-leave-title"
+          >
+            <h2 id="dash-leave-title" className="dash-leave-dialog__title">
+              Modifiche non salvate
+            </h2>
+            <p className="dash-leave-dialog__text">
+              Hai cambiamenti nel profilo. Vuoi salvarli prima di uscire, oppure scartarli?
+            </p>
+            <div className="dash-leave-dialog__actions">
+              <button
+                type="button"
+                className="dash-btn dash-btn--ghost"
+                disabled={leaveBusy}
+                onClick={() => {
+                  setLeavePrompt(null)
+                  setSearchParams({ section: 'profilo' }, { replace: true })
+                }}
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                className="dash-btn dash-btn--ghost"
+                disabled={leaveBusy}
+                onClick={confirmLeaveDiscard}
+              >
+                Scarta
+              </button>
+              <button
+                type="button"
+                className="dash-btn dash-btn--primary"
+                disabled={leaveBusy}
+                onClick={() => void confirmLeaveSave()}
+              >
+                {leaveBusy ? 'Salvataggio…' : 'Salva'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {showUpgrade && (
         <UpgradeModal
           onClose={() => {
