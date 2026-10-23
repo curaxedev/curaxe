@@ -276,16 +276,24 @@ export function ProfilesDirectoryPage() {
       />
       <main className="home-page prof-dir">
         <div className="prof-dir__intro">
-          <nav className="how-page__crumb prof-dir__crumb polish-crumb" aria-label="Percorso">
-            <Link to="/">Home</Link>
-            <span aria-hidden> / </span>
-            <span>Profili</span>
-          </nav>
+          <h1 className="visually-hidden">Profili e organizzazioni</h1>
 
-          <h1 className="prof-dir__page-title">Cerca profili e organizzazioni per zona</h1>
-          <p className="prof-dir__page-lead">
-            Cerca per comune, CAP, provincia o regione. I risultati arrivano dalla directory live di Curaxe.
-          </p>
+          <div
+            id={intentPanelId}
+            role="tabpanel"
+            aria-labelledby={intentPanelLabelledBy}
+            className="prof-dir__intent-panel"
+          >
+            <div id="prof-dir-geo-search" className="prof-dir__intro-search">
+              <ItaliaGeoSearchCombobox
+                key={`intro-geo-${comboboxKey}`}
+                layoutVariant="toolbar"
+                selectedPlace={selectedPlace}
+                onSelectedPlaceChange={syncPlaceToUrl}
+                initialDraft={initialDraft}
+              />
+            </div>
+          </div>
 
           <div className="prof-dir__intro-tabs">
             <div
@@ -327,29 +335,6 @@ export function ProfilesDirectoryPage() {
                 Offro assistenza
               </button>
             </div>
-          </div>
-
-          <div
-            id={intentPanelId}
-            role="tabpanel"
-            aria-labelledby={intentPanelLabelledBy}
-            className="prof-dir__intent-panel"
-          >
-            <div id="prof-dir-geo-search" className="prof-dir__intro-search">
-              <ItaliaGeoSearchCombobox
-                key={`intro-geo-${comboboxKey}`}
-                layoutVariant="default"
-                selectedPlace={selectedPlace}
-                onSelectedPlaceChange={syncPlaceToUrl}
-                initialDraft={initialDraft}
-              />
-            </div>
-
-            <p className="prof-dir__hint prof-dir__hint--intro" aria-live="polite">
-              {selectedPlace
-                ? `Zona: ${selectedPlace.comune} (${selectedPlace.siglaProvincia}), ${selectedPlace.regione}. Risultati filtrati per regione, ordinati per rilevanza sul comune.`
-                : 'Nessun luogo selezionato: elenco completo. Scegli un comune o una zona nel campo sopra.'}
-            </p>
           </div>
         </div>
 

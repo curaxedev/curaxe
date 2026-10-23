@@ -104,17 +104,6 @@ export function SiteHeader() {
 
         {!onRegister && (
           <nav className="topbar__nav" aria-label="Principale">
-            <div className="topbar__path-cluster" role="group" aria-label="Percorsi principali">
-              <Link className="topbar__path-link" to={assistenzaHeroCercoLink} onClick={scrollToTopOfPage}>
-                Cerca assistenza
-              </Link>
-              <span className="topbar__path-sep" aria-hidden>
-                |
-              </span>
-              <Link className="topbar__path-link" to={assistenzaHeroOffroLink} onClick={scrollToTopOfPage}>
-                Offri assistenza
-              </Link>
-            </div>
             <Link
               className={`topbar__how-link${onComeFunziona ? ' is-active' : ''}`}
               to={comeFunzionaPath}
