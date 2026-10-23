@@ -51,9 +51,10 @@ export function SiteFooter() {
 
   const colOffer: FooterLink[] = [
     { label: 'Iscrizione professionisti', href: '/iscriviti' },
+    { label: 'Assistente familiare', href: '/iscrizione-assistente-familiare' },
+    { label: 'Iscrizione agenzia', href: '/iscrizione-agenzia' },
     { label: 'Apri un account gratuito', href: registerStartHref },
     { label: 'Accedi al profilo', href: '/accedi' },
-    { label: 'Visibilità e lead', href: ecosistemaHref },
   ]
 
   const colPlatform: FooterLink[] = [

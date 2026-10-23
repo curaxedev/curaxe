@@ -44,6 +44,11 @@ export type RegisterDraft = {
   /** Email account (raccolta allo step account; mock finché non c’è Laravel). */
   email?: string
   addressLine?: string
+  /** ISTAT del comune scelto dai suggerimenti geo (coerenza directory). */
+  addressIstat?: string
+  addressComune?: string
+  addressRegione?: string
+  addressCap?: string
   /** Zona di lavoro: tutta Italia, elenco regioni, o raggio dall’indirizzo indicato. */
   coverageMode?: OfferCoverageMode | null
   coverageRegions?: string[]

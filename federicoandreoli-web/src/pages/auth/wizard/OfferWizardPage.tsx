@@ -12,6 +12,7 @@ import {
 } from './stepConfig'
 import { ConsentStep } from './steps/ConsentStep'
 import { RegistrationSubmitPanel } from './RegistrationSubmitPanel'
+import { WizardPlaceSearch } from './WizardPlaceSearch'
 
 const ROLE_OPTIONS: { value: PrimaryRole; label: string }[] = [
   { value: 'nurse', label: 'Infermiere / Infermiera' },
@@ -89,7 +90,10 @@ function ChiSeiStep({
   patchDraft: (p: Partial<RegisterDraft>) => void
   onContinue: () => void
 }) {
-  const canContinue = Boolean(draft.primaryRole) && (draft.addressLine?.trim().length ?? 0) >= 2
+  const canContinue =
+    Boolean(draft.primaryRole) &&
+    Boolean(draft.addressLine?.trim()) &&
+    Boolean(draft.addressIstat || draft.addressComune)
 
   return (
     <>
@@ -126,17 +130,32 @@ function ChiSeiStep({
       </div>
 
       <p className="wz-section-label">Comune o zona di lavoro</p>
-      <label className="wz-field">
-        <span className="wz-field__label">Dove operi principalmente?</span>
-        <input
-          type="text"
-          className="wz-input"
-          placeholder="Es. Milano, zona Porta Romana"
-          value={draft.addressLine ?? ''}
-          onChange={(e) => patchDraft({ addressLine: e.target.value })}
-          autoComplete="address-level2"
-        />
-      </label>
+      <WizardPlaceSearch
+        value={draft.addressLine ?? ''}
+        requireSelection
+        fieldLabel="Dove operi principalmente?"
+        placeholder="Es. Milano, Torino…"
+        onChange={(label) => {
+          if (!label) {
+            patchDraft({
+              addressLine: '',
+              addressIstat: undefined,
+              addressComune: undefined,
+              addressRegione: undefined,
+              addressCap: undefined,
+            })
+          }
+        }}
+        onPlaceSelect={(place) => {
+          patchDraft({
+            addressLine: place.label,
+            addressIstat: place.istat,
+            addressComune: place.comune,
+            addressRegione: place.regione,
+            addressCap: place.cap,
+          })
+        }}
+      />
 
       <div className="wz-footer">
         <button type="button" className="wz-btn-primary" onClick={onContinue} disabled={!canContinue}>

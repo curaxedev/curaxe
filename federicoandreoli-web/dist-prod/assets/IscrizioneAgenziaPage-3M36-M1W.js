@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-C-VZ48gJ.js";import{n as t,t as n}from"./SignupLandingPage-GmopEZMp.js";var r=e();function i(){return(0,r.jsx)(n,{config:t.agenzia})}export{i as IscrizioneAgenziaPage};

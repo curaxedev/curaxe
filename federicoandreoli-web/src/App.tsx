@@ -30,6 +30,16 @@ const StructureDetailPage = lazy(() =>
 const IscrizioneLandingPage = lazy(() =>
   import('./pages/IscrizioneLandingPage').then((m) => ({ default: m.IscrizioneLandingPage })),
 )
+const IscrizioneAssistenteFamiliarePage = lazy(() =>
+  import('./pages/landings/IscrizioneAssistenteFamiliarePage').then((m) => ({
+    default: m.IscrizioneAssistenteFamiliarePage,
+  })),
+)
+const IscrizioneAgenziaPage = lazy(() =>
+  import('./pages/landings/IscrizioneAgenziaPage').then((m) => ({
+    default: m.IscrizioneAgenziaPage,
+  })),
+)
 const OpenPositionDetailPage = lazy(() =>
   import('./pages/OpenPositionDetailPage').then((m) => ({ default: m.OpenPositionDetailPage })),
 )
@@ -141,6 +151,22 @@ export default function App() {
                 <Route path="/profili/:id" element={<ProfileDetailPage />} />
                 <Route path="/strutture/:id" element={<StructureDetailPage />} />
                 <Route path="/iscriviti" element={<IscrizioneLandingPage />} />
+                <Route
+                  path="/iscrizione-assistente-familiare"
+                  element={
+                    <GuestOnlyRoute>
+                      <IscrizioneAssistenteFamiliarePage />
+                    </GuestOnlyRoute>
+                  }
+                />
+                <Route
+                  path="/iscrizione-agenzia"
+                  element={
+                    <GuestOnlyRoute>
+                      <IscrizioneAgenziaPage />
+                    </GuestOnlyRoute>
+                  }
+                />
                 <Route path="/posizioni/:id" element={<OpenPositionDetailPage />} />
                 <Route
                   path="/accedi"

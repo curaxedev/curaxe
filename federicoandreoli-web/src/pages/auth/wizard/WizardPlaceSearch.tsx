@@ -17,17 +17,36 @@ function formatPlaceSecondary(row: ItaliaGeoRow): string {
   return `${row.regione} · CAP ${row.cap}`
 }
 
+export type WizardPlaceSelection = {
+  label: string
+  istat?: string
+  comune?: string
+  regione?: string
+  cap?: string
+}
+
 export type WizardPlaceSearchProps = {
   value: string
   onChange: (label: string) => void
+  /** Chiamato solo quando l’utente sceglie un suggerimento (o destinazione nota). */
+  onPlaceSelect?: (place: WizardPlaceSelection) => void
   placeholder?: string
+  fieldLabel?: string
+  /**
+   * Se true: il valore valido arriva solo da un click/Enter su un suggerimento.
+   * Digitare libero non conferma il luogo (serve per matching directory).
+   */
+  requireSelection?: boolean
 }
 
 /** Campo luogo wizard: suggerimenti destinazioni + autocomplete comuni (stile home). */
 export function WizardPlaceSearch({
   value,
   onChange,
-  placeholder = 'Es. Monza, centro',
+  onPlaceSelect,
+  placeholder = 'Es. Monza, Torino…',
+  fieldLabel = 'Dove operi principalmente?',
+  requireSelection = false,
 }: WizardPlaceSearchProps) {
   const { status, search } = useItaliaGeo()
   const baseId = useId()
@@ -76,24 +95,37 @@ export function WizardPlaceSearch({
   }, [query, search, status])
 
   const commit = useCallback(
-    (label: string, sublabel?: string, istat?: string) => {
-      const clean = label.trim()
+    (selection: WizardPlaceSelection) => {
+      const clean = selection.label.trim()
       if (!clean) return
       onChange(clean)
+      onPlaceSelect?.(selection)
       setQuery(clean)
       setRecents(
         pushRecentPlace({
-          id: istat ?? clean,
+          id: selection.istat ?? clean,
           label: clean,
-          sublabel,
-          istat,
-          q: clean,
+          sublabel: selection.regione
+            ? `${selection.regione}${selection.cap ? ` · CAP ${selection.cap}` : ''}`
+            : undefined,
+          istat: selection.istat,
+          q: selection.comune ?? clean,
         }),
       )
       setOpen(false)
     },
-    [onChange],
+    [onChange, onPlaceSelect],
   )
+
+  const commitRow = (row: ItaliaGeoRow) => {
+    commit({
+      label: formatPlacePrimary(row),
+      istat: row.id,
+      comune: row.comune,
+      regione: row.regione,
+      cap: row.cap,
+    })
+  }
 
   const showTyped = open && query.trim().length > 0 && suggestions.length > 0
   const showBrowse = open && query.trim().length === 0
@@ -102,8 +134,10 @@ export function WizardPlaceSearch({
     if (!suggestions.length) {
       if (e.key === 'Enter') {
         e.preventDefault()
-        const t = query.trim()
-        if (t) commit(t)
+        if (!requireSelection) {
+          const t = query.trim()
+          if (t) commit({ label: t })
+        }
       }
       return
     }
@@ -116,7 +150,7 @@ export function WizardPlaceSearch({
     } else if (e.key === 'Enter') {
       e.preventDefault()
       const row = suggestions[activeIndex]
-      if (row) commit(formatPlacePrimary(row), formatPlaceSecondary(row), row.id)
+      if (row) commitRow(row)
     } else if (e.key === 'Escape') {
       setOpen(false)
     }
@@ -125,7 +159,7 @@ export function WizardPlaceSearch({
   return (
     <div ref={rootRef} className={`wz-place${open ? ' is-open' : ''}`}>
       <label className="wz-field">
-        <span className="wz-field__label">Dove serve l&apos;assistenza?</span>
+        <span className="wz-field__label">{fieldLabel}</span>
         <input
           ref={inputRef}
           id={`${baseId}-input`}
@@ -140,12 +174,22 @@ export function WizardPlaceSearch({
           aria-expanded={open}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
-            setQuery(e.target.value)
-            onChange(e.target.value)
+            const next = e.target.value
+            setQuery(next)
             setOpen(true)
+            if (requireSelection) {
+              // Digitare invalida la selezione precedente finché non si sceglie un suggerimento
+              onChange('')
+              onPlaceSelect?.({ label: '' })
+            } else {
+              onChange(next)
+            }
           }}
           onKeyDown={onKeyDown}
         />
+        {requireSelection ? (
+          <span className="wz-field__hint">Scegli un comune dai suggerimenti per continuare.</span>
+        ) : null}
       </label>
 
       {open ? (
@@ -160,9 +204,7 @@ export function WizardPlaceSearch({
                     aria-selected={i === activeIndex}
                     className={`wz-place__row${i === activeIndex ? ' is-active' : ''}`}
                     onMouseEnter={() => setActiveIndex(i)}
-                    onClick={() =>
-                      commit(formatPlacePrimary(row), formatPlaceSecondary(row), row.id)
-                    }
+                    onClick={() => commitRow(row)}
                   >
                     <PlaceRowIcon label={row.comune} />
                     <span className="wz-place__copy">
@@ -186,7 +228,13 @@ export function WizardPlaceSearch({
                         <button
                           type="button"
                           className="wz-place__row"
-                          onClick={() => commit(r.label, r.sublabel, r.istat)}
+                          onClick={() =>
+                            commit({
+                              label: r.label,
+                              istat: r.istat,
+                              comune: r.q,
+                            })
+                          }
                         >
                           <PlaceRowIcon label={r.label} kind="recent" />
                           <span className="wz-place__copy">
@@ -208,7 +256,7 @@ export function WizardPlaceSearch({
                       <button
                         type="button"
                         className="wz-place__row"
-                        onClick={() => commit(d.label, d.sublabel)}
+                        onClick={() => commit({ label: d.label, comune: d.q })}
                       >
                         <PlaceRowIcon label={d.label} />
                         <span className="wz-place__copy">
@@ -224,7 +272,11 @@ export function WizardPlaceSearch({
           ) : null}
 
           {open && query.trim() && !suggestions.length && status === 'ready' ? (
-            <p className="wz-place__empty">Nessun comune trovato — puoi usare il testo inserito</p>
+            <p className="wz-place__empty">
+              {requireSelection
+                ? 'Nessun comune trovato — prova un’altra città o un CAP.'
+                : 'Nessun comune trovato — puoi usare il testo inserito'}
+            </p>
           ) : null}
         </div>
       ) : null}

@@ -6,6 +6,8 @@ export type RegistrationAddress = {
   line: string
   comune?: string
   cap?: string
+  regione?: string
+  istat?: string
 }
 
 export type RegistrationConsents = {

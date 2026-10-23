@@ -31,10 +31,19 @@ export function splitFullName(fullName: string): { firstName: string; lastName: 
   return { firstName, lastName }
 }
 
-function parseAddress(line: string | undefined): RegistrationAddress {
-  const raw = (line ?? '').trim()
+function parseAddress(draft: RegisterDraft): RegistrationAddress {
+  const raw = (draft.addressLine ?? '').trim()
   if (!raw) {
     return { line: '' }
+  }
+  if (draft.addressComune || draft.addressIstat) {
+    return {
+      line: raw,
+      comune: draft.addressComune || undefined,
+      regione: draft.addressRegione || undefined,
+      cap: draft.addressCap || undefined,
+      istat: draft.addressIstat || undefined,
+    }
   }
   const capMatch = raw.match(/\b(\d{5})\b/)
   const cap = capMatch?.[1]
@@ -146,7 +155,7 @@ export function draftToProfessionalPayload(draft: RegisterDraft): ProfessionalRe
     photoSkipped: draft.photoSkipped,
     firstName,
     lastName,
-    address: parseAddress(draft.addressLine),
+    address: parseAddress(draft),
     coverage: {
       mode: draft.coverageMode ?? undefined,
       regions: draft.coverageRegions ? [...draft.coverageRegions] : undefined,
@@ -168,7 +177,7 @@ export function draftToSeekerPayload(draft: RegisterDraft): SeekerRegistrationPa
     fullName: (draft.fullName ?? '').trim(),
     firstName,
     lastName,
-    address: parseAddress(draft.addressLine),
+    address: parseAddress(draft),
     notes: draft.seekerNotes?.trim() || undefined,
     consents: mapConsents(draft),
   }

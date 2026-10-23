@@ -218,7 +218,7 @@ function DoveStep({
   patchDraft: (p: Partial<RegisterDraft>) => void
   onContinue: () => void
 }) {
-  const canContinue = (draft.addressLine?.trim().length ?? 0) >= 2
+  const canContinue = Boolean(draft.addressLine?.trim()) && Boolean(draft.addressIstat || draft.addressComune)
 
   return (
     <>
@@ -237,7 +237,30 @@ function DoveStep({
 
       <WizardPlaceSearch
         value={draft.addressLine ?? ''}
-        onChange={(label) => patchDraft({ addressLine: label })}
+        requireSelection
+        fieldLabel={
+          draft.seekerOrgKind === 'agency' ? 'Dove opera la tua agenzia?' : 'Dove serve l’assistenza?'
+        }
+        onChange={(label) => {
+          if (!label) {
+            patchDraft({
+              addressLine: '',
+              addressIstat: undefined,
+              addressComune: undefined,
+              addressRegione: undefined,
+              addressCap: undefined,
+            })
+          }
+        }}
+        onPlaceSelect={(place) => {
+          patchDraft({
+            addressLine: place.label,
+            addressIstat: place.istat,
+            addressComune: place.comune,
+            addressRegione: place.regione,
+            addressCap: place.cap,
+          })
+        }}
       />
 
       <div className="wz-footer">

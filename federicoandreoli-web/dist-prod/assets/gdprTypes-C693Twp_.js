@@ -1,1 +1,0 @@
-var e=class extends Error{code;constructor(e,t){super(t),this.name=`GdprError`,this.code=e}},t=`2026-06`;export{e as n,t};
