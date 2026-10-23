@@ -2360,11 +2360,14 @@
     max-width: 100%;
   }
 
+  /* Solo la pill: niente fascia/rettangolo dietro la barra */
+  .sticky-hero-search--chrome,
   .sticky-hero-search--chrome.sticky-hero-search--visible {
-    background: color-mix(in srgb, var(--home-sky-band) 42%, rgba(253, 252, 251, 0.55));
-    backdrop-filter: saturate(1.55) blur(18px);
-    -webkit-backdrop-filter: saturate(1.55) blur(18px);
-    border-bottom: 1px solid color-mix(in srgb, #fff 40%, var(--color-border) 60%);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: none;
+    box-shadow: none;
   }
 
   .sticky-hero-search__inner {
@@ -2373,6 +2376,7 @@
     max-width: calc(100% - 24px);
     margin-inline: auto;
     padding: 6px 0 10px;
+    background: transparent;
   }
 
   .hero-search:not(.hero-search--sticky-bar) {
