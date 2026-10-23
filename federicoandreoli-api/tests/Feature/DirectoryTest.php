@@ -39,6 +39,29 @@ class DirectoryTest extends TestCase
         }
     }
 
+    public function test_profiles_filter_matches_primary_zone_without_comune_column(): void
+    {
+        $user = \App\Models\User::factory()->create([
+            'role' => \App\Domains\Auth\Enums\UserRole::Professional,
+        ]);
+        \App\Models\ProfessionalProfile::query()->create([
+            'user_id' => $user->id,
+            'first_name' => 'Test',
+            'last_name' => 'TorinoOnly',
+            'category' => 'caregiver',
+            'is_published' => true,
+            'primary_zone' => 'torino',
+            'comune' => '',
+            'regione' => '',
+            'istat' => '',
+        ]);
+        Cache::flush();
+
+        $response = $this->getJson('/api/v1/profiles?comune=Torino&regione=Piemonte&intent=cerco')->assertOk();
+        $names = collect($response->json('data'))->pluck('name')->implode(' ');
+        $this->assertStringContainsStringIgnoringCase('TorinoOnly', $names);
+    }
+
     public function test_show_profile_returns_detail(): void
     {
         $list = $this->getJson('/api/v1/profiles')->assertOk()->json('data');

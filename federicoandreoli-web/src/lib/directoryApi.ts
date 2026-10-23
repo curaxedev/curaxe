@@ -96,8 +96,9 @@ export async function searchDirectoryProfiles(
       anonymous: true,
       query: {
         intent: params.intent,
+        // istat + comune: il backend fa OR anche su primary_zone (niente AND con regione)
+        istat: params.place?.id,
         comune: params.place?.comune,
-        regione: params.place?.regione,
         page: params.page ?? 1,
         pageSize: params.pageSize ?? 12,
       },

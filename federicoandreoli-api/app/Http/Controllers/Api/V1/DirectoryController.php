@@ -21,6 +21,7 @@ class DirectoryController
     {
         $data = $request->validate([
             'intent' => ['nullable', 'in:cerco,offro'],
+            'istat' => ['nullable', 'string', 'max:12'],
             'comune' => ['nullable', 'string', 'max:120'],
             'regione' => ['nullable', 'string', 'max:120'],
             'category' => ['nullable', 'string', 'max:40'],
@@ -38,12 +39,8 @@ class DirectoryController
                 ->with('user')
                 ->where('is_published', true);
 
-            if (! empty($data['comune'])) {
-                $profiles->where('comune', 'like', '%'.$data['comune'].'%');
-            }
-            if (! empty($data['regione'])) {
-                $profiles->where('regione', 'like', '%'.$data['regione'].'%');
-            }
+            $this->applyGeoFilter($profiles, $data);
+
             if (! empty($data['category'])) {
                 $profiles->where('category', 'like', '%'.$data['category'].'%');
             }
@@ -58,12 +55,7 @@ class DirectoryController
             }
 
             $orgs = Organization::query()->where('is_published', true);
-            if (! empty($data['comune'])) {
-                $orgs->where('comune', 'like', '%'.$data['comune'].'%');
-            }
-            if (! empty($data['regione'])) {
-                $orgs->where('regione', 'like', '%'.$data['regione'].'%');
-            }
+            $this->applyOrgGeoFilter($orgs, $data);
 
             $profileItems = $profiles->orderByDesc('rating_avg')->get();
             $orgItems = ($data['intent'] ?? 'cerco') === 'cerco' ? $orgs->orderByDesc('rating_avg')->get() : collect();
@@ -117,6 +109,69 @@ class DirectoryController
         return (new DirectoryProfessionalDetailResource($profile))
             ->response()
             ->setStatusCode(200);
+    }
+
+    /**
+     * Geo directory: OR su istat / comune / primary_zone / regione.
+     * Molti profili hanno solo primary_zone (es. "torino") con comune/regione vuoti —
+     * un AND su comune+regione li escludeva tutti.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\ProfessionalProfile>  $query
+     * @param  array{istat?: string, comune?: string, regione?: string}  $data
+     */
+    private function applyGeoFilter($query, array $data): void
+    {
+        $istat = trim((string) ($data['istat'] ?? ''));
+        $comune = trim((string) ($data['comune'] ?? ''));
+        $regione = trim((string) ($data['regione'] ?? ''));
+
+        if ($istat === '' && $comune === '' && $regione === '') {
+            return;
+        }
+
+        $query->where(function ($builder) use ($istat, $comune, $regione) {
+            if ($istat !== '') {
+                $builder->orWhere('istat', $istat);
+            }
+            if ($comune !== '') {
+                $builder->orWhere('comune', 'like', '%'.$comune.'%')
+                    ->orWhere('primary_zone', 'like', '%'.$comune.'%');
+            }
+            // Regione solo se non abbiamo già un comune: evita di stringere troppo
+            if ($regione !== '' && $comune === '') {
+                $builder->orWhere('regione', 'like', '%'.$regione.'%')
+                    ->orWhere('primary_zone', 'like', '%'.$regione.'%');
+            }
+        });
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Organization>  $query
+     * @param  array{istat?: string, comune?: string, regione?: string}  $data
+     */
+    private function applyOrgGeoFilter($query, array $data): void
+    {
+        $istat = trim((string) ($data['istat'] ?? ''));
+        $comune = trim((string) ($data['comune'] ?? ''));
+        $regione = trim((string) ($data['regione'] ?? ''));
+
+        if ($istat === '' && $comune === '' && $regione === '') {
+            return;
+        }
+
+        $query->where(function ($builder) use ($istat, $comune, $regione) {
+            if ($istat !== '') {
+                $builder->orWhere('istat', $istat);
+            }
+            if ($comune !== '') {
+                $builder->orWhere('comune', 'like', '%'.$comune.'%')
+                    ->orWhere('location_label', 'like', '%'.$comune.'%');
+            }
+            if ($regione !== '' && $comune === '') {
+                $builder->orWhere('regione', 'like', '%'.$regione.'%')
+                    ->orWhere('location_label', 'like', '%'.$regione.'%');
+            }
+        });
     }
 
     /**

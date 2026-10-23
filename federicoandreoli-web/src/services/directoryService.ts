@@ -56,8 +56,8 @@ function enrichSummary(card: DirectoryProfileSummary): DirectoryProfileSummary {
 }
 
 /**
- * When the user picks a place, keep profiles in the same regione amministrativa.
- * Sort: same comune or ISTAT first, then rest of region.
+ * Filtro geo directory (allineato all’API): match su istat / comune / locationLabel,
+ * oppure stessa regione. Non escludere profili con match.regione vuoto se locationLabel combacia.
  */
 export function filterAndSortDirectoryProfiles(
   rows: DirectoryProfileSummary[],
@@ -67,13 +67,21 @@ export function filterAndSortDirectoryProfiles(
   if (!place) return rows
 
   const regionNorm = normalizeGeoPart(place.regione)
-  const inRegion = rows.filter((r) => normalizeGeoPart(r.match?.regione ?? '') === regionNorm)
-
   const comuneNorm = normalizeGeoPart(place.comune)
-  const scored = inRegion.map((p, index) => {
-    let rank = 2
+
+  const matched = rows.filter((r) => {
+    const matchIstat = (r.match?.istat ?? '') === place.id
+    const matchComune = normalizeGeoPart(r.match?.comune ?? '') === comuneNorm
+    const matchLabel = normalizeGeoPart(r.locationLabel ?? '').includes(comuneNorm)
+    const matchRegion = regionNorm !== '' && normalizeGeoPart(r.match?.regione ?? '') === regionNorm
+    return matchIstat || matchComune || matchLabel || matchRegion
+  })
+
+  const scored = matched.map((p, index) => {
+    let rank = 3
     if (p.match?.istat === place.id) rank = 0
     else if (normalizeGeoPart(p.match?.comune ?? '') === comuneNorm) rank = 1
+    else if (normalizeGeoPart(p.locationLabel ?? '').includes(comuneNorm)) rank = 2
     return { p, rank, index }
   })
   scored.sort((a, b) => a.rank - b.rank || a.index - b.index)
