@@ -10,6 +10,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\DirectoryCache;
+use App\Support\ProfileGeoSync;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -116,6 +117,7 @@ class ProfessionalProfileController
             'zones' => ['nullable', 'array'],
             'zones.*' => ['string', 'max:100'],
             'primaryZone' => ['nullable', 'string', 'max:255'],
+            'primaryIstat' => ['nullable', 'string', 'max:12'],
             'radiusKm' => ['nullable', 'integer', 'min:1', 'max:200'],
             'availableToMove' => ['nullable', 'boolean'],
             'certifications' => ['nullable', 'array'],
@@ -183,6 +185,27 @@ class ProfessionalProfileController
                 continue;
             }
             $profile->{$column} = $value;
+        }
+
+        $zoneTouched = array_key_exists('primaryZone', $data) || array_key_exists('primaryIstat', $data);
+        if ($zoneTouched) {
+            $sync = new ProfileGeoSync;
+            if (trim((string) $profile->primary_zone) === '' && trim((string) ($data['primaryIstat'] ?? '')) === '') {
+                $sync->clearZone($profile);
+            } else {
+                $ok = $sync->sync(
+                    $profile,
+                    isset($data['primaryIstat']) ? (string) $data['primaryIstat'] : null,
+                );
+                if (! $ok) {
+                    return ApiResponse::error(
+                        'Seleziona un comune dall’elenco (niente indirizzi o testo libero).',
+                        422,
+                        ['primaryZone' => ['Comune non riconosciuto.']],
+                        'validation',
+                    );
+                }
+            }
         }
 
         $profile->save();

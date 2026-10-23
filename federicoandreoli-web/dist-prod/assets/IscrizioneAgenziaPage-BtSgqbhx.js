@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-Du6FMIa_.js";import{n as t,t as n}from"./SignupLandingPage-DxZ_GsNO.js";var r=e();function i(){return(0,r.jsx)(n,{config:t.agenzia})}export{i as IscrizioneAgenziaPage};

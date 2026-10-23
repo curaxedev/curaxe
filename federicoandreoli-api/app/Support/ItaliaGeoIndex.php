@@ -136,6 +136,25 @@ final class ItaliaGeoIndex
         return 2 * $earth * asin(min(1, sqrt($a)));
     }
 
+    /**
+     * Bounding box approssimato (pre-filtro SQL). 1° lat ≈ 111 km.
+     *
+     * @return array{minLat: float, maxLat: float, minLng: float, maxLng: float}
+     */
+    public static function bbox(float $lat, float $lng, float $radiusKm): array
+    {
+        $latDelta = $radiusKm / 111.0;
+        $cos = cos(deg2rad($lat));
+        $lngDelta = $radiusKm / max(0.01, 111.0 * abs($cos));
+
+        return [
+            'minLat' => $lat - $latDelta,
+            'maxLat' => $lat + $latDelta,
+            'minLng' => $lng - $lngDelta,
+            'maxLng' => $lng + $lngDelta,
+        ];
+    }
+
     public function normalizeIstat(string $istat): string
     {
         $digits = preg_replace('/\D+/', '', $istat) ?? '';

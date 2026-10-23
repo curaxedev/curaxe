@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'has_license', 'has_car', 'employment_types', 'days', 'shifts', 'available_from',
     'hourly_rate', 'monthly_live_in_rate', 'zones', 'primary_zone', 'radius_km', 'available_to_move',
     'certifications', 'is_published', 'is_verified', 'is_online', 'rating_avg', 'review_count',
-    'comune', 'cap', 'regione', 'istat',
+    'comune', 'cap', 'regione', 'istat', 'lat', 'lng',
 ])]
 class ProfessionalProfile extends Model
 {
@@ -41,6 +41,8 @@ class ProfessionalProfile extends Model
             'is_online' => 'boolean',
             'rating_avg' => 'float',
             'review_count' => 'integer',
+            'lat' => 'float',
+            'lng' => 'float',
         ];
     }
 

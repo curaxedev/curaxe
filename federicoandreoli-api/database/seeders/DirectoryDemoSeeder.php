@@ -41,6 +41,7 @@ class DirectoryDemoSeeder extends Seeder
                     'monthly_live_in_rate' => 1400,
                     'zones' => ['Milano', 'Sesto San Giovanni'],
                     'primary_zone' => 'Milano',
+                    'radius_km' => 50,
                     'available_to_move' => false,
                     'certifications' => ['Primo soccorso', 'Corso Alzheimer'],
                     'is_published' => true,
@@ -52,6 +53,8 @@ class DirectoryDemoSeeder extends Seeder
                     'cap' => '20121',
                     'regione' => 'Lombardia',
                     'istat' => '015146',
+                    'lat' => 45.46427,
+                    'lng' => 9.18951,
                 ],
             );
         }
@@ -89,6 +92,7 @@ class DirectoryDemoSeeder extends Seeder
                 'monthly_live_in_rate' => 0,
                 'zones' => ['Monza', 'Milano'],
                 'primary_zone' => 'Monza',
+                'radius_km' => 50,
                 'available_to_move' => false,
                 'certifications' => ['OSS certificato'],
                 'is_published' => true,
@@ -100,6 +104,8 @@ class DirectoryDemoSeeder extends Seeder
                 'cap' => '20900',
                 'regione' => 'Lombardia',
                 'istat' => '108033',
+                'lat' => 45.5845,
+                'lng' => 9.2744,
             ],
         );
 

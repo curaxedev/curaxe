@@ -31,35 +31,79 @@ class DirectoryTest extends TestCase
             ->assertJsonPath('meta.total', fn ($total) => $total >= 2);
     }
 
-    public function test_profiles_filter_by_comune(): void
+    public function test_profiles_filter_by_comune_uses_coverage(): void
     {
         $response = $this->getJson('/api/v1/profiles?comune=Milano')->assertOk();
+        $this->assertGreaterThan(0, count($response->json('data')));
+        $this->assertSame('coverage', $response->json('meta.geoMode'));
         foreach ($response->json('data') as $row) {
-            $this->assertStringContainsStringIgnoringCase('milano', $row['match']['comune'].' '.$row['locationLabel']);
+            $this->assertArrayHasKey('distanceKm', $row);
+            $this->assertLessThanOrEqual((float) $row['coverageKm'], (float) $row['distanceKm'] + 0.0001);
         }
     }
 
-    public function test_profiles_filter_matches_primary_zone_without_comune_column(): void
+    public function test_profiles_filter_matches_geocoded_primary_zone(): void
     {
         $user = \App\Models\User::factory()->create([
             'role' => \App\Domains\Auth\Enums\UserRole::Professional,
         ]);
+        $geo = new \App\Support\ItaliaGeoIndex;
+        $torino = $geo->byName('Torino');
+        $this->assertNotNull($torino);
+
         \App\Models\ProfessionalProfile::query()->create([
             'user_id' => $user->id,
             'first_name' => 'Test',
             'last_name' => 'TorinoOnly',
             'category' => 'caregiver',
             'is_published' => true,
-            'primary_zone' => 'torino',
-            'comune' => '',
-            'regione' => '',
-            'istat' => '',
+            'primary_zone' => 'Torino',
+            'comune' => 'Torino',
+            'regione' => 'Piemonte',
+            'istat' => $torino['istat'],
+            'lat' => $torino['lat'],
+            'lng' => $torino['lng'],
+            'radius_km' => 50,
         ]);
         Cache::flush();
 
-        $response = $this->getJson('/api/v1/profiles?comune=Torino&regione=Piemonte&intent=cerco')->assertOk();
+        $response = $this->getJson('/api/v1/profiles?comune=Torino&intent=cerco')->assertOk();
         $names = collect($response->json('data'))->pluck('name')->implode(' ');
         $this->assertStringContainsStringIgnoringCase('TorinoOnly', $names);
+    }
+
+    public function test_pinerolo_search_includes_torino_within_coverage(): void
+    {
+        $user = \App\Models\User::factory()->create([
+            'role' => \App\Domains\Auth\Enums\UserRole::Professional,
+        ]);
+        $geo = new \App\Support\ItaliaGeoIndex;
+        $torino = $geo->byName('Torino');
+        $this->assertNotNull($torino);
+
+        \App\Models\ProfessionalProfile::query()->create([
+            'user_id' => $user->id,
+            'first_name' => 'Anna',
+            'last_name' => 'TorinoCoverage',
+            'category' => 'Badante',
+            'is_published' => true,
+            'primary_zone' => 'Torino',
+            'comune' => 'Torino',
+            'regione' => 'Piemonte',
+            'istat' => $torino['istat'],
+            'lat' => $torino['lat'],
+            'lng' => $torino['lng'],
+            'radius_km' => 50,
+        ]);
+        Cache::flush();
+
+        $response = $this->getJson('/api/v1/profiles?comune=Pinerolo&intent=cerco')->assertOk();
+        $row = collect($response->json('data'))->first(
+            fn ($r) => str_contains(strtolower((string) $r['name']), 'torinocoverage'),
+        );
+        $this->assertNotNull($row, 'Torino con raggio 50km deve coprire Pinerolo (~34km)');
+        $this->assertLessThanOrEqual(50, (float) $row['distanceKm']);
+        $this->assertSame('coverage', $response->json('meta.geoMode'));
     }
 
     public function test_show_profile_returns_detail(): void

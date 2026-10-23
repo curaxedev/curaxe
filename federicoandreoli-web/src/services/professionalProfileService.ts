@@ -24,6 +24,7 @@ function readStoredProfile(userId: string): ProfessionalProfile | null {
     const parsed = JSON.parse(raw) as ProfessionalProfile
     return {
       ...parsed,
+      primaryIstat: parsed.primaryIstat ?? null,
       radiusKm: parsed.radiusKm ?? null,
     }
   } catch {
@@ -48,6 +49,8 @@ function mergeProfile(
     rates: { ...base.rates, ...patch.rates },
     zones: patch.zones ?? base.zones,
     primaryZone: patch.primaryZone ?? base.primaryZone,
+    primaryIstat:
+      patch.primaryIstat !== undefined ? patch.primaryIstat : base.primaryIstat,
     radiusKm: patch.radiusKm !== undefined ? patch.radiusKm : base.radiusKm,
     availableToMove: patch.availableToMove ?? base.availableToMove,
     certifications: patch.certifications ?? base.certifications,
@@ -229,6 +232,7 @@ function createDefaultProfile(userId: string): ProfessionalProfile {
     },
     zones: ['Milano Nord'],
     primaryZone: 'Milano, zona Nord',
+    primaryIstat: '015146',
     radiusKm: 15,
     availableToMove: false,
     certifications: ['Qualifica OSS', 'Primo soccorso (BLS / BLSD)'],

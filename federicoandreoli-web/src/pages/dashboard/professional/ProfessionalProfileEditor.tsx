@@ -261,6 +261,7 @@ ref,
   const [certifications, setCertifications] = useState<string[]>([])
   const [zones, setZones] = useState<string[]>([])
   const [primaryZone, setPrimaryZone] = useState('')
+  const [primaryIstat, setPrimaryIstat] = useState<string | null>(null)
   const [radiusKm, setRadiusKm] = useState<number | null>(null)
   const [primaryPlace, setPrimaryPlace] = useState<ItaliaGeoRow | null>(null)
   const [availableFrom, setAvailableFrom] = useState('')
@@ -294,6 +295,7 @@ ref,
     setMonthlyRate(profile.rates.monthlyLiveIn)
     setZones(profile.zones)
     setPrimaryZone(profile.primaryZone)
+    setPrimaryIstat(profile.primaryIstat ?? null)
     setRadiusKm(effectiveRadiusKm(profile.primaryZone, profile.radiusKm ?? null))
     setPrimaryPlace(null)
     setAvailableToMove(profile.availableToMove)
@@ -337,6 +339,7 @@ ref,
       },
       zones,
       primaryZone,
+      primaryIstat,
       radiusKm: effectiveRadiusKm(primaryZone, radiusKm),
       availableToMove,
       certifications,
@@ -362,6 +365,7 @@ ref,
     monthlyRate,
     zones,
     primaryZone,
+    primaryIstat,
     radiusKm,
     availableToMove,
     certifications,
@@ -433,6 +437,7 @@ ref,
     },
     zones,
     primaryZone,
+    primaryIstat,
     radiusKm: effectiveRadiusKm(primaryZone, radiusKm),
     availableToMove,
     certifications,
@@ -458,6 +463,7 @@ ref,
     monthlyRate,
     zones,
     primaryZone,
+    primaryIstat,
     radiusKm,
     availableToMove,
     certifications,
@@ -538,6 +544,7 @@ ref,
     setMonthlyRate(profile.rates.monthlyLiveIn)
     setZones(profile.zones)
     setPrimaryZone(profile.primaryZone)
+    setPrimaryIstat(profile.primaryIstat ?? null)
     setRadiusKm(effectiveRadiusKm(profile.primaryZone, profile.radiusKm ?? null))
     setPrimaryPlace(null)
     setAvailableToMove(profile.availableToMove)
@@ -1181,6 +1188,7 @@ ref,
                           className="dash-chip__remove"
                           onClick={() => {
                             setPrimaryZone('')
+                            setPrimaryIstat(null)
                             setPrimaryPlace(null)
                             setRadiusKm(null)
                           }}
@@ -1196,7 +1204,9 @@ ref,
                       selectedPlace={primaryPlace}
                       onSelectedPlaceChange={(place) => {
                         setPrimaryPlace(place)
-                        setPrimaryZone(place ? formatCoverageLabel(place) : '')
+                        // Solo nome comune ISTAT (niente indirizzi / testo libero).
+                        setPrimaryZone(place ? place.comune : '')
+                        setPrimaryIstat(place ? place.id : null)
                         if (place) {
                           setRadiusKm((prev) => prev ?? DEFAULT_PRIMARY_RADIUS_KM)
                         } else {

@@ -1,1 +1,0 @@
-var e=`Curaxe`;function t(t){return t?`${t} | ${e}`:`${e} — Assistenza socio-sanitaria, vicino a te`}export{t as n,e as t};

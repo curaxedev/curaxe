@@ -45,6 +45,8 @@ export type ProfessionalProfile = {
   rates: ProfessionalProfileRates
   zones: string[]
   primaryZone: string
+  /** Codice ISTAT del comune della zona principale (per ricerca geo precisa). */
+  primaryIstat: string | null
   /** Raggio operativo in km dalla zona principale (null = non impostato). */
   radiusKm: number | null
   availableToMove: boolean
@@ -58,6 +60,7 @@ export type ProfessionalProfilePatch = {
   rates?: Partial<ProfessionalProfileRates>
   zones?: string[]
   primaryZone?: string
+  primaryIstat?: string | null
   radiusKm?: number | null
   availableToMove?: boolean
   certifications?: string[]

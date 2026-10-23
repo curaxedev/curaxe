@@ -38,7 +38,7 @@ function buildPublicProfileFromProfessional(profile: ProfessionalProfile): MockP
     name: displayName,
     age: profile.identity.birthYear
       ? new Date().getFullYear() - profile.identity.birthYear
-      : null,
+      : undefined,
     role: profile.identity.professionalTitle || profile.professional.category,
     stars: 4.8,
     reviewCount: 9,
