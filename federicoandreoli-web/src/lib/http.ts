@@ -253,3 +253,28 @@ export function httpPut<T>(path: string, options?: HttpRequestOptions): Promise<
 export function httpDelete<T = void>(path: string, options?: HttpRequestOptions): Promise<T> {
   return httpRequest<T>('DELETE', path, options)
 }
+
+/** Download binario autenticato (documenti KYC admin, ecc.). */
+export async function httpGetBlob(path: string): Promise<Blob> {
+  const base = getApiBaseUrl()
+  const url = `${base.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`
+  const headers: Record<string, string> = {
+    Accept: '*/*',
+    'X-Requested-With': 'XMLHttpRequest',
+  }
+  const xsrf = typeof document !== 'undefined'
+    ? document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('XSRF-TOKEN='))
+        ?.split('=')
+        .slice(1)
+        .join('=')
+    : undefined
+  if (xsrf) headers['X-XSRF-TOKEN'] = decodeURIComponent(xsrf)
+
+  const res = await fetch(url, { method: 'GET', credentials: 'include', headers })
+  if (!res.ok) {
+    throw new HttpError(kindForStatus(res.status), res.status, 'Download non riuscito.')
+  }
+  return res.blob()
+}

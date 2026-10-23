@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  getAdminFamilyRequests,
+  type AdminFamilyRequestRow,
+} from '../../../../lib/adminOverviewApi'
+import { isMockApiEnabled } from '../../../../lib/runtimeConfig'
+import {
   ASSISTANCE_TYPE_LABELS,
   formatFamilyRequestDate,
   loadFamilyRequestStore,
@@ -13,11 +18,11 @@ export type AdminRequestRow = {
   type: string
   zone: string
   date: string
-  status: 'active' | 'closed' | 'draft' | 'paused'
+  status: 'active' | 'closed' | 'draft' | 'paused' | string
   applications: number
 }
 
-export function collectFamilyRequests(): AdminRequestRow[] {
+function collectMockFamilyRequests(): AdminRequestRow[] {
   const familyUsers = MOCK_AUTH_ACCOUNTS.filter((a) => a.role === 'public_user')
   const rows: AdminRequestRow[] = []
 
@@ -37,29 +42,56 @@ export function collectFamilyRequests(): AdminRequestRow[] {
     }
   }
 
-  if (rows.length === 0) {
-    return [
-      {
-        id: 'demo-req-1',
-        requester: 'Famiglia Bianchi',
-        type: 'Badante',
-        zone: 'Milano',
-        date: '02 mag 2026',
-        status: 'active',
-        applications: 2,
-      },
-    ]
-  }
-
   return rows
+}
+
+function mapApiRow(row: AdminFamilyRequestRow): AdminRequestRow {
+  const d = row.date ? new Date(row.date) : null
+  const dateLabel =
+    d && !Number.isNaN(d.getTime())
+      ? d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+      : row.date
+
+  return {
+    id: row.id,
+    requester: row.requester,
+    type: row.type,
+    zone: row.zone,
+    date: dateLabel,
+    status: row.status,
+    applications: row.applications,
+  }
+}
+
+/** @deprecated used by overview export in mock mode */
+export function collectFamilyRequests(): AdminRequestRow[] {
+  return collectMockFamilyRequests()
 }
 
 export function AdminRequestsSection() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [rows, setRows] = useState<AdminRequestRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = () => {
+    setLoading(true)
+    setError(null)
+    if (isMockApiEnabled()) {
+      setRows(collectMockFamilyRequests())
+      setLoading(false)
+      return
+    }
+    void getAdminFamilyRequests()
+      .then((data) => setRows(data.map(mapApiRow)))
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : 'Caricamento non riuscito.'),
+      )
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
-    setRows(collectFamilyRequests())
+    load()
   }, [])
 
   const filtered = useMemo(
@@ -77,6 +109,15 @@ export function AdminRequestsSection() {
           </p>
         </div>
       </div>
+      {error ? (
+        <div className="dash-empty-state" role="alert">
+          <div className="dash-empty-state__title">Impossibile caricare le richieste</div>
+          <div className="dash-empty-state__sub">{error}</div>
+          <button type="button" className="dash-btn dash-btn--primary" onClick={load}>
+            Riprova
+          </button>
+        </div>
+      ) : null}
       <div className="dash-filters">
         <select
           className="dash-form-select"
@@ -91,44 +132,44 @@ export function AdminRequestsSection() {
           <option value="draft">Bozze</option>
         </select>
       </div>
-      <div className="dash-table-wrap">
-        <table className="dash-table">
-          <thead>
-            <tr>
-              <th>Richiedente</th>
-              <th>Tipo</th>
-              <th>Zona</th>
-              <th>Data</th>
-              <th>Candidature</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id}>
-                <td style={{ fontWeight: 600 }}>{r.requester}</td>
-                <td>{r.type}</td>
-                <td>{r.zone}</td>
-                <td style={{ whiteSpace: 'nowrap' }}>{r.date}</td>
-                <td>
-                  <strong>{r.applications}</strong>
-                </td>
-                <td>
-                  <span className={`dash-badge dash-badge--${r.status === 'active' ? 'active' : 'closed'}`}>
-                    {r.status === 'active'
-                      ? 'Attiva'
-                      : r.status === 'draft'
-                        ? 'Bozza'
-                        : r.status === 'paused'
-                          ? 'In pausa'
-                          : 'Chiusa'}
-                  </span>
-                </td>
+      {loading ? (
+        <div className="dash-skeleton" style={{ width: '100%', height: 180 }} aria-busy="true" />
+      ) : (
+        <div className="dash-table-wrap dash-table-wrap--cards-mobile">
+          <table className="dash-table">
+            <thead>
+              <tr>
+                <th>Richiedente</th>
+                <th>Tipo</th>
+                <th>Zona</th>
+                <th>Data</th>
+                <th>Status</th>
+                <th>Candidature</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>Nessuna richiesta.</td>
+                </tr>
+              ) : (
+                filtered.map((r) => (
+                  <tr key={r.id}>
+                    <td data-label="Richiedente">{r.requester}</td>
+                    <td data-label="Tipo">{r.type}</td>
+                    <td data-label="Zona">{r.zone}</td>
+                    <td data-label="Data">{r.date}</td>
+                    <td data-label="Status">
+                      <span className={`dash-badge dash-badge--${r.status}`}>{r.status}</span>
+                    </td>
+                    <td data-label="Candidature">{r.applications}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

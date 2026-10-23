@@ -80,7 +80,12 @@ function mapListItem(row: {
     email: row.email,
     initials: initialsFrom(row.name),
     role: mapRole(row.role),
-    status: row.status === 'suspended' ? 'suspended' : 'active',
+    status:
+      row.status === 'suspended'
+        ? 'suspended'
+        : row.status === 'verify'
+          ? 'verify'
+          : 'active',
     registeredAt: row.createdAt ?? new Date().toISOString(),
   }
 }
@@ -117,11 +122,28 @@ export async function getAdminUserDetail(
       role: string
       status: string
       createdAt?: string
+      activity?: Array<{ id: string; action: string; at?: string }>
+      kycDocuments?: Array<{ id: string; type: string; label: string; status: string }>
     }>(`/api/v1/admin/users/${userId}`)
     return {
       ...mapListItem(row),
-      activity: [],
-      kycDocuments: [],
+      activity: (row.activity ?? []).map((a) => ({
+        id: a.id,
+        type: 'profile_update' as const,
+        label: a.action,
+        occurredAt: a.at ?? new Date().toISOString(),
+      })),
+      kycDocuments: (row.kycDocuments ?? []).map((d) => ({
+        id: d.id,
+        type: d.type === 'identita' ? 'id_card' : d.type === 'attestati' ? 'diploma' : 'other',
+        label: d.label,
+        url: `/api/v1/admin/kyc/documents/${d.id}/file`,
+        mimeType: 'pdf' as const,
+        status: (d.status === 'approved' || d.status === 'rejected' ? d.status : 'pending') as
+          | 'pending'
+          | 'approved'
+          | 'rejected',
+      })),
     }
   } catch (err) {
     throw toAdminError(err, 'Impossibile caricare il dettaglio utente.')

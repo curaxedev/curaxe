@@ -243,14 +243,16 @@ export function DashboardLayout({
             {planType === 'free' ? (
               <span className="dash-header__plan-chip">FREE</span>
             ) : null}
-            <button
-              className="dash-notif-btn"
-              aria-label="Notifiche"
-              onClick={() => handleNav('notifiche')}
-            >
-              <IconBell size={18} />
-              {totalUnread > 0 && <span className="dash-notif-dot" />}
-            </button>
+            {accountType !== 'admin' ? (
+              <button
+                className="dash-notif-btn"
+                aria-label="Notifiche"
+                onClick={() => handleNav('notifiche')}
+              >
+                <IconBell size={18} />
+                {totalUnread > 0 && <span className="dash-notif-dot" />}
+              </button>
+            ) : null}
           </div>
         </header>
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AdminBillingController;
 use App\Http\Controllers\Api\V1\AdminController;
+use App\Http\Controllers\Api\V1\AdminOpsController;
 use App\Http\Controllers\Api\V1\AdminPasskeyController;
 use App\Http\Controllers\Api\V1\ApplicationController;
 use App\Http\Controllers\Api\V1\AuthPoliciesController;
@@ -176,6 +177,19 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/admin/job-postings/pending', [AdminController::class, 'pendingJobs']);
             Route::post('/admin/job-postings/{id}/approve', [AdminController::class, 'approveJob']);
             Route::post('/admin/job-postings/{id}/reject', [AdminController::class, 'rejectJob']);
+
+            Route::get('/admin/overview', [AdminOpsController::class, 'overview']);
+            Route::get('/admin/family-requests', [AdminOpsController::class, 'familyRequests']);
+            Route::get('/admin/kyc/pending', [AdminOpsController::class, 'kycPending']);
+            Route::post('/admin/kyc/{id}/approve', [AdminOpsController::class, 'kycApprove']);
+            Route::post('/admin/kyc/{id}/reject', [AdminOpsController::class, 'kycReject']);
+            Route::get('/admin/kyc/documents/{id}/file', [AdminOpsController::class, 'kycDocumentFile']);
+            Route::get('/admin/tickets', [AdminOpsController::class, 'tickets']);
+            Route::get('/admin/tickets/{id}', [AdminOpsController::class, 'showTicket']);
+            Route::post('/admin/tickets/{id}/take', [AdminOpsController::class, 'takeTicket']);
+            Route::post('/admin/tickets/{id}/close', [AdminOpsController::class, 'closeTicket']);
+            Route::get('/admin/settings', [AdminOpsController::class, 'settings']);
+            Route::patch('/admin/settings', [AdminOpsController::class, 'updateSettings']);
         });
     });
 });

@@ -26,15 +26,28 @@ class AdminController
             });
         }
 
-        $users = $query->limit(100)->get()->map(fn (User $u) => [
-            'id' => (string) $u->id,
-            'name' => $u->name,
-            'email' => $u->email,
-            'role' => $u->role->value,
-            'status' => $u->suspended_at ? 'suspended' : 'active',
-            'createdAt' => $u->created_at?->toIso8601String(),
-            'emailVerifiedAt' => $u->email_verified_at?->toIso8601String(),
-        ]);
+        $users = $query->with(['professionalProfile', 'professionalDocuments'])->limit(100)->get()->map(function (User $u) {
+            $status = 'active';
+            if ($u->suspended_at) {
+                $status = 'suspended';
+            } elseif (
+                $u->professionalProfile !== null
+                && ! $u->professionalProfile->is_verified
+                && $u->professionalDocuments->isNotEmpty()
+            ) {
+                $status = 'verify';
+            }
+
+            return [
+                'id' => (string) $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'role' => $u->role->value,
+                'status' => $status,
+                'createdAt' => $u->created_at?->toIso8601String(),
+                'emailVerifiedAt' => $u->email_verified_at?->toIso8601String(),
+            ];
+        });
 
         return response()->json($users);
     }
@@ -46,15 +59,43 @@ class AdminController
             return ApiResponse::error('Utente non trovato.', 404, [], 'not_found');
         }
 
+        $u->loadMissing(['professionalProfile', 'professionalDocuments']);
+        $profile = $u->professionalProfile;
+        $status = $u->suspended_at ? 'suspended' : 'active';
+        if ($profile !== null && ! $profile->is_verified && $u->professionalDocuments->isNotEmpty()) {
+            $status = 'verify';
+        }
+
+        $kycDocuments = $u->professionalDocuments->map(fn ($d) => [
+            'id' => (string) $d->id,
+            'type' => $d->slot,
+            'label' => $d->original_name,
+            'status' => $d->review_status ?? 'pending',
+        ])->values()->all();
+
         return response()->json([
             'id' => (string) $u->id,
             'name' => $u->name,
             'email' => $u->email,
             'role' => $u->role->value,
-            'status' => $u->suspended_at ? 'suspended' : 'active',
+            'status' => $status,
             'createdAt' => $u->created_at?->toIso8601String(),
             'emailVerifiedAt' => $u->email_verified_at?->toIso8601String(),
             'suspendedAt' => $u->suspended_at?->toIso8601String(),
+            'kycDocuments' => $kycDocuments,
+            'activity' => AuditLog::query()
+                ->where('subject_type', 'user')
+                ->where('subject_id', (string) $u->id)
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get()
+                ->map(fn (AuditLog $log) => [
+                    'id' => (string) $log->id,
+                    'action' => $log->action,
+                    'at' => $log->created_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all(),
         ]);
     }
 
@@ -118,18 +159,31 @@ class AdminController
     public function pendingJobs(): JsonResponse
     {
         $jobs = JobPosting::query()
+            ->with('user')
             ->whereIn('status', ['pending_review', 'pending'])
             ->orderByDesc('id')
             ->limit(100)
             ->get()
-            ->map(fn (JobPosting $j) => [
-                'id' => (string) $j->id,
-                'title' => $j->title,
-                'ownerId' => (string) $j->user_id,
-                'ownerType' => $j->owner_type,
-                'status' => $j->status,
-                'createdAt' => $j->created_at?->toIso8601String(),
-            ]);
+            ->map(function (JobPosting $j) {
+                $payload = is_array($j->payload) ? $j->payload : [];
+
+                return [
+                    'id' => (string) $j->id,
+                    'title' => $j->title,
+                    'ownerId' => (string) $j->user_id,
+                    'ownerType' => $j->owner_type === 'structure' ? 'structure' : 'agency',
+                    'ownerDisplayName' => $j->poster_display_name !== ''
+                        ? $j->poster_display_name
+                        : ($j->user?->name ?? 'Organizzazione'),
+                    'roleId' => $j->category !== '' ? $j->category : 'caregiver',
+                    'locationLabel' => $j->location_label !== ''
+                        ? $j->location_label
+                        : ($j->comune !== '' ? $j->comune : '—'),
+                    'submittedAt' => $j->updated_at?->toIso8601String() ?? $j->created_at?->toIso8601String(),
+                    'status' => $j->status,
+                    'payload' => $payload,
+                ];
+            });
 
         return response()->json($jobs);
     }
@@ -150,13 +204,19 @@ class AdminController
 
     public function rejectJob(Request $request, int $id): JsonResponse
     {
+        $data = $request->validate([
+            'reason' => ['nullable', 'string', 'min:10', 'max:1000'],
+        ]);
+
         $job = JobPosting::query()->find($id);
         if ($job === null) {
             return ApiResponse::error('Annuncio non trovato.', 404, [], 'not_found');
         }
         $job->status = 'rejected';
         $job->save();
-        AuditLog::record($request->user()->id, 'job.reject', 'job_posting', (string) $job->id);
+        AuditLog::record($request->user()->id, 'job.reject', 'job_posting', (string) $job->id, [
+            'reason' => $data['reason'] ?? null,
+        ]);
 
         return response()->json(['id' => (string) $job->id, 'status' => $job->status]);
     }

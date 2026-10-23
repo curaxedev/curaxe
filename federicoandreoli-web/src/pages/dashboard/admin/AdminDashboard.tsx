@@ -61,10 +61,10 @@ import {
 } from '../../../components/icons/DashboardIcons'
 import { AccountSettingsSection } from '../AccountSettingsSection'
 import { DashboardLayout } from '../DashboardLayout'
-import {
-  AdminRequestsSection,
-  collectFamilyRequests,
-} from './sections/AdminRequestsSection'
+import { AdminRequestsSection } from './sections/AdminRequestsSection'
+import { getAdminOverview, type AdminOverviewPayload } from '../../../lib/adminOverviewApi'
+import { getApiBaseUrl } from '../../../lib/runtimeConfig'
+import { httpGetBlob } from '../../../lib/http'
 import { AdminStripeSetupSection } from './AdminStripeSetupSection'
 import { AdminPasskeysPanel } from './AdminPasskeysPanel'
 import {
@@ -73,8 +73,6 @@ import {
   postAdminSubscriptionRefund,
 } from '../../../lib/adminBillingSettingsApi'
 
-const REVENUE_DATA = [2100, 2400, 2800, 3100, 3500, 3800, 4100, 4300, 4400, 4658]
-const REVENUE_MONTHS = ['Ago', 'Set', 'Ott', 'Nov', 'Dic', 'Gen', 'Feb', 'Mar', 'Apr', 'Mag']
 
 /* ── Revenue SVG chart ──────────────────────────────────────── */
 function RevenueChart({ data, labels }: { data: number[]; labels: string[] }) {
@@ -122,31 +120,62 @@ function RevenueChart({ data, labels }: { data: number[]; labels: string[] }) {
   )
 }
 
+function formatIntIt(n: number): string {
+  return new Intl.NumberFormat('it-IT').format(n)
+}
+
+function formatEurIt(n: number): string {
+  return new Intl.NumberFormat('it-IT', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(n)
+}
+
 /* ── Section: Overview ──────────────────────────────────────── */
 function SectionOverview() {
   const { user } = useAuth()
   const { stats: billingStats } = useAdminBilling()
+  const [overview, setOverview] = useState<AdminOverviewPayload | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const revenueMonthly = useMemo(
-    () =>
-      REVENUE_MONTHS.map((month, i) => ({
-        month,
-        amountEur: REVENUE_DATA[i] ?? 0,
-      })),
-    [],
-  )
+  useEffect(() => {
+    let cancelled = false
+    void getAdminOverview()
+      .then((data) => {
+        if (!cancelled) {
+          setOverview(data)
+          setLoadError(null)
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setLoadError(err instanceof Error ? err.message : 'Errore caricamento')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
-  const requestRows = useMemo(() => collectFamilyRequests(), [])
+  const revenueMonthly = overview?.revenueMonthly ?? []
+  const chartData = revenueMonthly.map((r) => r.amountEur)
+  const chartLabels = revenueMonthly.map((r) => r.month)
+  const kpis = overview?.kpis
 
   const analyticsSnapshot = useMemo(
     () =>
       buildAdminAnalyticsSnapshot({
         billing: billingStats,
-        requests: requestRows,
+        requests: [],
         revenueMonthly,
       }),
-    [billingStats, requestRows, revenueMonthly],
+    [billingStats, revenueMonthly],
   )
+
+  const updatedLabel = overview?.generatedAt
+    ? new Date(overview.generatedAt).toLocaleString('it-IT')
+    : '…'
 
   return (
     <div className="dash-admin-overview">
@@ -156,13 +185,13 @@ function SectionOverview() {
           Console amministrazione
         </div>
         <div className="dash-welcome-banner__name">{user?.name ?? 'Admin'}</div>
-        <div className="dash-welcome-banner__sub">Panoramica piattaforma · dati aggiornati al 12 maggio 2026</div>
+        <div className="dash-welcome-banner__sub">Panoramica piattaforma · aggiornato {updatedLabel}</div>
       </div>
 
       <div className="dash-section-header">
         <div>
           <h2 className="dash-section__title">Metriche chiave</h2>
-          <p className="dash-section__subtitle">KPI piattaforma e revenue mensile</p>
+          <p className="dash-section__subtitle">KPI reali dalla piattaforma</p>
         </div>
         <div className="dash-section-header__actions">
           <button
@@ -186,15 +215,25 @@ function SectionOverview() {
         </div>
       </div>
 
+      {loadError ? (
+        <div className="dash-empty-state" role="alert">
+          <div className="dash-empty-state__title">Overview non disponibile</div>
+          <div className="dash-empty-state__sub">{loadError}</div>
+        </div>
+      ) : null}
+
       <div className="dash-admin-kpi-grid">
         {[
-          { value: '1.247', label: 'Utenti totali registrati', color: 'var(--color-primary)' },
-          { value: '892', label: 'Professionisti', color: 'var(--color-primary)' },
-          { value: '287', label: 'Famiglie', color: 'var(--color-sage)' },
-          { value: '68', label: 'Agenzie / Strutture', color: 'var(--color-accent)' },
-          { value: '143', label: 'Richieste attive', color: '#5B4BCC' },
-          { value: '234', label: 'Abbonamenti Premium', color: 'var(--color-primary)' },
-          { value: '€4.658', label: 'MRR stimato / mese', color: 'var(--color-sage)' },
+          { value: formatIntIt(kpis?.totalUsers ?? 0), label: 'Utenti totali registrati', color: 'var(--color-primary)' },
+          { value: formatIntIt(kpis?.professionals ?? 0), label: 'Professionisti', color: 'var(--color-primary)' },
+          { value: formatIntIt(kpis?.families ?? 0), label: 'Famiglie', color: 'var(--color-sage)' },
+          { value: formatIntIt(kpis?.agenciesStructures ?? 0), label: 'Agenzie / Strutture', color: 'var(--color-accent)' },
+          { value: formatIntIt(kpis?.activeRequests ?? 0), label: 'Richieste attive', color: '#5B4BCC' },
+          { value: formatIntIt(kpis?.premiumSubscriptions ?? 0), label: 'Abbonamenti Premium', color: 'var(--color-primary)' },
+          { value: formatEurIt(kpis?.mrrEstimateEur ?? (billingStats ? billingStats.mrrCents / 100 : 0)), label: 'MRR stimato / mese', color: 'var(--color-sage)' },
+          { value: formatIntIt(kpis?.pendingKyc ?? 0), label: 'KYC in coda', color: 'var(--color-accent)' },
+          { value: formatIntIt(kpis?.pendingJobs ?? 0), label: 'Annunci da moderare', color: 'var(--color-primary)' },
+          { value: formatIntIt(kpis?.openTickets ?? 0), label: 'Ticket aperti', color: '#5B4BCC' },
         ].map((kpi) => (
           <div key={kpi.label} className="dash-admin-kpi">
             <div className="dash-admin-kpi__value" style={{ color: kpi.color }}>{kpi.value}</div>
@@ -203,14 +242,16 @@ function SectionOverview() {
         ))}
       </div>
 
-      <div className="dash-chart-wrap dash-chart-wrap--admin">
-        <div className="dash-chart-title">Revenue mensile (ultimi 10 mesi)</div>
-        <RevenueChart data={REVENUE_DATA} labels={REVENUE_MONTHS} />
-        <p className="dash-chart-footnote">
-          <IconTrendUp size={14} />
-          Crescita mensile media: +{Math.round(((REVENUE_DATA[REVENUE_DATA.length - 1] - REVENUE_DATA[0]) / REVENUE_DATA[0]) / (REVENUE_DATA.length - 1) * 100)}%
-        </p>
-      </div>
+      {chartData.length > 0 ? (
+        <div className="dash-chart-wrap dash-chart-wrap--admin">
+          <div className="dash-chart-title">Revenue stimata (ultimi 10 mesi)</div>
+          <RevenueChart data={chartData} labels={chartLabels} />
+          <p className="dash-chart-footnote">
+            <IconTrendUp size={14} />
+            Stima MRR da abbonamenti attivi/trial (× €29)
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1078,10 +1119,59 @@ function VerifyErrorState({ message, onRetry }: { message: string; onRetry: () =
 }
 
 function KycDocumentPreview({ document }: { document: AdminKycDocument }) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let revoke: string | null = null
+    let cancelled = false
+    const path = document.url.startsWith('http')
+      ? document.url
+      : document.url.startsWith('/')
+        ? document.url
+        : `/${document.url}`
+
+    if (path.startsWith('blob:') || path.startsWith('data:')) {
+      setObjectUrl(path)
+      return
+    }
+
+    // Path API relativo → download autenticato
+    if (path.startsWith('/api/')) {
+      void httpGetBlob(path)
+        .then((blob) => {
+          if (cancelled) return
+          const url = URL.createObjectURL(blob)
+          revoke = url
+          setObjectUrl(url)
+        })
+        .catch(() => {
+          if (!cancelled) setError('Anteprima non disponibile.')
+        })
+      return () => {
+        cancelled = true
+        if (revoke) URL.revokeObjectURL(revoke)
+      }
+    }
+
+    setObjectUrl(getApiBaseUrl() ? `${getApiBaseUrl().replace(/\/$/, '')}${path}` : path)
+    return () => {
+      cancelled = true
+    }
+  }, [document.url])
+
+  if (error) {
+    return <div className="dash-kyc-preview__hint">{error}</div>
+  }
+
+  if (!objectUrl) {
+    return <div className="dash-kyc-preview__hint">Caricamento documento…</div>
+  }
+
   if (document.mimeType === 'image') {
     return (
       <img
-        src={document.url}
+        src={objectUrl}
         alt={document.label}
         className="dash-kyc-preview__image"
       />
@@ -1090,10 +1180,8 @@ function KycDocumentPreview({ document }: { document: AdminKycDocument }) {
 
   return (
     <div className="dash-kyc-preview dash-kyc-preview--pdf">
-      <div className="dash-kyc-preview__hint">
-        Anteprima PDF non disponibile in mock. Apri il file in una nuova scheda.
-      </div>
-      <a className="dash-btn dash-btn--primary" href={document.url} target="_blank" rel="noopener noreferrer">
+      <iframe title={document.label} src={objectUrl} className="dash-kyc-preview__frame" />
+      <a className="dash-btn dash-btn--primary" href={objectUrl} target="_blank" rel="noopener noreferrer">
         Apri PDF
       </a>
     </div>
@@ -1190,7 +1278,7 @@ function KycRejectModal({
         </div>
         <div className="dash-modal__body">
           <p className="dash-modal__lead">
-            Il professionista riceverà una notifica con il motivo indicato (mock).
+            Il professionista verrà aggiornato con lo stato di rifiuto e il motivo.
           </p>
           <div className="dash-form-field">
             <label className="dash-form-label" htmlFor="kyc-reject-reason">
@@ -1950,6 +2038,7 @@ export function AdminDashboard() {
       navItems={NAV_ITEMS}
       activeSection={activeSection}
       onSectionChange={setActiveSection}
+      mobileTabIds={['overview', 'utenti', 'abbonamenti', 'verifica']}
     >
       {renderSection()}
     </DashboardLayout>

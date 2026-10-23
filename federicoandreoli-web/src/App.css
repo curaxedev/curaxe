@@ -13765,3 +13765,109 @@ button.candidacy-auth-dialog__btn {
   cursor: pointer;
   box-shadow: 0 8px 20px color-mix(in srgb, var(--color-primary, #163a52) 28%, transparent);
 }
+
+/* ── Admin mobile: tables as cards, modals, actions ─────────── */
+@media (max-width: 768px) {
+  .dash-admin-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+
+  .dash-section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .dash-section-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .dash-table__actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .dash-modal-overlay .dash-modal,
+  .dash-modal {
+    width: min(100vw - 24px, 720px) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+  }
+
+  .dash-modal__footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .dash-modal__footer .dash-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dash-table-wrap--cards-mobile .dash-table thead {
+    display: none;
+  }
+
+  .dash-table-wrap--cards-mobile .dash-table,
+  .dash-table-wrap--cards-mobile .dash-table tbody,
+  .dash-table-wrap--cards-mobile .dash-table tr,
+  .dash-table-wrap--cards-mobile .dash-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .dash-table-wrap--cards-mobile .dash-table tr {
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: var(--color-surface, #fff);
+  }
+
+  .dash-table-wrap--cards-mobile .dash-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border: none;
+  }
+
+  .dash-table-wrap--cards-mobile .dash-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--color-text-muted, #7a7268);
+    flex: 0 0 42%;
+  }
+
+  .dash-filters {
+    flex-wrap: wrap;
+  }
+
+  .dash-filters .dash-form-input,
+  .dash-filters .dash-form-select {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .dash-kyc-preview__frame {
+    width: 100%;
+    min-height: 240px;
+    border: 0;
+    border-radius: 8px;
+  }
+
+  .dash-admin-account {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .dash-wizard-steps + * .dash-event-list,
+  .dash-event-list {
+    columns: 1 !important;
+  }
+}

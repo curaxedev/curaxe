@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'slot', 'original_name', 'path', 'mime', 'size_bytes'])]
+#[Fillable(['user_id', 'slot', 'original_name', 'path', 'mime', 'size_bytes', 'review_status', 'reject_reason'])]
 class ProfessionalDocument extends Model
 {
     /**
