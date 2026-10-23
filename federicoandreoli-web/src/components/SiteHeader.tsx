@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getDashboardPathForRole } from '../auth/roleDashboard'
 import { useAuth } from '../auth/useAuth'
-import { BrandLogo } from './BrandLogo'
-import { IconClose, IconInfo, IconMenu } from './icons/DashboardIcons'
-import { LoggedInAccountMenu } from './LoggedInAccountMenu'
+import { useHeroSearchParams } from '../hooks/useHeroSearchParams'
+import { openHomelySearch } from '../lib/homelySearchEvents'
 import { assistenzaHeroCercoLink, assistenzaHeroOffroLink } from '../lib/assistenzaHeroMode'
 import { comeFunzionaPath, profilesDirectoryPath } from '../lib/siteRoutes'
 import { registerWorkerProfileHref } from '../pages/auth/registerQuery'
+import { BrandLogo } from './BrandLogo'
+import { HomelySearchExplorer } from './HomelySearchExplorer'
+import { IconClose, IconMenu, IconSearch } from './icons/DashboardIcons'
+import { LoggedInAccountMenu } from './LoggedInAccountMenu'
 
 function initialsFromName(name: string): string {
   return (
@@ -24,6 +27,7 @@ export function SiteHeader() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { user, isAuthenticated, isLoading, signOut } = useAuth()
+  const heroSearch = useHeroSearchParams()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -37,6 +41,7 @@ export function SiteHeader() {
 
   const showGuestAuth = !isLoading && !isAuthenticated
   const showAccount = !isLoading && isAuthenticated && !!user
+  const showSearch = !onRegister
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16)
@@ -76,6 +81,11 @@ export function SiteHeader() {
     setMobileOpen(false)
   }
 
+  function openMobileSearch() {
+    closeDrawer()
+    openHomelySearch('dove')
+  }
+
   async function handleSignOut() {
     if (signingOut) return
     setSigningOut(true)
@@ -93,6 +103,7 @@ export function SiteHeader() {
     scrolled ? 'topbar--scrolled' : '',
     mobileOpen ? 'topbar--drawer-open' : '',
     showAccount ? 'topbar--authed' : '',
+    showSearch ? 'topbar--with-search' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -100,20 +111,33 @@ export function SiteHeader() {
   return (
     <header className={topbarClass}>
       <div className="topbar__inner">
-        <BrandLogo size="md" />
-
         {!onRegister && (
-          <nav className="topbar__nav" aria-label="Principale">
-            <Link
-              className={`topbar__how-link${onComeFunziona ? ' is-active' : ''}`}
-              to={comeFunzionaPath}
-              aria-label="Come funziona"
-              aria-current={onComeFunziona ? 'page' : undefined}
-            >
-              <IconInfo size={18} aria-hidden />
-            </Link>
-          </nav>
+          <button
+            type="button"
+            className={`topbar__hamburger${mobileOpen ? ' topbar__hamburger--open' : ''}`}
+            aria-label={mobileOpen ? 'Chiudi menu' : 'Apri menu'}
+            aria-expanded={mobileOpen}
+            aria-controls="topbar-drawer"
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {mobileOpen ? <IconClose size={24} aria-hidden /> : <IconMenu size={22} aria-hidden />}
+          </button>
         )}
+
+        <BrandLogo size="md" className="topbar__brand" />
+
+        {showSearch ? (
+          <div className="topbar__nav topbar__nav--search" aria-label="Ricerca">
+            <HomelySearchExplorer
+              placement="header"
+              mode={heroSearch.mode}
+              cityValue={heroSearch.cityInUrl}
+              onModeChange={heroSearch.setMode}
+              onCityChange={heroSearch.onCityChange}
+              setCityInUrl={heroSearch.setCityInUrl}
+            />
+          </div>
+        ) : null}
 
         <div className="topbar__actions">
           {!onRegister && showGuestAuth ? (
@@ -134,18 +158,16 @@ export function SiteHeader() {
           {!onRegister && showAccount ? <LoggedInAccountMenu variant="site" /> : null}
         </div>
 
-        {!onRegister && (
+        {showSearch ? (
           <button
             type="button"
-            className={`topbar__hamburger${mobileOpen ? ' topbar__hamburger--open' : ''}`}
-            aria-label={mobileOpen ? 'Chiudi menu' : 'Apri menu'}
-            aria-expanded={mobileOpen}
-            aria-controls="topbar-drawer"
-            onClick={() => setMobileOpen((v) => !v)}
+            className="topbar__mobile-search"
+            aria-label="Apri ricerca"
+            onClick={openMobileSearch}
           >
-            {mobileOpen ? <IconClose size={24} aria-hidden /> : <IconMenu size={22} aria-hidden />}
+            <IconSearch size={22} aria-hidden />
           </button>
-        )}
+        ) : null}
       </div>
 
       {!onRegister && mobileOpen && (
@@ -204,6 +226,13 @@ export function SiteHeader() {
               <Link className="topbar__drawer-link" to={profilesDirectoryPath} onClick={closeDrawer}>
                 Directory profili
               </Link>
+              <button
+                type="button"
+                className="topbar__drawer-link"
+                onClick={openMobileSearch}
+              >
+                Cerca zona
+              </button>
 
               <p className="topbar__drawer-kicker">Il tuo account</p>
               {showGuestAuth ? (

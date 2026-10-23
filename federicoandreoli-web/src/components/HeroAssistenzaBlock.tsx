@@ -43,6 +43,7 @@ export function HeroAssistenzaBlock({
       {title}
       <div className="hero-assistenza">
         <HomelySearchExplorer
+          placement="hero"
           mode={mode}
           cityValue={cityInUrl}
           onModeChange={setMode}

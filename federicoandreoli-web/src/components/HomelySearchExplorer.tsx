@@ -71,6 +71,8 @@ export type HomelySearchExplorerProps = {
   onCityChange: (value: string) => void
   setCityInUrl: (raw: string) => void
   onFocusChange?: (focused: boolean) => void
+  /** `header`: pill compatta in topbar (desktop) + host sheet (mobile). `hero`: sotto il titolo. */
+  placement?: 'hero' | 'header'
 }
 
 export function HomelySearchExplorer({
@@ -80,6 +82,7 @@ export function HomelySearchExplorer({
   onCityChange,
   setCityInUrl,
   onFocusChange,
+  placement = 'hero',
 }: HomelySearchExplorerProps) {
   const navigate = useNavigate()
   const { status, search } = useItaliaGeo()
@@ -102,12 +105,13 @@ export function HomelySearchExplorer({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 720px)')
+    // Header allinea lo sheet al breakpoint topbar (859); hero resta a 720
+    const mq = window.matchMedia(placement === 'header' ? '(max-width: 859px)' : '(max-width: 720px)')
     const sync = () => setIsMobile(mq.matches)
     sync()
     mq.addEventListener('change', sync)
     return () => mq.removeEventListener('change', sync)
-  }, [])
+  }, [placement])
 
   useEffect(() => {
     if (!isMobile || !open) return
@@ -123,6 +127,8 @@ export function HomelySearchExplorer({
   }, [])
 
   useEffect(() => {
+    // Solo l’istanza header ascolta l’icona mobile / trigger globali (evita doppio sheet)
+    if (placement !== 'header') return
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent<OpenHomelySearchDetail>).detail
       const panel = detail?.panel === 'mode' ? 'mode' : 'dove'
@@ -134,7 +140,7 @@ export function HomelySearchExplorer({
     }
     window.addEventListener(OPEN_HOMELY_SEARCH_EVENT, onOpen)
     return () => window.removeEventListener(OPEN_HOMELY_SEARCH_EVENT, onOpen)
-  }, [place?.label, cityValue, onFocusChange])
+  }, [placement, place?.label, cityValue, onFocusChange])
 
   useEffect(() => {
     if (!open) return
@@ -594,8 +600,15 @@ export function HomelySearchExplorer({
   return (
     <div
       ref={rootRef}
-      className={`cx-explorer${isOpen ? ' is-open' : ''}${isMobile ? ' is-mobile' : ''}`}
-      id="search"
+      className={[
+        'cx-explorer',
+        placement === 'header' ? 'cx-explorer--header' : 'cx-explorer--hero',
+        isOpen ? 'is-open' : '',
+        isMobile ? 'is-mobile' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      id={placement === 'hero' ? 'search' : undefined}
     >
       <form className="cx-explorer__pill" onSubmit={onSubmit} role="search">
         <div
