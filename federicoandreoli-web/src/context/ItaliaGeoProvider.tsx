@@ -9,17 +9,56 @@ import { flattenItaliaComuni } from '../lib/italiaGeo/flattenItaliaComuni'
 
 const GEO_JSON_URL = '/data/italia-comuni.json'
 
+/** Alias comuni / zone di confine → query verso comuni italiani. */
+const GEO_ALIASES: Record<string, string> = {
+  lugano: 'Como',
+  chiasso: 'Como',
+  mendrisio: 'Como',
+  locarno: 'Verbania',
+  nizza: 'Ventimiglia',
+  nice: 'Ventimiglia',
+  mentone: 'Ventimiglia',
+  menton: 'Ventimiglia',
+  monaco: 'Ventimiglia',
+  'monte carlo': 'Ventimiglia',
+  innsbruck: 'Bolzano',
+  innsbruk: 'Bolzano',
+  kufstein: 'Bolzano',
+  capodistria: 'Trieste',
+  koper: 'Trieste',
+  'san marino': 'Rimini',
+  'città del vaticano': 'Roma',
+  vaticano: 'Roma',
+  geneve: 'Aosta',
+  ginevra: 'Aosta',
+  geneva: 'Aosta',
+  zurigo: 'Como',
+  zurich: 'Como',
+}
+
+function foldAccents(s: string): string {
+  return s.normalize('NFD').replace(/\p{M}/gu, '')
+}
+
+function expandGeoQuery(query: string): string {
+  const t = query.trim()
+  if (!t) return t
+  const key = foldAccents(t).toLowerCase()
+  return GEO_ALIASES[key] ?? t
+}
+
 const fuseOptions: IFuseOptions<ItaliaGeoRow> = {
   keys: [
-    { name: 'comune', weight: 0.45 },
-    { name: 'cap', weight: 0.2 },
-    { name: 'siglaProvincia', weight: 0.12 },
-    { name: 'provincia', weight: 0.13 },
-    { name: 'regione', weight: 0.1 },
+    { name: 'comune', weight: 0.42 },
+    { name: 'cap', weight: 0.18 },
+    { name: 'siglaProvincia', weight: 0.14 },
+    { name: 'provincia', weight: 0.14 },
+    { name: 'regione', weight: 0.12 },
   ],
-  threshold: 0.34,
+  threshold: 0.32,
   ignoreLocation: true,
   minMatchCharLength: 1,
+  ignoreDiacritics: true,
 }
 
 export type ItaliaGeoLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -77,8 +116,9 @@ export function ItaliaGeoProvider({ children }: { children: ReactNode }) {
   }, [reloadToken])
 
   const search = useCallback((query: string, limit = 12): ItaliaGeoRow[] => {
-    const q = query.trim()
-    if (q.length === 0 || !fuseRef.current) return []
+    const raw = query.trim()
+    if (raw.length === 0 || !fuseRef.current) return []
+    const q = foldAccents(expandGeoQuery(raw))
     return fuseRef.current.search(q, { limit }).map((r) => r.item)
   }, [])
 

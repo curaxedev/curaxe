@@ -18,7 +18,7 @@ export function ProfilesDirectoryStickyGeoSearch({
 
   return (
     <div
-      className={`sticky-hero-search sticky-hero-search--profiles${visible ? ' sticky-hero-search--visible' : ''}`}
+      className={`sticky-hero-search sticky-hero-search--profiles sticky-hero-search--chrome${visible ? ' sticky-hero-search--visible' : ''}`}
     >
       <div className="sticky-hero-search__inner">
         <AssistenzaGeoSearchForm

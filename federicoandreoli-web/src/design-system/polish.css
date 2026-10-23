@@ -1105,19 +1105,23 @@ textarea:focus-visible,
   border-radius: 2px;
 }
 
-/* Profiles directory — sticky geo bar (solid surface, no heavy blur) */
-.sticky-hero-search--profiles .hero-search--sticky-bar {
+/* Profiles directory — sticky geo bar allineata alla fascia chrome */
+.sticky-hero-search--profiles.sticky-hero-search--chrome {
   background: var(--color-surface);
+}
+
+.sticky-hero-search--profiles .hero-search--sticky-bar {
+  background: #fff;
   border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 .sticky-hero-search--profiles .hero-search.hero-search--sticky-bar:focus-within {
-  background: var(--color-surface);
+  background: #fff;
   border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
-  box-shadow: var(--shadow-md), 0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  box-shadow: var(--shadow-sm), 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }

@@ -54,4 +54,10 @@ export const SUGGESTED_DESTINATIONS: Array<{ label: string; sublabel: string; q:
   { label: 'Napoli', sublabel: 'Reti di assistenza in Campania', q: 'Napoli' },
   { label: 'Bologna', sublabel: 'Professionisti in Emilia-Romagna', q: 'Bologna' },
   { label: 'Modena', sublabel: 'Assistenza e strutture nel Modenese', q: 'Modena' },
+  { label: 'Como', sublabel: 'Lago e confine con la Svizzera', q: 'Como' },
+  { label: 'Ventimiglia', sublabel: 'Riviera di Ponente, confine con la Francia', q: 'Ventimiglia' },
+  { label: 'Aosta', sublabel: 'Valle d’Aosta e valichi alpini', q: 'Aosta' },
+  { label: 'Bolzano', sublabel: 'Alto Adige, confine con Austria e Svizzera', q: 'Bolzano' },
+  { label: 'Trieste', sublabel: 'Friuli Venezia Giulia, confine orientale', q: 'Trieste' },
+  { label: 'Domodossola', sublabel: 'Ossola e valichi verso la Svizzera', q: 'Domodossola' },
 ]

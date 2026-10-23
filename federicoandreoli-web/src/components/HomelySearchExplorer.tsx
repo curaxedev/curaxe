@@ -23,6 +23,10 @@ import {
   SUGGESTED_DESTINATIONS,
   type RecentPlace,
 } from '../lib/recentPlaces'
+import {
+  OPEN_HOMELY_SEARCH_EVENT,
+  type OpenHomelySearchDetail,
+} from '../lib/homelySearchEvents'
 import { nearMeErrorMessage, resolveComuneNearMe } from '../lib/nearMePlace'
 import { PlaceRowIcon } from './icons/CityPlaceIcons'
 
@@ -117,6 +121,20 @@ export function HomelySearchExplorer({
   useEffect(() => {
     setRecents(readRecentPlaces())
   }, [])
+
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<OpenHomelySearchDetail>).detail
+      const panel = detail?.panel === 'mode' ? 'mode' : 'dove'
+      setOpen(panel)
+      if (panel === 'dove') {
+        setQuery(place?.label ?? cityValue)
+        onFocusChange?.(true)
+      }
+    }
+    window.addEventListener(OPEN_HOMELY_SEARCH_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_HOMELY_SEARCH_EVENT, onOpen)
+  }, [place?.label, cityValue, onFocusChange])
 
   useEffect(() => {
     if (!open) return
@@ -416,7 +434,10 @@ export function HomelySearchExplorer({
       ) : null}
 
       {open === 'dove' && query.trim() && !suggestions.length && status === 'ready' ? (
-        <p className="cx-explorer__empty">Nessun comune trovato — premi Cerca per usare il testo inserito</p>
+        <p className="cx-explorer__empty">
+          Nessun comune trovato — prova città italiane o zone di confine (Como, Ventimiglia, Trieste…). Oppure premi
+          Cerca con il testo inserito.
+        </p>
       ) : null}
     </>
   )

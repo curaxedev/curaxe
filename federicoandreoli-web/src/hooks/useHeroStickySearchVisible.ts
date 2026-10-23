@@ -6,7 +6,8 @@ const HERO_SEARCH_ANCHOR_ID = 'search'
 function readHeaderInsetPx(): number {
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--header-h').trim()
   const n = Number.parseFloat(raw)
-  return Number.isFinite(n) ? Math.round(n) + 10 : 82
+  /* Header + fascia sticky (~64px) così la sticky compare solo dopo lo scroll oltre #search */
+  return Number.isFinite(n) ? Math.round(n) + 64 : 128
 }
 
 /**
