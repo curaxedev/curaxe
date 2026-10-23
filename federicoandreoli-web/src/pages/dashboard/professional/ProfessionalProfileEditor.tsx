@@ -204,9 +204,12 @@ export function ProfessionalProfileEditor({
 }: Props) {
   const photoInputRef = useRef<HTMLInputElement | null>(null)
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const skipAutosave = useRef(true)
+  const lastSavedJson = useRef('')
 
   const [step, setStep] = useState<ProfileStepId>('dati')
   const [saved, setSaved] = useState(false)
+  const [autoStatus, setAutoStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
   const [previewOpen, setPreviewOpen] = useState(false)
   const [formReady, setFormReady] = useState(false)
 
@@ -269,6 +272,7 @@ export function ProfessionalProfileEditor({
     setPrimaryPlace(null)
     setAvailableToMove(profile.availableToMove)
     setCertifications(certNorm.certifications)
+    skipAutosave.current = true
     setFormReady(true)
   }, [profile])
 
@@ -412,13 +416,79 @@ export function ProfessionalProfileEditor({
     certifications,
   })
 
-  const handleSave = async () => {
-    const ok = await onSave(buildPatch())
-    if (!ok) return
-    setSaved(true)
-    if (toastTimeout.current) clearTimeout(toastTimeout.current)
-    toastTimeout.current = setTimeout(() => setSaved(false), 3000)
-  }
+  const patchJson = useMemo(() => JSON.stringify(buildPatch()), [
+    firstName,
+    lastName,
+    professionalTitle,
+    birthYear,
+    nationality,
+    phone,
+    bio,
+    category,
+    experienceYears,
+    specializations,
+    languages,
+    hasLicense,
+    hasCar,
+    employmentTypes,
+    selectedDays,
+    shifts,
+    availableFrom,
+    hourlyRate,
+    monthlyRate,
+    zones,
+    primaryZone,
+    radiusKm,
+    availableToMove,
+    certifications,
+    isPremium,
+  ])
+
+  useEffect(() => {
+    if (!formReady || !profile) return
+
+    if (skipAutosave.current) {
+      skipAutosave.current = false
+      lastSavedJson.current = patchJson
+      setAutoStatus('idle')
+      return
+    }
+
+    if (patchJson === lastSavedJson.current) return
+
+    setAutoStatus('pending')
+    const timer = setTimeout(() => {
+      void (async () => {
+        setAutoStatus('saving')
+        const ok = await onSave(JSON.parse(patchJson) as ProfessionalProfilePatch)
+        if (!ok) {
+          setAutoStatus('error')
+          return
+        }
+        lastSavedJson.current = patchJson
+        setAutoStatus('saved')
+        setSaved(true)
+        if (toastTimeout.current) clearTimeout(toastTimeout.current)
+        toastTimeout.current = setTimeout(() => {
+          setSaved(false)
+          setAutoStatus((s) => (s === 'saved' ? 'idle' : s))
+        }, 2500)
+      })()
+    }, 900)
+
+    return () => clearTimeout(timer)
+  }, [formReady, profile, patchJson, onSave])
+
+  const autoSaveLabel =
+    autoStatus === 'pending'
+      ? 'Modifiche in sospeso…'
+      : autoStatus === 'saving' || saving
+        ? 'Salvataggio automatico…'
+        : autoStatus === 'saved'
+          ? 'Salvato'
+          : autoStatus === 'error'
+            ? 'Salvataggio non riuscito'
+            : null
 
   const addCoverageLabel = (label: string) => {
     const trimmed = label.trim()
@@ -577,26 +647,19 @@ export function ProfessionalProfileEditor({
           <p className="dash-prof-editor__sub">
             Come appare a famiglie, strutture e agenzie — completa le sezioni per aumentare i contatti.
           </p>
+          {autoSaveLabel ? (
+            <p
+              className={`dash-prof-autosave${autoStatus === 'error' ? ' dash-prof-autosave--error' : ''}${autoStatus === 'saved' ? ' dash-prof-autosave--ok' : ''}`}
+              aria-live="polite"
+            >
+              {autoSaveLabel}
+            </p>
+          ) : null}
         </div>
         <div className="dash-prof-editor__actions">
-          <button
-            type="button"
-            className="dash-btn dash-btn--ghost dash-prof-editor__preview-btn"
-            onClick={() => setPreviewOpen(true)}
-          >
-            <IconEye size={16} /> Anteprima
-          </button>
           <Link to={publicHref} className="dash-btn dash-btn--ghost dash-prof-editor__public-btn">
-            <IconEye size={16} /> Anteprima pubblica
+            <IconEye size={16} /> Scheda pubblica
           </Link>
-          <button
-            type="button"
-            className="dash-btn dash-btn--primary dash-prof-save-desktop"
-            onClick={() => void handleSave()}
-            disabled={saving}
-          >
-            {saving ? 'Salvataggio…' : 'Salva modifiche'}
-          </button>
         </div>
       </header>
 
@@ -1213,19 +1276,32 @@ export function ProfessionalProfileEditor({
                 <IconChevronRight size={16} />
               </button>
             ) : (
-              <button
-                type="button"
-                className="dash-btn dash-btn--primary"
-                onClick={() => void handleSave()}
-                disabled={saving}
-              >
-                {saving ? 'Salvataggio…' : 'Salva profilo'}
-              </button>
+              <span className="dash-prof-panel__footer-hint">
+                {autoSaveLabel ?? 'Le modifiche si salvano da sole'}
+              </span>
             )}
           </div>
         </div>
 
         <div className="dash-prof-editor__aside-desktop">{previewPanel}</div>
+      </div>
+
+      <div className="dash-prof-bottom-preview">
+        <button
+          type="button"
+          className="dash-btn dash-btn--ghost dash-prof-bottom-preview__btn"
+          onClick={() => setPreviewOpen(true)}
+        >
+          <IconEye size={16} /> Anteprima
+        </button>
+        {autoSaveLabel ? (
+          <span
+            className={`dash-prof-autosave dash-prof-autosave--inline${autoStatus === 'error' ? ' dash-prof-autosave--error' : ''}${autoStatus === 'saved' ? ' dash-prof-autosave--ok' : ''}`}
+            aria-live="polite"
+          >
+            {autoSaveLabel}
+          </span>
+        ) : null}
       </div>
 
       {previewOpen ? (
@@ -1247,24 +1323,6 @@ export function ProfessionalProfileEditor({
           </div>
         </div>
       ) : null}
-
-      <div className="dash-prof-save-bar">
-        <button
-          type="button"
-          className="dash-btn dash-btn--ghost"
-          onClick={() => setPreviewOpen(true)}
-        >
-          Anteprima
-        </button>
-        <button
-          type="button"
-          className="dash-btn dash-btn--primary"
-          onClick={() => void handleSave()}
-          disabled={saving}
-        >
-          {saving ? 'Salvataggio…' : 'Salva'}
-        </button>
-      </div>
 
       <Toast message="Profilo aggiornato con successo!" visible={saved} />
     </div>

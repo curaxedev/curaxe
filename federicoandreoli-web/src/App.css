@@ -9856,7 +9856,7 @@ button.candidacy-auth-dialog__btn {
 
 @media (max-width: 768px) {
   .dash-prof-editor {
-    padding-bottom: 6.5rem;
+    padding-bottom: 1.5rem;
   }
 
   .dash-prof-editor__header {
@@ -9927,11 +9927,6 @@ button.candidacy-auth-dialog__btn {
     position: static;
   }
 
-  .dash-prof-save-bar {
-    display: grid !important;
-    grid-template-columns: 1fr 1.4fr;
-    gap: 8px;
-  }
 }
 
 /* ── Profile form ────────────────────────────────────────────── */
@@ -10056,11 +10051,61 @@ button.candidacy-auth-dialog__btn {
 }
 
 .dash-prof-save-desktop {
-  display: inline-flex;
+  display: none;
 }
 
 .dash-prof-save-bar {
-  display: none;
+  display: none !important;
+}
+
+.dash-prof-autosave {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.dash-prof-autosave--ok {
+  color: #1f6b4a;
+}
+
+.dash-prof-autosave--error {
+  color: var(--color-accent, #c45c26);
+}
+
+.dash-prof-autosave--inline {
+  margin: 0;
+}
+
+.dash-prof-panel__footer-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.dash-prof-bottom-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.dash-prof-bottom-preview__btn {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 769px) {
+  .dash-prof-bottom-preview {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dash-prof-bottom-preview__btn {
+    width: auto;
+  }
 }
 
 .dash-prof-cols {
@@ -10799,29 +10844,6 @@ button.candidacy-auth-dialog__btn {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-3);
-  }
-
-  .dash-prof-save-desktop {
-    display: none !important;
-  }
-
-  .dash-prof-save-bar {
-    display: block;
-    position: sticky;
-    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
-    z-index: 30;
-    margin: var(--space-4) 0 0;
-    padding: 10px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(22, 58, 82, 0.08);
-    box-shadow: 0 8px 24px rgba(18, 47, 67, 0.12);
-    backdrop-filter: blur(12px);
-  }
-
-  .dash-prof-save-bar .dash-btn {
-    width: 100%;
-    justify-content: center;
   }
 
   .dash-prof-wrap {
