@@ -78,13 +78,19 @@ class ProfessionalProfileController
 
     public function update(Request $request): JsonResponse
     {
+        // Anno di nascita / nazionalità non sono più gestiti in UI: strip dai payload
+        // (client vecchi inviavano birthYear=0 e facevano fallire min:1920).
+        $incoming = $request->all();
+        if (isset($incoming['identity']) && is_array($incoming['identity'])) {
+            unset($incoming['identity']['birthYear'], $incoming['identity']['nationality']);
+            $request->replace($incoming);
+        }
+
         $data = $request->validate([
             'identity' => ['nullable', 'array'],
             'identity.firstName' => ['nullable', 'string', 'max:100'],
             'identity.lastName' => ['nullable', 'string', 'max:100'],
             'identity.professionalTitle' => ['nullable', 'string', 'max:255'],
-            'identity.birthYear' => ['nullable', 'integer', 'min:1920', 'max:2010'],
-            'identity.nationality' => ['nullable', 'string', 'max:100'],
             'identity.phone' => ['nullable', 'string', 'max:40'],
             'identity.bio' => ['nullable', 'string', 'max:2000'],
             'professional' => ['nullable', 'array'],
@@ -143,8 +149,6 @@ class ProfessionalProfileController
             'identity.firstName' => 'first_name',
             'identity.lastName' => 'last_name',
             'identity.professionalTitle' => 'professional_title',
-            'identity.birthYear' => 'birth_year',
-            'identity.nationality' => 'nationality',
             'identity.phone' => 'phone',
             'identity.bio' => 'bio',
             'professional.category' => 'category',

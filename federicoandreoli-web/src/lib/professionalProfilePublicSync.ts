@@ -36,7 +36,9 @@ function buildPublicProfileFromProfessional(profile: ProfessionalProfile): MockP
     category: 'caregiver',
     type: 'professional',
     name: displayName,
-    age: new Date().getFullYear() - profile.identity.birthYear,
+    age: profile.identity.birthYear
+      ? new Date().getFullYear() - profile.identity.birthYear
+      : null,
     role: profile.identity.professionalTitle || profile.professional.category,
     stars: 4.8,
     reviewCount: 9,

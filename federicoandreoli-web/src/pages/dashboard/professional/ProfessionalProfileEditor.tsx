@@ -208,6 +208,7 @@ export function ProfessionalProfileEditor({
   onUploadPhoto,
 }: Props) {
   const photoInputRef = useRef<HTMLInputElement | null>(null)
+  const editorTopRef = useRef<HTMLDivElement | null>(null)
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipAutosave = useRef(true)
   const lastSavedJson = useRef('')
@@ -511,10 +512,27 @@ export function ProfessionalProfileEditor({
     })
   }
 
+  const scrollEditorToTop = () => {
+    const scroller = document.querySelector('.dash-content')
+    if (scroller instanceof HTMLElement) {
+      scroller.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    editorTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+
   const goStep = (id: ProfileStepId) => {
     setStep(id)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  useEffect(() => {
+    // Scroll sul contenitore dashboard (.dash-content), non su window.
+    const id = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(scrollEditorToTop)
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [step])
 
   const stepIndex = STEPS.findIndex((s) => s.id === step)
   const nextStep = STEPS[stepIndex + 1]
@@ -634,7 +652,7 @@ export function ProfessionalProfileEditor({
   )
 
   return (
-    <div className="dash-prof-editor">
+    <div className="dash-prof-editor" ref={editorTopRef}>
       <header className="dash-prof-editor__header">
         <div>
           <h2 className="dash-prof-editor__title">Modifica profilo professionale</h2>

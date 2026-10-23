@@ -49,13 +49,23 @@ export async function getProfessionalProfile(userId: string): Promise<Profession
   }
 }
 
+function sanitizeProfilePatch(patch: ProfessionalProfilePatch): ProfessionalProfilePatch {
+  const next: ProfessionalProfilePatch = { ...patch }
+  if (next.identity) {
+    const { birthYear: _by, nationality: _nat, ...identityRest } = next.identity
+    next.identity = identityRest
+  }
+  return next
+}
+
 export async function updateProfessionalProfile(
   userId: string,
   patch: ProfessionalProfilePatch,
 ): Promise<ProfessionalProfile> {
-  if (isMockApiEnabled()) return patchProfessionalProfile(userId, patch)
+  const clean = sanitizeProfilePatch(patch)
+  if (isMockApiEnabled()) return patchProfessionalProfile(userId, clean)
   try {
-    return await httpPatch<ProfessionalProfile>('/api/v1/professionals/me/profile', { body: patch })
+    return await httpPatch<ProfessionalProfile>('/api/v1/professionals/me/profile', { body: clean })
   } catch (err) {
     throw toProfileError(err, 'Salvataggio profilo non riuscito.')
   }
