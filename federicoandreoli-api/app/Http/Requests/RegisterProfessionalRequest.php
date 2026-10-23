@@ -25,6 +25,8 @@ class RegisterProfessionalRequest extends FormRequest
             'address.line' => ['required', 'string', 'min:2', 'max:255'],
             'address.comune' => ['nullable', 'string', 'max:120'],
             'address.cap' => ['nullable', 'string', 'max:10'],
+            'address.regione' => ['nullable', 'string', 'max:120'],
+            'address.istat' => ['nullable', 'string', 'max:12'],
             'birthDate' => ['nullable', 'date', 'before_or_equal:-18 years'],
             'consents' => ['required', 'array'],
             'consents.termini' => ['required', 'accepted'],
