@@ -40,7 +40,6 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
 const LANGUAGES = ['Italiano', 'Inglese', 'Francese', 'Spagnolo', 'Rumeno', 'Ucraino', 'Filippino']
 const EMPLOYMENT_TYPES = ['Convivente', 'A ore', 'Part-time', 'Weekend', 'Notte']
 const SHIFTS = ['Mattina 7–13', 'Pomeriggio 13–19', 'Sera 19–23', 'Notte 23–7']
-const NATIONALITIES = ['Italiana', 'Rumena', 'Ucraina', 'Filippina', 'Altra']
 const CATEGORIES = ['Badante', 'OSS', 'Infermiere', 'Assistente familiare', 'Fisioterapista']
 const EXPERIENCE_OPTIONS = ['Meno di 1 anno', '1-2 anni', '3-5 anni', '6-9 anni', '10+ anni']
 const BIO_SUGGESTIONS = [
@@ -49,8 +48,14 @@ const BIO_SUGGESTIONS = [
   'Supporto emotivo quotidiano',
   'Preparazione pasti',
 ]
-const PRIMARY_RADIUS_KM = [5, 10, 15, 20, 30, 50] as const
-const DEFAULT_PRIMARY_RADIUS_KM = 10
+const PRIMARY_RADIUS_KM = [5, 10, 15, 20, 30, 50, 80, 100] as const
+/** Se la zona c’è ma il raggio non è configurato, si usa 50 km. */
+const DEFAULT_PRIMARY_RADIUS_KM = 50
+
+function effectiveRadiusKm(zone: string, radius: number | null): number | null {
+  if (!zone.trim()) return null
+  return radius ?? DEFAULT_PRIMARY_RADIUS_KM
+}
 
 function RadiusRingVisual({ km, placeLabel }: { km: number; placeLabel: string }) {
   const max = PRIMARY_RADIUS_KM[PRIMARY_RADIUS_KM.length - 1]!
@@ -216,8 +221,6 @@ export function ProfessionalProfileEditor({
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [professionalTitle, setProfessionalTitle] = useState('')
-  const [birthYear, setBirthYear] = useState(1982)
-  const [nationality, setNationality] = useState('Rumena')
   const [bio, setBio] = useState('')
   const [phone, setPhone] = useState('')
   const [category, setCategory] = useState('Badante')
@@ -249,8 +252,6 @@ export function ProfessionalProfileEditor({
     setFirstName(profile.identity.firstName)
     setLastName(profile.identity.lastName)
     setProfessionalTitle(profile.identity.professionalTitle)
-    setBirthYear(profile.identity.birthYear)
-    setNationality(profile.identity.nationality)
     setBio(profile.identity.bio)
     setPhone(profile.identity.phone ?? '')
     setCategory(profile.professional.category)
@@ -268,7 +269,7 @@ export function ProfessionalProfileEditor({
     setMonthlyRate(profile.rates.monthlyLiveIn)
     setZones(profile.zones)
     setPrimaryZone(profile.primaryZone)
-    setRadiusKm(profile.radiusKm ?? null)
+    setRadiusKm(effectiveRadiusKm(profile.primaryZone, profile.radiusKm ?? null))
     setPrimaryPlace(null)
     setAvailableToMove(profile.availableToMove)
     setCertifications(certNorm.certifications)
@@ -285,8 +286,6 @@ export function ProfessionalProfileEditor({
         firstName,
         lastName,
         professionalTitle,
-        birthYear,
-        nationality,
         phone: phone.trim() || null,
         bio,
       },
@@ -311,7 +310,7 @@ export function ProfessionalProfileEditor({
       },
       zones,
       primaryZone,
-      radiusKm,
+      radiusKm: effectiveRadiusKm(primaryZone, radiusKm),
       availableToMove,
       certifications,
     }
@@ -320,8 +319,6 @@ export function ProfessionalProfileEditor({
     firstName,
     lastName,
     professionalTitle,
-    birthYear,
-    nationality,
     phone,
     bio,
     category,
@@ -386,8 +383,6 @@ export function ProfessionalProfileEditor({
       firstName,
       lastName,
       professionalTitle,
-      birthYear,
-      nationality,
       phone: isPremium ? phone.trim() || null : undefined,
       bio,
     },
@@ -411,7 +406,7 @@ export function ProfessionalProfileEditor({
     },
     zones,
     primaryZone,
-    radiusKm,
+    radiusKm: effectiveRadiusKm(primaryZone, radiusKm),
     availableToMove,
     certifications,
   })
@@ -420,8 +415,6 @@ export function ProfessionalProfileEditor({
     firstName,
     lastName,
     professionalTitle,
-    birthYear,
-    nationality,
     phone,
     bio,
     category,
@@ -552,9 +545,10 @@ export function ProfessionalProfileEditor({
   if (!profile || !formReady || !draftProfile) return null
 
   const displayName = `${firstName || 'Nome'} ${lastName || ''}`.trim()
+  const resolvedRadiusKm = effectiveRadiusKm(primaryZone, radiusKm)
   const locationHint = primaryZone
-    ? radiusKm
-      ? `${primaryZone} · ${radiusKm} km`
+    ? resolvedRadiusKm
+      ? `${primaryZone} · ${resolvedRadiusKm} km`
       : primaryZone
     : zones[0] || 'Zona non impostata'
   const publicHref = `/profili/${profile.id}`
@@ -706,6 +700,25 @@ export function ProfessionalProfileEditor({
         ))}
       </nav>
 
+      <button
+        type="button"
+        className="dash-prof-zone-summary"
+        onClick={() => goStep('zone')}
+      >
+        <div className="dash-prof-zone-summary__copy">
+          <span className="dash-prof-zone-summary__kicker">Zona scelta · Raggio</span>
+          <strong>
+            {primaryZone
+              ? `${primaryZone} · ${radiusKm ?? DEFAULT_PRIMARY_RADIUS_KM} km`
+              : `Imposta zona (raggio default ${DEFAULT_PRIMARY_RADIUS_KM} km)`}
+          </strong>
+        </div>
+        <span className="dash-prof-zone-summary__cta">
+          {primaryZone ? 'Modifica' : 'Configura'}
+          <IconChevronRight size={16} />
+        </span>
+      </button>
+
       <div className="dash-prof-editor__layout">
         <div className="dash-prof-editor__main">
           {step === 'dati' ? (
@@ -777,40 +790,6 @@ export function ProfessionalProfileEditor({
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                   />
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label" htmlFor="prof-birth-year">
-                    Anno di nascita
-                  </label>
-                  <select
-                    id="prof-birth-year"
-                    className="dash-form-select"
-                    value={birthYear}
-                    onChange={(e) => setBirthYear(Number(e.target.value))}
-                  >
-                    {Array.from({ length: 50 }, (_, i) => 1955 + i).map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label" htmlFor="prof-nationality">
-                    Nazionalità
-                  </label>
-                  <select
-                    id="prof-nationality"
-                    className="dash-form-select"
-                    value={nationality}
-                    onChange={(e) => setNationality(e.target.value)}
-                  >
-                    {NATIONALITIES.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <div className="dash-form-field dash-form-field--full">
                   <label className="dash-form-label" htmlFor="prof-phone">
@@ -1120,11 +1099,12 @@ export function ProfessionalProfileEditor({
                   <div className="dash-prof-panel__block dash-prof-panel__block--nested">
                     <div className="dash-prof-section__title">Raggio operativo</div>
                     <p className="dash-form-hint" style={{ marginTop: 0 }}>
-                      Dopo la città, indica entro quanti km sei disponibile a lavorare.
+                      Entro quanti km dalla zona scelta sei disponibile. Se non lo imposti, vale{' '}
+                      {DEFAULT_PRIMARY_RADIUS_KM} km.
                     </p>
                     <div className="dash-prof-radius__chips" role="group" aria-label="Raggio in chilometri">
                       {PRIMARY_RADIUS_KM.map((km) => {
-                        const on = radiusKm === km
+                        const on = (radiusKm ?? DEFAULT_PRIMARY_RADIUS_KM) === km
                         return (
                           <button
                             key={km}
@@ -1138,11 +1118,10 @@ export function ProfessionalProfileEditor({
                         )
                       })}
                     </div>
-                    {radiusKm ? (
-                      <RadiusRingVisual km={radiusKm} placeLabel={primaryZone} />
-                    ) : (
-                      <p className="dash-form-hint">Seleziona un raggio per vedere l’area effettiva.</p>
-                    )}
+                    <RadiusRingVisual
+                      km={radiusKm ?? DEFAULT_PRIMARY_RADIUS_KM}
+                      placeLabel={primaryZone}
+                    />
                   </div>
                 ) : null}
               </div>

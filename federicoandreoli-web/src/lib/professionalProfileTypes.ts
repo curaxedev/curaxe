@@ -4,8 +4,10 @@ export type ProfessionalProfileIdentity = {
   firstName: string
   lastName: string
   professionalTitle: string
-  birthYear: number
-  nationality: string
+  /** Opzionale / legacy — non richiesto in UI. */
+  birthYear?: number | null
+  /** Opzionale / legacy — non richiesto in UI. */
+  nationality?: string | null
   /** Solo Premium: visibile in chat + WhatsApp. */
   phone: string | null
   bio: string

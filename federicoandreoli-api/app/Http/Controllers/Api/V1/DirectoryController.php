@@ -24,7 +24,7 @@ class DirectoryController
     private const PROXIMITY_SEARCH_MAX_KM = 40.0;
 
     /** Se il profilo non ha radius_km, copertura operativa di default. */
-    private const DEFAULT_PROFILE_COVERAGE_KM = 25.0;
+    private const DEFAULT_PROFILE_COVERAGE_KM = 50.0;
 
     /** Limite candidati SQL prima del filtro distanza (hosting condiviso). */
     private const PROXIMITY_CANDIDATE_LIMIT = 200;

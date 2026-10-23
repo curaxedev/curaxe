@@ -8923,6 +8923,121 @@ button.candidacy-auth-dialog__btn {
   letter-spacing: 0.04em;
 }
 
+.dash-home-coverage {
+  appearance: none;
+  border: 1px solid rgba(22, 58, 82, 0.1);
+  background: #fff;
+  border-radius: 18px;
+  max-width: 920px;
+  width: 100%;
+  margin: 0 0 var(--space-4);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.dash-home-coverage:hover,
+.dash-home-coverage:focus-visible {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  outline: none;
+}
+
+.dash-home-coverage__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-home-coverage__kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.dash-home-coverage__zone {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.dash-home-coverage__radius {
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+
+.dash-home-coverage__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--color-primary);
+}
+
+.dash-prof-zone-summary {
+  appearance: none;
+  border: 1px solid rgba(22, 58, 82, 0.1);
+  background: rgba(240, 247, 252, 0.75);
+  border-radius: 16px;
+  width: 100%;
+  margin: 0 0 var(--space-4);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.dash-prof-zone-summary:hover,
+.dash-prof-zone-summary:focus-visible {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  outline: none;
+}
+
+.dash-prof-zone-summary__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-prof-zone-summary__kicker {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.dash-prof-zone-summary__copy strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.dash-prof-zone-summary__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--color-primary);
+}
+
 .dash-home-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -10836,7 +10951,7 @@ button.candidacy-auth-dialog__btn {
 
   .dash-home-bottom { grid-template-columns: 1fr; }
 
-  /* Profile form: single column + sticky save */
+  /* Profile form: single column */
   .dash-prof-cols { grid-template-columns: 1fr; }
   .dash-doc-slots { grid-template-columns: 1fr; }
 

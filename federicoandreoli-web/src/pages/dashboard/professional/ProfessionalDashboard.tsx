@@ -133,6 +133,11 @@ function SectionHome({
   const checklist = getProfileCompletionChecklist(profile)
   const pendingItems = checklist.filter((item) => !item.done)
   const profileComplete = completionPercent >= 100
+  const DEFAULT_RADIUS_KM = 50
+  const zoneLabel = profile?.primaryZone?.trim() || ''
+  const radiusLabel = zoneLabel
+    ? `${profile?.radiusKm ?? DEFAULT_RADIUS_KM} km`
+    : null
 
   const viewsTrend =
     profileViewStats.weekChangePercent === null
@@ -227,6 +232,41 @@ function SectionHome({
           </div>
         </div>
       </section>
+
+      <button
+        type="button"
+        className="dash-home-coverage"
+        onClick={() => onGoTo('profilo')}
+        aria-label={
+          zoneLabel
+            ? `Zona scelta ${zoneLabel}, raggio ${radiusLabel}. Modifica nel profilo.`
+            : 'Imposta zona scelta e raggio nel profilo'
+        }
+      >
+        <div className="dash-home-coverage__copy">
+          <span className="dash-home-coverage__kicker">Zona operativa</span>
+          {zoneLabel ? (
+            <>
+              <strong className="dash-home-coverage__zone">{zoneLabel}</strong>
+              <span className="dash-home-coverage__radius">
+                Raggio {radiusLabel}
+                {profile?.radiusKm == null ? ' (predefinito)' : ''}
+              </span>
+            </>
+          ) : (
+            <>
+              <strong className="dash-home-coverage__zone">Zona non impostata</strong>
+              <span className="dash-home-coverage__radius">
+                Scegli comune e raggio (default {DEFAULT_RADIUS_KM} km)
+              </span>
+            </>
+          )}
+        </div>
+        <span className="dash-home-coverage__cta">
+          Configura
+          <IconChevronRight size={16} />
+        </span>
+      </button>
 
       <div className="dash-home-metrics" role="list" aria-label="Attività profilo">
         <button
@@ -1047,7 +1087,15 @@ export function ProfessionalDashboard() {
       <DashboardLayout
         accountType="professional"
         userName={user?.name ?? 'Professionista'}
-        userRole={profile ? `${profile.professional.category} · ${profile.primaryZone.split(',')[0]?.trim() ?? 'Italia'}` : 'Badante · Milano'}
+        userRole={
+          profile
+            ? `${profile.professional.category} · ${
+                profile.primaryZone
+                  ? `${profile.primaryZone.split(',')[0]?.trim()} · ${profile.radiusKm ?? 50} km`
+                  : 'Zona da impostare'
+              }`
+            : 'Professionista'
+        }
         navItems={navItems}
         activeSection={activeSection}
         onSectionChange={goToSection}
