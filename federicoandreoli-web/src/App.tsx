@@ -151,22 +151,20 @@ export default function App() {
                 <Route path="/profili/:id" element={<ProfileDetailPage />} />
                 <Route path="/strutture/:id" element={<StructureDetailPage />} />
                 <Route path="/iscriviti" element={<IscrizioneLandingPage />} />
+                {/* Signup landings reuse registration draft context */}
                 <Route
-                  path="/iscrizione-assistente-familiare"
                   element={
                     <GuestOnlyRoute>
-                      <IscrizioneAssistenteFamiliarePage />
+                      <RegisterWizardRoot />
                     </GuestOnlyRoute>
                   }
-                />
-                <Route
-                  path="/iscrizione-agenzia"
-                  element={
-                    <GuestOnlyRoute>
-                      <IscrizioneAgenziaPage />
-                    </GuestOnlyRoute>
-                  }
-                />
+                >
+                  <Route
+                    path="/iscrizione-assistente-familiare"
+                    element={<IscrizioneAssistenteFamiliarePage />}
+                  />
+                  <Route path="/iscrizione-agenzia" element={<IscrizioneAgenziaPage />} />
+                </Route>
                 <Route path="/posizioni/:id" element={<OpenPositionDetailPage />} />
                 <Route
                   path="/accedi"
