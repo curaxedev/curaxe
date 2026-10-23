@@ -3,11 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { ItaliaGeoSearchCombobox } from '../components/ItaliaGeoSearchCombobox'
 import { IconCheckMark, IconChevronRight } from '../components/icons/DashboardIcons'
 import { ProfileRatingCompact } from '../components/ProfileRatingCompact'
-import { ProfilesDirectoryStickyGeoSearch } from '../components/ProfilesDirectoryStickyGeoSearch'
 import { SiteShell } from '../components/SiteShell'
 import { useDirectorySearch } from '../hooks/useDirectorySearch'
-import { useProfilesDirectoryStickyHeroCity } from '../hooks/useProfilesDirectoryStickyHeroCity'
-import { useProfiliStickySearchVisible } from '../hooks/useProfiliStickySearchVisible'
 import { useItaliaGeo } from '../context/ItaliaGeoProvider'
 import type { DirectoryProfileSummary, ListingIntent } from '../lib/directoryTypes'
 import type { ItaliaGeoRow } from '../lib/italiaGeo/italiaComuniTypes'
@@ -165,10 +162,6 @@ export function ProfilesDirectoryPage() {
   const tabOffroRef = useRef<HTMLButtonElement>(null)
 
   const [searchParams, setSearchParams] = useSearchParams()
-  const [stickyBarGeoFocused, setStickyBarGeoFocused] = useState(false)
-  const profiliStickyVisible = useProfiliStickySearchVisible()
-  const stickyOverlayVisible = profiliStickyVisible || stickyBarGeoFocused
-  const stickyHero = useProfilesDirectoryStickyHeroCity(searchParams, setSearchParams)
   const { status, search, getByIstat } = useItaliaGeo()
 
   const istatParam = searchParams.get(PROFILI_ISTAT_PARAM) ?? ''
@@ -269,12 +262,7 @@ export function ProfilesDirectoryPage() {
 
   return (
     <SiteShell>
-      <ProfilesDirectoryStickyGeoSearch
-        visible={stickyOverlayVisible}
-        stickyHero={stickyHero}
-        onStickyFocusChange={setStickyBarGeoFocused}
-      />
-      <main className={`home-page prof-dir${stickyOverlayVisible ? ' home-page--sticky-search' : ''}`}>
+      <main className="home-page prof-dir">
         <div className="prof-dir__intro">
           <h1 className="visually-hidden">Profili e organizzazioni</h1>
 

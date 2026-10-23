@@ -2341,14 +2341,6 @@
   -webkit-backdrop-filter: saturate(2) blur(24px);
 }
 
-/* Hero / intro search nascoste quando la sticky è attiva: niente testo fantasma sotto */
-.home-page--sticky-search #search.cx-explorer,
-.home-page--sticky-search #prof-dir-geo-search {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s var(--motion-ease);
-}
-
 @media (max-width: 859px) {
   .sticky-hero-search {
     /* Copre da sotto l’header: blocca bleed del contenuto in scroll */

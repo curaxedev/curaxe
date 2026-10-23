@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HeroAssistenzaBlock } from '../components/HeroAssistenzaBlock'
-import { HomeStickySearch } from '../components/HomeStickySearch'
 import { HomeOpenPositionsSection } from '../components/HomeOpenPositionsSection'
 import {
   HomeProfileCarousel,
@@ -20,7 +19,6 @@ import {
 import { SiteShell } from '../components/SiteShell'
 import { useCityTypewriter } from '../hooks/useCityTypewriter'
 import { useHeroSearchParams } from '../hooks/useHeroSearchParams'
-import { useHeroStickySearchVisible } from '../hooks/useHeroStickySearchVisible'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { searchDirectoryProfiles } from '../lib/directoryApi'
 import { toCarouselCard, type MockProfile } from '../lib/mockProfiles'
@@ -174,15 +172,10 @@ export function HomePage() {
   const [activeCategory, setActiveCategory] = useState<string>('caregiver')
   const [previewCards, setPreviewCards] = useState<PreviewCard[]>([])
   const [heroCityFocused, setHeroCityFocused] = useState(false)
-  const [stickyCityFocused, setStickyCityFocused] = useState(false)
   const prefersReducedMotion = usePrefersReducedMotion()
   const typewriterActive =
-    heroSearch.cityInUrl.length === 0 &&
-    !heroCityFocused &&
-    !stickyCityFocused &&
-    !prefersReducedMotion
+    heroSearch.cityInUrl.length === 0 && !heroCityFocused && !prefersReducedMotion
   const typewriterText = useCityTypewriter(typewriterActive)
-  const stickySearchVisible = useHeroStickySearchVisible()
 
   useEffect(() => {
     let cancelled = false
@@ -241,18 +234,9 @@ export function HomePage() {
   const activeCategoryLabel =
     homeCercoPeopleCategories.find((c) => c.id === activeCategory)?.label ?? activeCategory
 
-  const stickyChromeOn = stickySearchVisible || stickyCityFocused
-
   return (
     <SiteShell>
-      <HomeStickySearch
-        visible={stickyChromeOn}
-        heroSearch={heroSearch}
-        typewriterActive={typewriterActive}
-        typewriterText={typewriterText}
-        onStickyCityFocusChange={setStickyCityFocused}
-      />
-      <main className={`home-page${stickyChromeOn ? ' home-page--sticky-search' : ''}`}>
+      <main className="home-page">
 
         {/* ── Hero ──────────────────────────────────────────── */}
         <section className="hero-sitly home-hero-animate" aria-label="Presentazione del servizio">
