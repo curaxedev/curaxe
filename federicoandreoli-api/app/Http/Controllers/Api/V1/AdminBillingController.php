@@ -329,4 +329,74 @@ class AdminBillingController
 
         return response()->json($this->billing->payload($updated));
     }
+
+    /**
+     * CRM-driven: genera URL Stripe Checkout (hosted) per l’utente del subscription row.
+     * Nessuna carta su Curaxe — solo redirect al Checkout Stripe.
+     */
+    public function createCheckoutLink(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'successUrl' => ['nullable', 'string', 'max:500'],
+            'cancelUrl' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $sub = Subscription::query()->with('user')->findOrFail($id);
+        if ($sub->user === null) {
+            return ApiResponse::error('Utente non trovato.', 404, [], 'not_found');
+        }
+
+        try {
+            $result = $this->billing->createCheckout(
+                $sub->user,
+                null,
+                $data['successUrl'] ?? null,
+                $data['cancelUrl'] ?? null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422, [], 'billing_config');
+        } catch (\RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), 503, [], 'stripe_error');
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Checkout non creato.', 502, [], 'stripe_error');
+        }
+
+        AuditLog::record($request->user()->id, 'billing.admin_checkout_link', Subscription::class, (string) $sub->id, [
+            'sessionId' => $result['sessionId'] ?? null,
+        ]);
+
+        return response()->json($result, 201);
+    }
+
+    /**
+     * CRM-driven: URL Customer Portal Stripe (gestione carta/disdetta/fatture).
+     */
+    public function createPortalLink(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'returnUrl' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $sub = Subscription::query()->with('user')->findOrFail($id);
+        if ($sub->user === null) {
+            return ApiResponse::error('Utente non trovato.', 404, [], 'not_found');
+        }
+
+        try {
+            $result = $this->billing->createPortalSession(
+                $sub->user,
+                $data['returnUrl'] ?? null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422, [], 'portal_unavailable');
+        } catch (\RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), 503, [], 'stripe_error');
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Portal non creato.', 502, [], 'stripe_error');
+        }
+
+        AuditLog::record($request->user()->id, 'billing.admin_portal_link', Subscription::class, (string) $sub->id);
+
+        return response()->json($result);
+    }
 }

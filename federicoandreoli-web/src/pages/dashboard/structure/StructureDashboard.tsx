@@ -644,7 +644,7 @@ export function StructureDashboard() {
             isPremium={billing.isPremium}
             loading={billing.loading || planCatalog.loading}
             onUpgrade={() => void billing.startCheckout()}
-            onCancel={() => void billing.cancel()}
+            onCancel={() => void billing.openPortal()}
             cancelLoading={billing.cancelLoading}
             cancelAtPeriodEnd={billing.subscription?.cancelAtPeriodEnd ?? false}
             periodEndLabel={periodEndLabel}

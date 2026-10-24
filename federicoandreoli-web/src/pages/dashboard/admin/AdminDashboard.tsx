@@ -70,7 +70,9 @@ import { AdminPlansCatalogSection } from './AdminPlansCatalogSection'
 import { AdminSecuritySection } from './AdminSecuritySection'
 import {
   postAdminCancelSubscription,
+  postAdminCheckoutLink,
   postAdminExtendTrial,
+  postAdminPortalLink,
   postAdminSubscriptionRefund,
 } from '../../../lib/adminBillingSettingsApi'
 
@@ -680,13 +682,26 @@ function SectionSubscriptions() {
     ? `€${(stats.mrrCents / 100).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
     : '—'
 
-  async function runAction(id: string, kind: 'refund' | 'trial' | 'cancel') {
+  async function runAction(
+    id: string,
+    kind: 'refund' | 'trial' | 'cancel' | 'checkout' | 'portal',
+  ) {
     setActionBusy(`${kind}-${id}`)
     try {
       if (kind === 'refund') await postAdminSubscriptionRefund(id, undefined, 'requested_by_customer')
       if (kind === 'trial') await postAdminExtendTrial(id, 7)
       if (kind === 'cancel') await postAdminCancelSubscription(id)
-      await reload()
+      if (kind === 'checkout') {
+        const { url } = await postAdminCheckoutLink(id)
+        await navigator.clipboard.writeText(url)
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+      if (kind === 'portal') {
+        const { url } = await postAdminPortalLink(id)
+        await navigator.clipboard.writeText(url)
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+      if (kind !== 'checkout' && kind !== 'portal') await reload()
     } catch {
       // errori gestiti a livello API; reload comunque
     } finally {
@@ -801,6 +816,26 @@ function SectionSubscriptions() {
                   <td>{s.audience === 'agency' ? 'B2B' : s.audience === 'structure' ? 'RSA' : 'PRO'}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="dash-btn dash-btn--ghost"
+                        style={{ fontSize: 12, padding: '4px 8px' }}
+                        disabled={actionBusy !== null}
+                        title="Apre Stripe Checkout (carta solo su Stripe)"
+                        onClick={() => void runAction(s.id, 'checkout')}
+                      >
+                        Link Checkout
+                      </button>
+                      <button
+                        type="button"
+                        className="dash-btn dash-btn--ghost"
+                        style={{ fontSize: 12, padding: '4px 8px' }}
+                        disabled={actionBusy !== null}
+                        title="Customer Portal Stripe (carta, disdetta, fatture)"
+                        onClick={() => void runAction(s.id, 'portal')}
+                      >
+                        Link Portal
+                      </button>
                       <button
                         type="button"
                         className="dash-btn dash-btn--ghost"

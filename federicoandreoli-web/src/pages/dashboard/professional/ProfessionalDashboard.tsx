@@ -19,7 +19,6 @@ import {
 } from './ProfessionalProfileEditor'
 import { getProfileCompletionChecklist } from '../../../services/professionalProfileService'
 import type { MessageThread, MessagingParticipantRole } from '../../../lib/messagingTypes'
-import { showBillingDemoCopy } from '../../../lib/billingFeatures'
 import { formatBillingDate } from '../../../lib/billingApi'
 import { usePlanCatalog } from '../../../hooks/usePlanCatalog'
 import { formatPlanEuro, type PlanCatalogEntry } from '../../../lib/planCatalog'
@@ -36,7 +35,6 @@ import {
   IconCheckMark,
   IconChevronRight,
   IconClose,
-  IconCreditCard,
   IconHome,
   IconInbox,
   IconMail,
@@ -718,106 +716,64 @@ function SectionPlan({
   )
 }
 
-/* ── Upgrade / Payment Modal (embedded mock — Stripe Elements-ready) ── */
+/* ── Conferma redirect a Stripe Checkout (niente carta su Curaxe) ── */
 function UpgradeModal({
   onClose,
-  onPay,
+  onContinue,
   checkoutLoading,
   error,
   plan,
 }: {
   onClose: () => void
-  onPay: () => Promise<boolean>
+  onContinue: () => void
   checkoutLoading: boolean
   error: string | null
   plan: PlanCatalogEntry | null
 }) {
-  const [activated, setActivated] = useState(false)
   const amountLabel = plan ? formatPlanEuro(plan.amountCents) : '—'
   const planLabel = plan?.label ?? 'Premium'
-
-  const handleActivate = async () => {
-    const ok = await onPay()
-    if (!ok) return
-    setActivated(true)
-    setTimeout(onClose, 2000)
-  }
 
   return (
     <div className="dash-modal-overlay" onClick={onClose}>
       <div className="dash-modal" onClick={(e) => e.stopPropagation()}>
-        {activated ? (
-          <div className="dash-modal-success">
-            <div className="dash-modal-success__icon"><IconCheck size={40} /></div>
-            <div className="dash-modal-success__title">Abbonamento attivato!</div>
-            <div className="dash-modal-success__sub">Benvenuta nel Piano {planLabel}.</div>
+        <div className="dash-modal__header">
+          <span className="dash-modal__title">Attiva Piano {planLabel}</span>
+          <button className="dash-modal__close" onClick={onClose} aria-label="Chiudi">
+            <IconClose size={18} />
+          </button>
+        </div>
+        <div className="dash-modal__body">
+          <div className="dash-modal-plan-recap">
+            <div className="dash-modal-plan-recap__name">Piano {planLabel}</div>
+            <div className="dash-modal-plan-recap__price">
+              {amountLabel} <span>/{plan?.interval === 'year' ? 'anno' : 'mese'}</span>
+            </div>
+            <div className="dash-modal-plan-recap__note">
+              Pagamento e gestione solo su Stripe · Annullabile dal Customer Portal
+            </div>
           </div>
-        ) : (
-          <>
-            <div className="dash-modal__header">
-              <span className="dash-modal__title">Attiva Piano {planLabel}</span>
-              <button className="dash-modal__close" onClick={onClose} aria-label="Chiudi"><IconClose size={18} /></button>
-            </div>
-            <div className="dash-modal__body">
-              <div className="dash-modal-plan-recap">
-                <div className="dash-modal-plan-recap__name">Piano {planLabel}</div>
-                <div className="dash-modal-plan-recap__price">
-                  {amountLabel}{' '}
-                  <span>/{plan?.interval === 'year' ? 'anno' : 'mese'}</span>
-                </div>
-                <div className="dash-modal-plan-recap__note">Annullabile in qualsiasi momento · Nessun vincolo</div>
-              </div>
-              {showBillingDemoCopy() && (
-                <p style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-muted)', margin: '0 0 var(--space-5)' }}>
-                  Inserisci i dati della carta per attivare l&apos;abbonamento.{' '}
-                  <strong>Demo: nessun addebito reale.</strong> Carta test: 4242 4242 4242 4242.
-                </p>
-              )}
-              {!showBillingDemoCopy() && (
-                <p style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-muted)', margin: '0 0 var(--space-5)' }}>
-                  Inserisci i dati della carta per attivare l&apos;abbonamento in modo sicuro.
-                </p>
-              )}
-              <div className="dash-form-grid" data-stripe-elements-mount>
-                <div className="dash-form-field dash-form-field--full">
-                  <label className="dash-form-label">Intestatario carta</label>
-                  <input className="dash-form-input" placeholder="Mario Rossi" autoComplete="cc-name" />
-                </div>
-                <div className="dash-form-field dash-form-field--full">
-                  <label className="dash-form-label">
-                    <IconCreditCard size={16} /> Numero carta
-                  </label>
-                  <input className="dash-form-input" placeholder="4242 4242 4242 4242" maxLength={19} autoComplete="cc-number" />
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label">Scadenza</label>
-                  <input className="dash-form-input" placeholder="MM/AA" maxLength={5} autoComplete="cc-exp" />
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label">CVV</label>
-                  <input className="dash-form-input" placeholder="123" maxLength={4} type="password" autoComplete="cc-csc" />
-                </div>
-              </div>
-              {error && (
-                <p style={{ color: '#D95F5F', fontSize: 'var(--text-small)', marginTop: 'var(--space-3)' }}>{error}</p>
-              )}
-            </div>
-            <div className="dash-modal__footer">
-              <button className="dash-btn dash-btn--ghost" onClick={onClose} disabled={checkoutLoading}>
-                Annulla
-              </button>
-              <button
-                className="dash-btn dash-btn--primary dash-btn--lg"
-                disabled={checkoutLoading}
-                onClick={() => void handleActivate()}
-              >
-                {checkoutLoading
-                  ? 'Elaborazione…'
-                  : `Attiva ora — ${amountLabel}/${plan?.interval === 'year' ? 'anno' : 'mese'}`}
-              </button>
-            </div>
-          </>
-        )}
+          <p style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-muted)', margin: '0 0 var(--space-5)' }}>
+            Verrai reindirizzato alla pagina sicura di Stripe Checkout per inserire la carta. Curaxe non
+            vede né salva dati di pagamento (come Cursor).
+          </p>
+          {error && (
+            <p style={{ color: '#D95F5F', fontSize: 'var(--text-small)', marginTop: 'var(--space-3)' }}>
+              {error}
+            </p>
+          )}
+        </div>
+        <div className="dash-modal__footer">
+          <button className="dash-btn dash-btn--ghost" onClick={onClose} disabled={checkoutLoading}>
+            Annulla
+          </button>
+          <button
+            className="dash-btn dash-btn--primary dash-btn--lg"
+            disabled={checkoutLoading}
+            onClick={onContinue}
+          >
+            {checkoutLoading ? 'Reindirizzamento…' : 'Continua su Stripe'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1002,20 +958,22 @@ export function ProfessionalDashboard() {
     return () => window.clearTimeout(t)
   }, [billingToast])
 
-  const handleUpgrade = async () => {
-    const session = await billing.startCheckout()
-    if (session?.mode === 'redirect') return
+  const handleUpgrade = () => {
     setShowUpgrade(true)
   }
 
-  const handlePayInModal = async (): Promise<boolean> => {
-    const session = billing.pendingSession ?? (await billing.startCheckout())
-    if (!session) return false
-    return billing.completeCheckout(session.sessionId)
+  const handleContinueToStripe = () => {
+    void billing.startCheckout().then((session) => {
+      if (!session?.url) {
+        setShowUpgrade(false)
+      }
+      // Con URL: window.location.assign già in startCheckout
+    })
   }
 
   const handleCancelSubscription = () => {
-    void billing.cancel()
+    // Disdetta / carta / fatture: solo Customer Portal Stripe (pattern Cursor).
+    void billing.openPortal()
   }
 
   const periodEndLabel = billing.subscription?.currentPeriodEnd
@@ -1247,7 +1205,7 @@ export function ProfessionalDashboard() {
             billing.clearPendingSession()
             setShowUpgrade(false)
           }}
-          onPay={handlePayInModal}
+          onContinue={handleContinueToStripe}
           checkoutLoading={billing.checkoutLoading}
           error={billing.error}
           plan={catalogPlan}

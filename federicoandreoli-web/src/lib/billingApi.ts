@@ -57,6 +57,8 @@ type ApiSubscription = {
   currentPeriodEnd: string | null
   trialEndsAt?: string | null
   cancelAtPeriodEnd: boolean
+  requiresAction?: boolean
+  hostedInvoiceUrl?: string | null
   history: Array<{ at: string; event: string }>
 }
 
@@ -75,6 +77,8 @@ function mapSubscription(raw: ApiSubscription): UserSubscription {
     cancelAtPeriodEnd: raw.cancelAtPeriodEnd,
     stripeCustomerId: raw.stripeCustomerId,
     stripeSubscriptionId: raw.stripeSubscriptionId,
+    requiresAction: Boolean(raw.requiresAction),
+    hostedInvoiceUrl: raw.hostedInvoiceUrl ?? null,
     history: (raw.history ?? []).map((h, i) => ({
       id: `h-${i}`,
       planLabel: raw.planType,
@@ -125,9 +129,10 @@ export async function postBillingCheckoutSession(
         cancelUrl: input.cancelUrl,
       },
     })
+    // Solo hosted Checkout (Stripe o mock redirect). Mai «embedded» con carta su Curaxe.
     return {
       sessionId: raw.sessionId,
-      mode: raw.mode === 'redirect' ? 'redirect' : 'embedded',
+      mode: 'redirect',
       url: raw.url,
       productKey: input.productKey,
       expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),

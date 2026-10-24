@@ -87,12 +87,18 @@ class SubscriptionBillingService
             if (! $this->allowsMockBilling()) {
                 throw new \RuntimeException('Stripe non configurato. Completa la procedura guidata Pagamenti.');
             }
+            // Dev-only: hosted mock page (stesso pattern redirect di Stripe Checkout).
             $sessionId = 'cs_test_'.Str::lower(Str::random(24));
+            $checkoutPath = match ($audience) {
+                'agency' => '/dashboard/agenzia/piano/checkout',
+                'structure' => '/dashboard/struttura/piano/checkout',
+                default => '/dashboard/professionale/piano/checkout',
+            };
 
             return [
                 'sessionId' => $sessionId,
-                'mode' => 'mock',
-                'url' => null,
+                'mode' => 'redirect',
+                'url' => $frontend.$checkoutPath.'?session_id='.$sessionId,
                 'audience' => $audience,
             ];
         }
@@ -107,18 +113,36 @@ class SubscriptionBillingService
         }
 
         $sub = $this->ensureSubscription($user);
+
+        // CRM-driven: se già abbonato (active/trialing) non aprire un secondo Checkout.
+        if (
+            in_array($sub->status, ['active', 'trialing'], true)
+            && is_string($sub->stripe_subscription_id)
+            && $sub->stripe_subscription_id !== ''
+        ) {
+            throw new \InvalidArgumentException(
+                'Hai già un abbonamento attivo. Gestisci rinnovi e disdetta dal Customer Portal Stripe.',
+            );
+        }
+
         $client = $this->clients->requireClient($settings);
 
         $customerId = $sub->stripe_customer_id;
         if (! is_string($customerId) || $customerId === '') {
-            $customer = $client->customers->create([
-                'email' => $user->email,
-                'name' => $user->name,
-                'metadata' => [
-                    'user_id' => (string) $user->id,
-                    'audience' => $audience,
-                ],
-            ]);
+            try {
+                $customer = $client->customers->create([
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'metadata' => [
+                        'user_id' => (string) $user->id,
+                        'audience' => $audience,
+                    ],
+                ], [
+                    'idempotency_key' => 'cust_'.$user->id.'_'.hash('sha256', (string) $user->email),
+                ]);
+            } catch (ApiErrorException $e) {
+                throw new \RuntimeException('Stripe Customer non creato: '.$e->getMessage(), 0, $e);
+            }
             $customerId = $customer->id;
             $sub->stripe_customer_id = $customerId;
             $sub->save();
@@ -132,7 +156,9 @@ class SubscriptionBillingService
             'success_url' => $successUrl.(str_contains($successUrl, '?') ? '&' : '?').'session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $cancelUrl,
             'line_items' => [['price' => $priceId, 'quantity' => 1]],
+            // Carta solo su pagina Stripe Checkout (mai su Curaxe). SCA/3DS gestiti da Stripe.
             'payment_method_collection' => 'always',
+            'billing_address_collection' => 'required',
             'allow_promotion_codes' => true,
             'metadata' => [
                 'user_id' => (string) $user->id,
@@ -151,11 +177,27 @@ class SubscriptionBillingService
             $params['subscription_data']['trial_period_days'] = $trialDays;
         }
 
-        /** @var CheckoutSession $session */
-        $session = $client->checkout->sessions->create($params);
+        try {
+            /** @var CheckoutSession $session */
+            $session = $client->checkout->sessions->create($params, [
+                'idempotency_key' => 'checkout_'.$user->id.'_'.$priceId.'_'.now()->format('YmdH'),
+            ]);
+        } catch (ApiErrorException $e) {
+            throw new \RuntimeException('Checkout Stripe non creato: '.$e->getMessage(), 0, $e);
+        }
+
+        if (! is_string($session->url) || $session->url === '') {
+            throw new \RuntimeException('Stripe non ha restituito l’URL Checkout.');
+        }
 
         $sub->pushHistory('checkout_session_created', ['sessionId' => $session->id]);
         $sub->save();
+
+        AuditLog::record($user->id, 'billing.checkout_session', Subscription::class, (string) $sub->id, [
+            'sessionId' => $session->id,
+            'audience' => $audience,
+            'priceId' => $priceId,
+        ]);
 
         return [
             'sessionId' => $session->id,
@@ -260,7 +302,17 @@ class SubscriptionBillingService
             $params['configuration'] = $settings->portal_configuration_id;
         }
 
-        $session = $client->billingPortal->sessions->create($params);
+        try {
+            $session = $client->billingPortal->sessions->create($params, [
+                'idempotency_key' => 'portal_'.$user->id.'_'.now()->format('YmdHi'),
+            ]);
+        } catch (ApiErrorException $e) {
+            throw new \RuntimeException('Customer Portal non creato: '.$e->getMessage(), 0, $e);
+        }
+
+        if (! is_string($session->url) || $session->url === '') {
+            throw new \RuntimeException('Stripe non ha restituito l’URL del Customer Portal.');
+        }
 
         AuditLog::record($user->id, 'billing.portal_session', Subscription::class, (string) $sub->id, [
             'return_host' => parse_url($returnUrl, PHP_URL_HOST),
@@ -486,6 +538,8 @@ class SubscriptionBillingService
      */
     public function payload(Subscription $s): array
     {
+        $hostedInvoiceUrl = $this->latestHostedInvoiceUrlFromHistory($s);
+
         return [
             'userId' => (string) $s->user_id,
             'audience' => $s->audience,
@@ -499,8 +553,30 @@ class SubscriptionBillingService
             'trialEndsAt' => $s->trial_ends_at?->toIso8601String(),
             'cancelAt' => $s->cancel_at?->toIso8601String(),
             'cancelAtPeriodEnd' => $s->cancel_at_period_end,
+            // SCA / 3DS: Stripe Checkout o hosted invoice — mai Elements su Curaxe.
+            'requiresAction' => $hostedInvoiceUrl !== null || $s->status === 'past_due',
+            'hostedInvoiceUrl' => $hostedInvoiceUrl,
             'history' => array_slice($s->history ?? [], -50),
         ];
+    }
+
+    private function latestHostedInvoiceUrlFromHistory(Subscription $s): ?string
+    {
+        $history = array_reverse($s->history ?? []);
+        foreach ($history as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            if (($row['event'] ?? '') !== 'invoice_payment_action_required') {
+                continue;
+            }
+            $url = $row['hostedInvoiceUrl'] ?? null;
+            if (is_string($url) && str_starts_with($url, 'https://')) {
+                return $url;
+            }
+        }
+
+        return null;
     }
 
     /**

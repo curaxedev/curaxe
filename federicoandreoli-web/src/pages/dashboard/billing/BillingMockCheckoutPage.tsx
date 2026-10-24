@@ -82,26 +82,11 @@ export function BillingMockCheckoutPage({
           </strong>
         </div>
 
-        {showBillingDemoCopy() && (
-          <p className="billing-checkout-page__demo">
-            Modalità demo: usa la carta di test <code>4242 4242 4242 4242</code>. Nessun addebito reale.
-          </p>
-        )}
-
-        <div className="dash-form-grid" style={{ marginTop: 'var(--space-5)' }}>
-          <div className="dash-form-field dash-form-field--full">
-            <label className="dash-form-label">Numero carta</label>
-            <input className="dash-form-input" placeholder="4242 4242 4242 4242" readOnly />
-          </div>
-          <div className="dash-form-field">
-            <label className="dash-form-label">Scadenza</label>
-            <input className="dash-form-input" placeholder="12/34" readOnly />
-          </div>
-          <div className="dash-form-field">
-            <label className="dash-form-label">CVC</label>
-            <input className="dash-form-input" placeholder="123" readOnly />
-          </div>
-        </div>
+        <p className="billing-checkout-page__demo">
+          {showBillingDemoCopy()
+            ? 'Ambiente di sviluppo: simula il redirect a Stripe Checkout. In produzione paghi solo su checkout.stripe.com — nessuna carta su Curaxe.'
+            : 'Pagamento e carta solo su Stripe. Questa pagina non è usata in produzione.'}
+        </p>
 
         {error && <p className="billing-checkout-page__error">{error}</p>}
 
@@ -115,7 +100,7 @@ export function BillingMockCheckoutPage({
             disabled={submitting}
             onClick={() => void handlePay()}
           >
-            {submitting ? 'Elaborazione…' : `Paga ${amountLabel}`}
+            {submitting ? 'Elaborazione…' : `Simula pagamento ${amountLabel}`}
           </button>
         </div>
       </div>

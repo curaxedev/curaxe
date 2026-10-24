@@ -632,7 +632,7 @@ export function AgencyDashboard() {
             isTrialing={billing.isTrialing}
             loading={billing.loading || planCatalog.loading}
             onUpgrade={() => void handleUpgrade()}
-            onCancel={() => void billing.cancel()}
+            onCancel={() => void billing.openPortal()}
             onPortal={() => void billing.openPortal()}
             cancelLoading={billing.cancelLoading}
             cancelAtPeriodEnd={billing.subscription?.cancelAtPeriodEnd ?? false}

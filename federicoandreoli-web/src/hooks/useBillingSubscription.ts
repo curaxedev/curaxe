@@ -107,12 +107,13 @@ export function useBillingSubscription(
 
       setPendingSession(session)
 
-      if (session.mode === 'redirect' && session.url) {
+      if (session.url) {
         window.location.assign(session.url)
         return session
       }
 
-      return session
+      setError('Stripe non ha restituito l’URL di pagamento. Riprova o contatta il supporto.')
+      return null
     } catch (err) {
       setError(billingErrorMessage(err))
       return null

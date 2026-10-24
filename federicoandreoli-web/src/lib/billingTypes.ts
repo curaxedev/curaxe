@@ -71,6 +71,9 @@ export type UserSubscription = {
   cancelAtPeriodEnd: boolean
   stripeCustomerId: string | null
   stripeSubscriptionId: string | null
+  /** SCA / 3DS: aprire hosted invoice Stripe o Customer Portal. */
+  requiresAction?: boolean
+  hostedInvoiceUrl?: string | null
   history: SubscriptionHistoryEntry[]
   updatedAt: string
 }

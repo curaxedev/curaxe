@@ -228,6 +228,31 @@ export async function postAdminCancelSubscription(id: string): Promise<void> {
   )
 }
 
+/** CRM: link Checkout Stripe hosted (copia/apri). */
+export async function postAdminCheckoutLink(id: string): Promise<{ url: string; sessionId: string }> {
+  if (isMockApiEnabled()) {
+    return { url: 'https://checkout.stripe.com/mock', sessionId: 'cs_mock' }
+  }
+  return withAdminStepUp('billing.subscription', (token) =>
+    httpPost<{ url: string; sessionId: string; mode: string }>(
+      `/api/v1/admin/billing/subscriptions/${id}/checkout-link`,
+      { headers: token ? { 'X-Step-Up-Token': token } : undefined },
+    ),
+  ).then((r) => ({ url: r.url, sessionId: r.sessionId }))
+}
+
+/** CRM: link Customer Portal Stripe. */
+export async function postAdminPortalLink(id: string): Promise<{ url: string }> {
+  if (isMockApiEnabled()) {
+    return { url: 'https://billing.stripe.com/mock' }
+  }
+  return withAdminStepUp('billing.subscription', (token) =>
+    httpPost<{ url: string }>(`/api/v1/admin/billing/subscriptions/${id}/portal-link`, {
+      headers: token ? { 'X-Step-Up-Token': token } : undefined,
+    }),
+  )
+}
+
 export function billingSettingsError(err: unknown): string {
   if (err instanceof HttpError) return err.message
   return 'Operazione billing non riuscita.'

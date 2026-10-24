@@ -188,9 +188,30 @@ export function BillingManageSettingsCard() {
 
           <p className="dash-billing-manage__copy">
             {hasStripeCustomer
-              ? 'Metodo di pagamento, rinnovi e disdetta si gestiscono sul Customer Portal di Stripe (come Cursor): sicuro e aggiornato in tempo reale.'
-              : 'Non hai ancora un abbonamento Stripe. Attiva un piano per gestire pagamenti e fatture da qui.'}
+              ? 'Metodo di pagamento, rinnovi e disdetta si gestiscono sul Customer Portal di Stripe (come Cursor): sicuro e aggiornato in tempo reale. Nessun dato carta su Curaxe.'
+              : 'Non hai ancora un abbonamento Stripe. Attiva un piano: pagherai solo sulla pagina Checkout di Stripe.'}
           </p>
+
+          {subscription?.requiresAction || subscription?.hostedInvoiceUrl ? (
+            <div
+              className="dash-profile-preview dash-profile-preview--alert"
+              role="status"
+              style={{ marginBottom: 12 }}
+            >
+              Serve un’azione di pagamento (es. 3D Secure). Completa su Stripe
+              {subscription.hostedInvoiceUrl ? (
+                <>
+                  {' '}
+                  —{' '}
+                  <a href={subscription.hostedInvoiceUrl} target="_blank" rel="noopener noreferrer">
+                    apri fattura Stripe
+                  </a>
+                </>
+              ) : (
+                ' oppure usa il Customer Portal.'
+              )}
+            </div>
+          ) : null}
 
           <div className="dash-billing-manage__actions">
             {hasStripeCustomer ? (

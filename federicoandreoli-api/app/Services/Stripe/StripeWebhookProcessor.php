@@ -201,8 +201,19 @@ class StripeWebhookProcessor
         if ($sub === null) {
             return;
         }
-        $sub->pushHistory('invoice_payment_action_required', ['invoiceId' => $invoice->id ?? null]);
+        $hosted = isset($invoice->hosted_invoice_url) && is_string($invoice->hosted_invoice_url)
+            ? $invoice->hosted_invoice_url
+            : null;
+        $sub->latest_invoice_id = is_string($invoice->id ?? null) ? $invoice->id : $sub->latest_invoice_id;
+        $sub->pushHistory('invoice_payment_action_required', [
+            'invoiceId' => $invoice->id ?? null,
+            'hostedInvoiceUrl' => $hosted,
+        ]);
         $sub->save();
+        Log::warning('stripe.invoice.payment_action_required', [
+            'invoice' => $invoice->id ?? null,
+            'has_hosted_url' => $hosted !== null,
+        ]);
     }
 
     private function onRefund(string $type, object $object): void
