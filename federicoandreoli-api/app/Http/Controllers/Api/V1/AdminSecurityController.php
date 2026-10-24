@@ -30,6 +30,12 @@ class AdminSecurityController
         $settings = AdminSecuritySetting::forUser($user);
         $passkeyCount = WebauthnCredential::query()->where('user_id', $user->id)->count();
 
+        $rpId = (string) config('webauthn.rp_id', '');
+        $origins = config('webauthn.origins', []);
+        if (! is_array($origins)) {
+            $origins = [];
+        }
+
         return response()->json([
             'securityTotalEnabled' => $settings->security_total_enabled,
             'securityTotalEnabledAt' => $settings->security_total_enabled_at?->toIso8601String(),
@@ -39,6 +45,14 @@ class AdminSecurityController
             'canEnableSecurityTotal' => $passkeyCount >= 1,
             'sensitiveActions' => AdminSensitiveAction::labels(),
             'devices' => $this->loginAlerts->listDevices($user),
+            'webauthn' => [
+                'rpId' => $rpId,
+                'allowedOrigins' => array_values(array_map(
+                    static fn ($o) => rtrim((string) $o, '/'),
+                    $origins,
+                )),
+                'hint' => 'RP ID deve essere curaxe.it; origini https://curaxe.it e https://www.curaxe.it. Mai api.curaxe.it.',
+            ],
         ]);
     }
 

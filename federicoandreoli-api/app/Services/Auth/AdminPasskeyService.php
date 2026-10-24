@@ -497,38 +497,65 @@ final class AdminPasskeyService
     private function getOrigin(): string
     {
         $request = request();
-        $origin = $request?->headers->get('Origin');
-        $allowed = config('webauthn.origins', []);
-        if (! is_array($allowed) || $allowed === []) {
-            $allowed = [rtrim((string) config('app.frontend_url'), '/')];
+        $allowed = $this->allowedOrigins();
+
+        $candidates = [];
+        $headerOrigin = $request?->headers->get('Origin');
+        if (is_string($headerOrigin) && $headerOrigin !== '' && strcasecmp($headerOrigin, 'null') !== 0) {
+            $candidates[] = $headerOrigin;
+        }
+        // Alcuni proxy/client omettono Origin: prova Referer → schema+host.
+        $referer = $request?->headers->get('Referer');
+        if (is_string($referer) && $referer !== '') {
+            $parts = parse_url($referer);
+            if (is_array($parts) && ! empty($parts['scheme']) && ! empty($parts['host'])) {
+                $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+                $candidates[] = $parts['scheme'].'://'.$parts['host'].$port;
+            }
         }
 
-        if (! is_string($origin) || $origin === '') {
-            // Fallback in testing
+        if ($candidates === []) {
             if (app()->environment('testing', 'local')) {
                 return (string) ($allowed[0] ?? 'http://localhost:5173');
             }
-            throw new InvalidArgumentException('Origine passkey non disponibile.');
+            throw new InvalidArgumentException(
+                'Origine passkey non disponibile. Apri Curaxe da https://curaxe.it (non dall’API) e riprova.',
+            );
         }
 
-        $normalized = rtrim($origin, '/');
-        $ok = false;
-        foreach ($allowed as $a) {
-            if (hash_equals(rtrim((string) $a, '/'), $normalized)) {
-                $ok = true;
-                break;
+        foreach ($candidates as $candidate) {
+            $normalized = rtrim($candidate, '/');
+            foreach ($allowed as $a) {
+                if (strcasecmp(rtrim((string) $a, '/'), $normalized) === 0) {
+                    $scheme = strtolower((string) parse_url($normalized, PHP_URL_SCHEME));
+                    if (! app()->environment('local', 'testing') && $scheme !== 'https') {
+                        throw new InvalidArgumentException('Le passkey richiedono HTTPS.');
+                    }
+
+                    return $normalized;
+                }
             }
         }
-        if (! $ok) {
-            throw new InvalidArgumentException('Origine passkey non autorizzata.');
+
+        $hint = implode(', ', array_slice($allowed, 0, 4));
+        throw new InvalidArgumentException(
+            'Origine passkey non autorizzata. Usa https://curaxe.it (o www) e verifica sul server WEBAUTHN_RP_ID=curaxe.it e WEBAUTHN_ORIGINS / FRONTEND_URLS. Consentite: '.$hint,
+        );
+    }
+
+    /** @return list<string> */
+    private function allowedOrigins(): array
+    {
+        $allowed = config('webauthn.origins', []);
+        if (! is_array($allowed) || $allowed === []) {
+            $frontend = config('app.frontend_url');
+            $allowed = [rtrim(is_string($frontend) ? $frontend : 'http://localhost:5173', '/')];
         }
 
-        $scheme = strtolower((string) parse_url($normalized, PHP_URL_SCHEME));
-        if (! app()->environment('local', 'testing') && $scheme !== 'https') {
-            throw new InvalidArgumentException('Le passkey richiedono HTTPS.');
-        }
-
-        return $normalized;
+        return array_values(array_map(
+            static fn ($o) => rtrim((string) $o, '/'),
+            $allowed,
+        ));
     }
 
     private function userHandle(User $user): string

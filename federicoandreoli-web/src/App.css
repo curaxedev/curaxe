@@ -14104,3 +14104,214 @@ button.candidacy-auth-dialog__btn {
     flex: 1 1 auto;
   }
 }
+
+/* ── Admin security (Account) ─────────────────────────────── */
+.dash-admin-security {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+  max-width: 920px;
+}
+.dash-admin-security__hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+.dash-admin-security__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.dash-admin-security__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 200px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+.dash-admin-security__steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dash-admin-security__steps li span {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.dash-admin-security__steps li.is-current {
+  color: var(--color-text);
+  font-weight: 600;
+}
+.dash-admin-security__steps li.is-current span {
+  background: var(--color-primary, #1b4d5c);
+  border-color: transparent;
+  color: #fff;
+}
+.dash-admin-security__steps li.is-done {
+  color: var(--color-sage, #5a7a6a);
+}
+.dash-admin-security__steps li.is-done span {
+  background: var(--color-sage, #5a7a6a);
+  border-color: transparent;
+  color: #fff;
+}
+.dash-admin-security__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.35rem;
+  box-shadow: var(--shadow-sm);
+}
+.dash-admin-security__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.dash-admin-security__card-head h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.dash-admin-security__badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #f0f0f0;
+  color: var(--color-text-muted);
+}
+.dash-admin-security__badge.is-on {
+  background: #e8f3ec;
+  color: #2d6a4f;
+}
+.dash-admin-security__lead {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+.dash-admin-security__banner,
+.dash-admin-security__warn,
+.dash-admin-security__error {
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.dash-admin-security__banner {
+  background: #eef5f7;
+  border: 1px solid #c5d9e0;
+  color: var(--color-text);
+}
+.dash-admin-security__banner p {
+  margin: 0.35rem 0 0;
+  color: var(--color-text-muted);
+}
+.dash-admin-security__warn {
+  background: #fff8e8;
+  border: 1px solid #e8d4a0;
+  color: #5c4a1a;
+}
+.dash-admin-security__error {
+  background: #fdeaea;
+  border: 1px solid #e8b4b4;
+  color: #a33;
+}
+.dash-admin-security__actions {
+  margin: 0.75rem 0 0;
+  padding-left: 1.15rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  columns: 2;
+  gap: 1.5rem;
+}
+.dash-admin-security__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+.dash-admin-security__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  font-size: 0.82rem;
+}
+.dash-admin-security__chip button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  padding: 0 0.15rem;
+}
+.dash-admin-security__email-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.dash-admin-security__email-row .dash-form-input {
+  flex: 1;
+  min-width: 180px;
+}
+.dash-admin-security__devices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dash-admin-security__devices li {
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.9rem;
+}
+.dash-admin-security__devices li span {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.dash-admin-security__tech {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  padding: 0.75rem 0;
+}
+.dash-admin-security__tech summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.dash-admin-security__tech code {
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+@media (max-width: 640px) {
+  .dash-admin-security__actions {
+    columns: 1;
+  }
+}

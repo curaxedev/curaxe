@@ -21,8 +21,7 @@ export function AdminSecuritySection() {
     setLoading(true)
     setError(null)
     try {
-      const data = await getAdminSecuritySettings()
-      setSettings(data)
+      setSettings(await getAdminSecuritySettings())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossibile caricare la sicurezza.')
     } finally {
@@ -83,17 +82,22 @@ export function AdminSecuritySection() {
 
   if (loading || !settings) {
     return (
-      <div>
-        <div className="dash-section-header">
-          <div>
-            <h2 className="dash-section__title">Sicurezza account</h2>
-            <p className="dash-section__subtitle">Caricamento…</p>
-          </div>
-        </div>
-        {error ? <p style={{ color: '#D95F5F' }}>{error}</p> : null}
+      <div className="dash-admin-security">
+        <header className="dash-admin-security__hero">
+          <h2 className="dash-section__title">Sicurezza account</h2>
+          <p className="dash-section__subtitle">Caricamento…</p>
+        </header>
+        {error ? <p className="dash-admin-security__error">{error}</p> : null}
       </div>
     )
   }
+
+  const pageOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+  const originOk =
+    !settings.webauthn?.allowedOrigins?.length ||
+    settings.webauthn.allowedOrigins.some(
+      (o) => o.replace(/\/$/, '') === pageOrigin.replace(/\/$/, ''),
+    )
 
   return (
     <div className="dash-admin-security">
@@ -103,35 +107,72 @@ export function AdminSecuritySection() {
         </div>
       ) : null}
 
-      <div className="dash-section-header">
+      <header className="dash-admin-security__hero">
         <div>
-          <h2 className="dash-section__title">Sicurezza account</h2>
+          <p className="dash-admin-security__eyebrow">Account amministratore</p>
+          <h2 className="dash-section__title">Sicurezza</h2>
           <p className="dash-section__subtitle">
-            Passkey, Sicurezza totale (step-up sulle azioni sensibili) e alert di accesso.
+            Passkey per accedere e confermare le azioni critiche. Un solo posto per totale, alert e
+            dispositivi.
           </p>
         </div>
-      </div>
+        <ol className="dash-admin-security__steps" aria-label="Ordine consigliato">
+          <li className={settings.passkeyCount > 0 ? 'is-done' : 'is-current'}>
+            <span>1</span> Registra una passkey
+          </li>
+          <li
+            className={
+              settings.securityTotalEnabled
+                ? 'is-done'
+                : settings.passkeyCount > 0
+                  ? 'is-current'
+                  : ''
+            }
+          >
+            <span>2</span> Attiva Sicurezza totale
+          </li>
+          <li className={settings.loginAlertsEnabled ? 'is-done' : ''}>
+            <span>3</span> Alert di accesso
+          </li>
+        </ol>
+      </header>
 
       {error ? (
-        <div className="dash-profile-preview dash-profile-preview--alert" role="alert">
+        <div className="dash-admin-security__error" role="alert">
           {error}
         </div>
       ) : null}
 
+      {!originOk ? (
+        <div className="dash-admin-security__warn" role="status">
+          <strong>Origine non allineata.</strong> Sei su <code>{pageOrigin}</code>, ma il server
+          accetta: {(settings.webauthn?.allowedOrigins ?? []).join(', ') || '—'}. Apri{' '}
+          <code>https://curaxe.it</code> e sul server imposta{' '}
+          <code>WEBAUTHN_ORIGINS</code> / <code>FRONTEND_URLS</code>, poi{' '}
+          <code>php artisan config:cache</code>.
+        </div>
+      ) : null}
+
       {settings.passkeyCount === 0 ? (
-        <div className="dash-settings-card" style={{ marginBottom: 16 }}>
-          <strong>Attiva almeno una passkey</strong>
-          <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)', fontSize: 14 }}>
-            Consigliato dopo il login con password: accelera gli accessi e sblocca Sicurezza totale.
+        <div className="dash-admin-security__banner">
+          <strong>Prima passo: una passkey</strong>
+          <p>
+            Senza passkey non puoi attivare Sicurezza totale. Usa Face ID, Touch ID, iCloud, Google
+            Password Manager o una chiavetta USB — scorri sotto ad «Accesso sicuro».
           </p>
         </div>
       ) : null}
 
-      <div className="dash-settings-card">
-        <div className="dash-settings-card__title">Sicurezza totale</div>
-        <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-          Quando è attiva, le azioni sensibili (utenti, piani, rimborsi, abbonamenti, chiavi Stripe, KYC,
-          impostazioni) richiedono una conferma passkey. Serve almeno una passkey registrata.
+      <section className="dash-admin-security__card">
+        <div className="dash-admin-security__card-head">
+          <h3>Sicurezza totale</h3>
+          <span className={`dash-admin-security__badge ${settings.securityTotalEnabled ? 'is-on' : ''}`}>
+            {settings.securityTotalEnabled ? 'Attiva' : 'Spenta'}
+          </span>
+        </div>
+        <p className="dash-admin-security__lead">
+          Con la conferma passkey su utenti, piani, rimborsi, abbonamenti, chiavi Stripe, KYC e
+          impostazioni. Password+TOTP restano per il login (niente lockout).
         </p>
         <label className="dash-admin-plans__toggle">
           <input
@@ -147,26 +188,27 @@ export function AdminSecuritySection() {
           />
           <span>
             {settings.securityTotalEnabled
-              ? 'Attiva — conferma passkey sulle azioni sensibili'
+              ? 'Step-up richiesto sulle azioni sensibili'
               : settings.canEnableSecurityTotal
-                ? 'Disattivata — attiva per proteggere le operazioni critiche'
-                : 'Disattivata — registra una passkey per poterla attivare'}
+                ? 'Attiva per proteggere le operazioni critiche'
+                : 'Registra almeno una passkey per abilitare'}
           </span>
         </label>
         {settings.securityTotalEnabled && settings.sensitiveActions ? (
-          <ul style={{ margin: '12px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--color-text-muted)' }}>
+          <ul className="dash-admin-security__actions">
             {Object.values(settings.sensitiveActions).map((label) => (
               <li key={label}>{label}</li>
             ))}
           </ul>
         ) : null}
-      </div>
+      </section>
 
-      <div className="dash-settings-card" style={{ marginTop: 16 }}>
-        <div className="dash-settings-card__title">Notifiche di accesso</div>
-        <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-          Ricevi un’email a ogni accesso admin, su nuovi dispositivi e su tentativi sospetti (falliti o
-          bloccati).
+      <section className="dash-admin-security__card">
+        <div className="dash-admin-security__card-head">
+          <h3>Notifiche di accesso</h3>
+        </div>
+        <p className="dash-admin-security__lead">
+          Email a ogni login admin, nuovo dispositivo e tentativi falliti/bloccati.
         </p>
         <label className="dash-admin-plans__toggle" style={{ marginBottom: 12 }}>
           <input
@@ -182,26 +224,14 @@ export function AdminSecuritySection() {
           />
           <span>{settings.loginAlertsEnabled ? 'Notifiche attive' : 'Notifiche disattivate'}</span>
         </label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+        <div className="dash-admin-security__chips">
           {settings.loginAlertEmails.map((email) => (
-            <span
-              key={email}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                borderRadius: 999,
-                border: '1px solid var(--color-border)',
-                fontSize: 13,
-              }}
-            >
+            <span key={email} className="dash-admin-security__chip">
               {email}
               <button
                 type="button"
-                className="dash-btn dash-btn--ghost"
-                style={{ padding: '0 4px', fontSize: 12 }}
                 disabled={busy}
+                aria-label={`Rimuovi ${email}`}
                 onClick={() => {
                   void savePatch(
                     {
@@ -216,7 +246,7 @@ export function AdminSecuritySection() {
             </span>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="dash-admin-security__email-row">
           <input
             className="dash-form-input"
             type="email"
@@ -224,34 +254,28 @@ export function AdminSecuritySection() {
             value={emailDraft}
             onChange={(e) => setEmailDraft(e.target.value)}
             disabled={busy}
-            style={{ flex: 1, minWidth: 180 }}
           />
           <button type="button" className="dash-btn dash-btn--ghost" disabled={busy} onClick={addEmail}>
-            Aggiungi email
+            Aggiungi
           </button>
         </div>
-      </div>
+      </section>
 
-      <div className="dash-settings-card" style={{ marginTop: 16 }}>
-        <div className="dash-settings-card__title">Dispositivi recenti</div>
+      <section className="dash-admin-security__card">
+        <div className="dash-admin-security__card-head">
+          <h3>Dispositivi recenti</h3>
+        </div>
         {settings.devices.length === 0 ? (
           <p className="dash-empty-mini">Nessun accesso registrato ancora.</p>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          <ul className="dash-admin-security__devices">
             {settings.devices.map((d) => (
-              <li
-                key={d.id}
-                style={{
-                  padding: '10px 0',
-                  borderBottom: '1px solid var(--color-border)',
-                  fontSize: 14,
-                }}
-              >
+              <li key={d.id}>
                 <strong>{d.label ?? 'Dispositivo'}</strong>
-                <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>
-                  IP {d.lastIp ?? '—'} · ultimo accesso{' '}
+                <span>
+                  IP {d.lastIp ?? '—'} ·{' '}
                   {d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleString('it-IT') : '—'}
-                </div>
+                </span>
               </li>
             ))}
           </ul>
@@ -280,9 +304,22 @@ export function AdminSecuritySection() {
         >
           Disconnetti altre sessioni
         </button>
-      </div>
+      </section>
 
       <AdminPasskeysPanel onChanged={() => void reload()} />
+
+      {settings.webauthn ? (
+        <details className="dash-admin-security__tech">
+          <summary>Diagnostica WebAuthn (server)</summary>
+          <p>
+            RP ID: <code>{settings.webauthn.rpId || '—'}</code>
+          </p>
+          <p>
+            Origini: <code>{settings.webauthn.allowedOrigins.join(', ') || '—'}</code>
+          </p>
+          <p>{settings.webauthn.hint}</p>
+        </details>
+      ) : null}
     </div>
   )
 }

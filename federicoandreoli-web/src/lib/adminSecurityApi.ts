@@ -17,6 +17,11 @@ export type AdminSecuritySettings = {
   canEnableSecurityTotal: boolean
   sensitiveActions: Record<string, string>
   devices: AdminLoginDeviceRow[]
+  webauthn?: {
+    rpId: string
+    allowedOrigins: string[]
+    hint: string
+  }
 }
 
 export type AdminLoginDeviceRow = {
@@ -47,6 +52,11 @@ const MOCK_SETTINGS: AdminSecuritySettings = {
     'passkey.manage': 'Gestione passkey',
   },
   devices: [],
+  webauthn: {
+    rpId: 'localhost',
+    allowedOrigins: ['http://localhost:5173'],
+    hint: 'Solo mock',
+  },
 }
 
 function bufferToBase64Url(buffer: ArrayBuffer): string {

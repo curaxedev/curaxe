@@ -75,10 +75,12 @@ STRIPE_KEY=
 STRIPE_SECRET=
 STRIPE_WEBHOOK_SECRET=
 
+# Passkey admin — obbligatorio in prod (errore "Origine passkey non autorizzata" = queste righe o config:cache vecchia)
 WEBAUTHN_RP_ID=curaxe.it
 WEBAUTHN_RP_NAME=Curaxe
 WEBAUTHN_ORIGIN=https://curaxe.it
 WEBAUTHN_ORIGINS=https://curaxe.it,https://www.curaxe.it
+# FRONTEND_URLS sopra viene unito alle origini WebAuthn; dopo edit .env: php artisan config:cache
 
 QUEUE_CONNECTION=database
 CACHE_STORE=database
