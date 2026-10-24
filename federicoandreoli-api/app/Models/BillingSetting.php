@@ -58,6 +58,7 @@ class BillingSetting extends Model
                 'interval' => 'month',
                 'trialDays' => 14,
                 'stripePriceId' => null,
+                'stripeProductId' => null,
                 'features' => [
                     'Contatto WhatsApp e telefono in chat',
                     'Candidature illimitate',
@@ -77,6 +78,7 @@ class BillingSetting extends Model
                 'interval' => 'month',
                 'trialDays' => 14,
                 'stripePriceId' => null,
+                'stripeProductId' => null,
                 'features' => [
                     'Annunci illimitati',
                     'Gestione team e candidature',
@@ -95,6 +97,7 @@ class BillingSetting extends Model
                 'interval' => 'month',
                 'trialDays' => 14,
                 'stripePriceId' => null,
+                'stripeProductId' => null,
                 'features' => [
                     'Turni e annunci illimitati',
                     'Candidature e messaging',
@@ -180,21 +183,19 @@ class BillingSetting extends Model
     public function resolvedPlansCatalog(): array
     {
         $stored = is_array($this->plans_catalog) ? $this->plans_catalog : [];
-        $defaults = self::defaultPlansCatalog();
+        // Catalogo vuoto → default di bootstrap. Se salvato (anche con meno piani),
+        // non re-inserire i default eliminati dall’admin.
         if ($stored === []) {
-            return $this->hydrateCatalogFromLegacyColumns($defaults);
+            return $this->hydrateCatalogFromLegacyColumns(self::defaultPlansCatalog());
         }
 
-        $byKey = [];
-        foreach ($defaults as $row) {
-            $byKey[$row['key']] = $row;
-        }
+        $plans = [];
         foreach ($stored as $row) {
             if (! is_array($row) || empty($row['key'])) {
                 continue;
             }
             $key = (string) $row['key'];
-            $byKey[$key] = array_replace($byKey[$key] ?? [
+            $plans[] = array_replace([
                 'key' => $key,
                 'audience' => $row['audience'] ?? 'professional',
                 'label' => $row['label'] ?? $key,
@@ -204,13 +205,17 @@ class BillingSetting extends Model
                 'interval' => 'month',
                 'trialDays' => 14,
                 'stripePriceId' => null,
+                'stripeProductId' => null,
                 'features' => [],
                 'active' => true,
                 'sortOrder' => 99,
             ], $row);
         }
 
-        $plans = array_values($byKey);
+        if ($plans === []) {
+            return $this->hydrateCatalogFromLegacyColumns(self::defaultPlansCatalog());
+        }
+
         usort($plans, static fn ($a, $b) => ((int) ($a['sortOrder'] ?? 99)) <=> ((int) ($b['sortOrder'] ?? 99)));
 
         return $this->hydrateCatalogFromLegacyColumns($plans);

@@ -62,7 +62,8 @@
   box-shadow: var(--focus-ring);
 }
 
-.auth-otp-box:focus-visible {
+.auth-otp-box:focus-visible,
+.auth-otp-single:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }

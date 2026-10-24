@@ -190,9 +190,12 @@ export async function getBillingInvoices(): Promise<BillingInvoice[]> {
   }
 }
 
-export async function getAdminBillingSubscriptions(): Promise<AdminSubscriptionRow[]> {
+export async function getAdminBillingSubscriptions(
+  options: { trash?: boolean } = {},
+): Promise<AdminSubscriptionRow[]> {
   if (isMockApiEnabled()) return fetchAdminSubscriptions()
   try {
+    const q = options.trash ? '?trash=1' : ''
     const rows = await httpGet<
       Array<{
         id?: string
@@ -204,8 +207,10 @@ export async function getAdminBillingSubscriptions(): Promise<AdminSubscriptionR
         status: string
         currentPeriodEnd: string | null
         cancelAtPeriodEnd: boolean
+        trashedAt?: string | null
+        canTrash?: boolean
       }>
-    >('/api/v1/admin/billing/subscriptions')
+    >(`/api/v1/admin/billing/subscriptions${q}`)
     return rows.map((r, i) => ({
       id: r.id ?? (r.userId ? `sub-${r.userId}` : `sub-${i}`),
       userId: r.userId,
@@ -220,6 +225,8 @@ export async function getAdminBillingSubscriptions(): Promise<AdminSubscriptionR
         : r.status === 'active' || r.status === 'trialing'
           ? 'active'
           : 'failed',
+      trashedAt: r.trashedAt ?? null,
+      canTrash: Boolean(r.canTrash),
     }))
   } catch (err) {
     throw toBillingError(err, 'Impossibile caricare gli abbonamenti admin.')
@@ -241,6 +248,7 @@ export async function getAdminBillingStats(): Promise<AdminBillingStats> {
       renewalsWithin7Days: raw.cancelingAtPeriodEnd,
       failedPayments: raw.pastDue ?? 0,
       mrrCents: raw.mrrEstimate * 100,
+      trashed: (raw as { trashed?: number }).trashed ?? 0,
     }
   } catch (err) {
     throw toBillingError(err, 'Impossibile caricare le stats billing.')

@@ -175,6 +175,12 @@ Route::prefix('v1')->group(function (): void {
                 ->middleware('step_up:billing.subscription');
             Route::post('/admin/billing/subscriptions/{id}/portal-link', [AdminBillingController::class, 'createPortalLink'])
                 ->middleware('step_up:billing.subscription');
+            Route::post('/admin/billing/subscriptions/{id}/trash', [AdminBillingController::class, 'trashSubscription'])
+                ->middleware('step_up:billing.subscription');
+            Route::post('/admin/billing/subscriptions/{id}/restore', [AdminBillingController::class, 'restoreSubscription'])
+                ->middleware('step_up:billing.subscription');
+            Route::delete('/admin/billing/subscriptions/{id}', [AdminBillingController::class, 'forceDeleteSubscription'])
+                ->middleware('step_up:billing.subscription');
 
             Route::get('/admin/security/settings', [AdminSecurityController::class, 'settings']);
             Route::put('/admin/security/settings', [AdminSecurityController::class, 'updateSettings']);

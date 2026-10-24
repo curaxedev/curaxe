@@ -53,6 +53,7 @@ final class PlanCatalogLockService
         }
 
         return (int) Subscription::query()
+            ->notTrashed()
             ->whereIn('status', ['active', 'trialing'])
             ->where('price_id', $priceId)
             ->count();

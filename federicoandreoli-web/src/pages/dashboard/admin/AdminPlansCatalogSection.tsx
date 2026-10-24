@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { BillingAudience } from '../../../lib/billingTypes'
 import {
   billingSettingsError,
@@ -42,6 +42,7 @@ function normalizePlans(raw: PlanCatalogEntry[] | undefined): PlanCatalogEntry[]
       interval: p.interval === 'year' ? ('year' as const) : ('month' as const),
       trialDays: Number(p.trialDays) || 0,
       stripePriceId: p.stripePriceId ? String(p.stripePriceId) : null,
+      stripeProductId: p.stripeProductId ? String(p.stripeProductId) : null,
       features: Array.isArray(p.features) ? p.features.map(String) : [],
       active: p.active !== false,
       sortOrder: Number(p.sortOrder) || i + 1,
@@ -49,34 +50,261 @@ function normalizePlans(raw: PlanCatalogEntry[] | undefined): PlanCatalogEntry[]
     .sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
-function CustomerPreviewCard({ plan }: { plan: PlanCatalogEntry }) {
+function PlanEditModal({
+  draft,
+  isNew,
+  lock,
+  saving,
+  error,
+  onChange,
+  onClose,
+  onSave,
+  onDelete,
+}: {
+  draft: PlanCatalogEntry
+  isNew: boolean
+  lock?: PlanLockInfo
+  saving: boolean
+  error: string | null
+  onChange: (patch: Partial<PlanCatalogEntry>) => void
+  onClose: () => void
+  onSave: () => void
+  onDelete: () => void
+}) {
+  const isLocked = Boolean(lock?.locked)
+
+  function setFeature(index: number, value: string) {
+    const features = [...draft.features]
+    features[index] = value
+    onChange({ features })
+  }
+
   return (
-    <article
-      className={`dash-plan-card dash-admin-plan-preview${plan.active ? ' dash-plan-card--featured' : ''}`}
-      aria-label={`Anteprima cliente: ${plan.label}`}
+    <div
+      className="dash-modal-overlay"
+      role="presentation"
+      onClick={onClose}
     >
-      {!plan.active && <div className="dash-admin-plan-preview__inactive">Non visibile ai clienti</div>}
-      <div className="dash-plan__name">{plan.label}</div>
-      <div className="dash-plan__price">{formatPlanEuro(plan.amountCents)}</div>
-      <div className="dash-plan__price-note">
-        {plan.interval === 'year' ? 'all’anno' : 'al mese'}
-        {plan.trialDays > 0 ? ` · ${plan.trialDays} giorni di prova` : ''}
+      <div
+        className="dash-modal dash-admin-plan-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plan-edit-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="dash-modal__header">
+          <span className="dash-modal__title" id="plan-edit-title">
+            {isNew ? 'Nuovo piano' : `Modifica · ${draft.label}`}
+          </span>
+          <button type="button" className="dash-modal__close" onClick={onClose} aria-label="Chiudi">
+            <IconClose size={18} />
+          </button>
+        </div>
+
+        <div className="dash-modal__body">
+          {isLocked ? (
+            <p className="dash-modal__lead" style={{ color: 'var(--color-text-muted)' }}>
+              Piano con {lock?.activeSubscribers ?? 0} iscritti attivi: prezzo, intervallo e collegamento
+              Stripe non modificabili. Puoi aggiornare nome, feature e visibilità.
+            </p>
+          ) : (
+            <p className="dash-modal__lead">
+              Al salvataggio Stripe crea (o aggiorna) automaticamente Product e Price — non serve
+              copiare a mano il Price ID.
+            </p>
+          )}
+
+          {error ? (
+            <div className="dash-profile-preview dash-profile-preview--alert" role="alert">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="dash-admin-plans__editor-grid">
+            <div className="dash-form-field">
+              <label className="dash-form-label" htmlFor="plan-label">
+                Nome piano
+              </label>
+              <input
+                id="plan-label"
+                className="dash-form-input"
+                value={draft.label}
+                onChange={(e) => {
+                  const label = e.target.value
+                  const patch: Partial<PlanCatalogEntry> = { label }
+                  if (!isLocked && !draft.stripePriceId) {
+                    patch.key = slugifyKey(label, draft.audience)
+                  }
+                  onChange(patch)
+                }}
+              />
+            </div>
+            <div className="dash-form-field">
+              <label className="dash-form-label" htmlFor="plan-audience">
+                Audience
+              </label>
+              <select
+                id="plan-audience"
+                className="dash-form-input"
+                value={draft.audience}
+                disabled={isLocked}
+                onChange={(e) => onChange({ audience: e.target.value as BillingAudience })}
+              >
+                <option value="professional">{AUDIENCE_LABELS.professional}</option>
+                <option value="agency">{AUDIENCE_LABELS.agency}</option>
+                <option value="structure">{AUDIENCE_LABELS.structure}</option>
+              </select>
+            </div>
+            <div className="dash-form-field">
+              <label className="dash-form-label" htmlFor="plan-amount">
+                Prezzo (€)
+              </label>
+              <input
+                id="plan-amount"
+                className="dash-form-input"
+                type="number"
+                min={0}
+                step={0.01}
+                disabled={isLocked}
+                value={(draft.amountCents / 100).toFixed(2)}
+                onChange={(e) =>
+                  onChange({
+                    amountCents: Math.round(Math.max(0, Number(e.target.value) || 0) * 100),
+                  })
+                }
+              />
+            </div>
+            <div className="dash-form-field">
+              <label className="dash-form-label" htmlFor="plan-interval">
+                Intervallo
+              </label>
+              <select
+                id="plan-interval"
+                className="dash-form-input"
+                value={draft.interval}
+                disabled={isLocked}
+                onChange={(e) =>
+                  onChange({ interval: e.target.value === 'year' ? 'year' : 'month' })
+                }
+              >
+                <option value="month">Mensile</option>
+                <option value="year">Annuale</option>
+              </select>
+            </div>
+            <div className="dash-form-field">
+              <label className="dash-form-label" htmlFor="plan-trial">
+                Giorni di prova
+              </label>
+              <input
+                id="plan-trial"
+                className="dash-form-input"
+                type="number"
+                min={0}
+                max={90}
+                value={draft.trialDays}
+                onChange={(e) => onChange({ trialDays: Number(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="dash-form-field">
+              <label className="dash-form-label" htmlFor="plan-active">
+                Visibile ai clienti
+              </label>
+              <label className="dash-admin-plans__toggle">
+                <input
+                  id="plan-active"
+                  type="checkbox"
+                  checked={draft.active}
+                  onChange={(e) => onChange({ active: e.target.checked })}
+                />
+                <span>{draft.active ? 'Nel catalogo pubblico' : 'Nascosto'}</span>
+              </label>
+            </div>
+            <div className="dash-form-field dash-admin-plans__span-2">
+              <label className="dash-form-label" htmlFor="plan-tagline">
+                Tagline
+              </label>
+              <input
+                id="plan-tagline"
+                className="dash-form-input"
+                value={draft.tagline}
+                placeholder="Breve descrizione"
+                onChange={(e) => onChange({ tagline: e.target.value })}
+              />
+            </div>
+            <div className="dash-form-field dash-admin-plans__span-2">
+              <label className="dash-form-label">Stripe</label>
+              <div className="dash-admin-plans__stripe-status">
+                {draft.stripePriceId ? (
+                  <>
+                    <IconCheck size={14} />
+                    <span>
+                      Collegato · <code>{draft.stripePriceId}</code>
+                    </span>
+                  </>
+                ) : (
+                  <span>Al salvataggio verrà creato automaticamente su Stripe</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="dash-admin-plans__features">
+            <div className="dash-admin-plans__features-head">
+              <strong>Feature</strong>
+              <button
+                type="button"
+                className="dash-btn dash-btn--ghost"
+                onClick={() => onChange({ features: [...draft.features, ''] })}
+              >
+                + Feature
+              </button>
+            </div>
+            {draft.features.map((f, i) => (
+              <div key={i} className="dash-admin-plans__feature-row">
+                <input
+                  className="dash-form-input"
+                  value={f}
+                  placeholder="Es. Candidature illimitate"
+                  onChange={(e) => setFeature(i, e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="dash-btn dash-btn--ghost"
+                  aria-label="Rimuovi feature"
+                  onClick={() => onChange({ features: draft.features.filter((_, j) => j !== i) })}
+                >
+                  <IconClose size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="dash-modal__footer dash-admin-plan-modal__footer">
+          {!isNew ? (
+            <button
+              type="button"
+              className="dash-btn dash-btn--ghost dash-admin-plan-modal__danger"
+              disabled={saving || isLocked}
+              title={isLocked ? 'Bloccato: ci sono iscritti attivi' : undefined}
+              onClick={onDelete}
+            >
+              Elimina
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="dash-admin-plan-modal__footer-right">
+            <button type="button" className="dash-btn dash-btn--ghost" disabled={saving} onClick={onClose}>
+              Annulla
+            </button>
+            <button type="button" className="dash-btn dash-btn--primary" disabled={saving} onClick={onSave}>
+              {saving ? 'Salvataggio…' : 'Salva piano'}
+            </button>
+          </div>
+        </div>
       </div>
-      {plan.tagline ? <p className="dash-admin-plan-preview__tagline">{plan.tagline}</p> : null}
-      <ul className="dash-plan__features">
-        {(plan.features.length > 0 ? plan.features : ['—']).map((f) => (
-          <li key={f} className="dash-plan__feature">
-            <span className="dash-plan__feature-icon--check">
-              <IconCheck size={14} />
-            </span>
-            <span>{f || '—'}</span>
-          </li>
-        ))}
-      </ul>
-      <button type="button" className="dash-btn dash-btn--primary dash-btn--lg" style={{ width: '100%' }} disabled>
-        Attiva {plan.label}
-      </button>
-    </article>
+    </div>
   )
 }
 
@@ -85,23 +313,21 @@ export function AdminPlansCatalogSection() {
     DEFAULT_PLAN_CATALOG.map((p) => ({ ...p, features: [...p.features] })),
   )
   const [locks, setLocks] = useState<Record<string, PlanLockInfo>>({})
-  const [selectedKey, setSelectedKey] = useState<string>(DEFAULT_PLAN_CATALOG[0]?.key ?? '')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
-  const [dirty, setDirty] = useState(false)
+  const [draft, setDraft] = useState<PlanCatalogEntry | null>(null)
+  const [isNewDraft, setIsNewDraft] = useState(false)
+  const [modalError, setModalError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const data = await getAdminBillingSettings()
-      const next = normalizePlans(data.plans)
-      setPlans(next)
+      setPlans(normalizePlans(data.plans))
       setLocks(data.planLocks ?? {})
-      setSelectedKey((prev) => (next.some((p) => p.key === prev) ? prev : next[0]?.key ?? ''))
-      setDirty(false)
     } catch (err) {
       setError(billingSettingsError(err))
     } finally {
@@ -119,131 +345,126 @@ export function AdminPlansCatalogSection() {
     return () => window.clearTimeout(t)
   }, [toast])
 
-  const selected = useMemo(
-    () => plans.find((p) => p.key === selectedKey) ?? plans[0] ?? null,
-    [plans, selectedKey],
-  )
+  function openEdit(plan: PlanCatalogEntry) {
+    setDraft({ ...plan, features: [...plan.features] })
+    setIsNewDraft(false)
+    setModalError(null)
+  }
 
-  const selectedLock = selected ? locks[selected.key] : undefined
-  const isLocked = Boolean(selectedLock?.locked)
+  function openNew() {
+    const next = emptyPlanDraft('professional')
+    setDraft({ ...next, features: [...next.features], sortOrder: plans.length + 1 })
+    setIsNewDraft(true)
+    setModalError(null)
+  }
 
-  const activePreview = useMemo(
-    () => plans.filter((p) => p.active).sort((a, b) => a.sortOrder - b.sortOrder),
-    [plans],
-  )
+  function closeModal() {
+    if (saving) return
+    setDraft(null)
+    setModalError(null)
+  }
 
-  function updateSelected(patch: Partial<PlanCatalogEntry>) {
-    if (!selected) return
-    if (isLocked) {
+  function patchDraft(patch: Partial<PlanCatalogEntry>) {
+    if (!draft) return
+    const lock = locks[draft.key]
+    if (lock?.locked) {
       const commercial: (keyof PlanCatalogEntry)[] = [
         'amountCents',
         'interval',
         'stripePriceId',
+        'stripeProductId',
         'audience',
         'key',
         'currency',
       ]
       for (const k of commercial) {
         if (k in patch) {
-          setError(
-            `«${selected.label}» ha ${selectedLock?.activeSubscribers ?? 0} iscritti attivi: prezzo, audience e Price ID non sono modificabili.`,
+          setModalError(
+            `«${draft.label}» ha ${lock.activeSubscribers} iscritti attivi: prezzo e Stripe non modificabili.`,
           )
           return
         }
       }
     }
-    setPlans((prev) =>
-      prev.map((p) => (p.key === selected.key ? { ...p, ...patch } : p)),
-    )
-    setDirty(true)
-    setError(null)
+    setDraft({ ...draft, ...patch })
+    setModalError(null)
   }
 
-  function setFeature(index: number, value: string) {
-    if (!selected) return
-    const features = [...selected.features]
-    features[index] = value
-    updateSelected({ features })
-  }
-
-  function addFeature() {
-    if (!selected) return
-    updateSelected({ features: [...selected.features, ''] })
-  }
-
-  function removeFeature(index: number) {
-    if (!selected) return
-    updateSelected({ features: selected.features.filter((_, i) => i !== index) })
-  }
-
-  function addPlan() {
-    const draft = emptyPlanDraft('professional')
-    setPlans((prev) => [...prev, { ...draft, sortOrder: prev.length + 1 }])
-    setSelectedKey(draft.key)
-    setDirty(true)
-  }
-
-  function removePlan(key: string) {
-    const lock = locks[key]
-    if (lock?.locked) {
-      setError(
-        `Non puoi eliminare questo piano: ha ${lock.activeSubscribers} iscritti attivi.`,
-      )
-      return
-    }
-    if (!confirm('Eliminare questo piano dal catalogo?')) return
-    setPlans((prev) => {
-      if (prev.length <= 1) return prev
-      const next = prev.filter((p) => p.key !== key)
-      if (selectedKey === key) setSelectedKey(next[0]?.key ?? '')
-      return next.map((p, i) => ({ ...p, sortOrder: i + 1 }))
-    })
-    setDirty(true)
-  }
-
-  async function save() {
+  async function persistCatalog(nextPlans: PlanCatalogEntry[], successMsg: string) {
     setSaving(true)
     setError(null)
+    setModalError(null)
     try {
       const keys = new Set<string>()
-      for (const p of plans) {
+      for (const p of nextPlans) {
         if (!p.label.trim()) {
-          setError('Ogni piano deve avere un nome.')
-          setSaving(false)
-          return
+          throw new Error('Ogni piano deve avere un nome.')
         }
         if (!p.key.trim() || keys.has(p.key)) {
-          setError('Chiavi piano duplicate o vuote.')
-          setSaving(false)
-          return
+          throw new Error('Chiavi piano duplicate o vuote.')
         }
         keys.add(p.key)
-        const price = (p.stripePriceId ?? '').trim()
-        if (price && !price.startsWith('price_')) {
-          setError(`Stripe Price ID di «${p.label}» deve iniziare con price_.`)
-          setSaving(false)
-          return
-        }
       }
-      const payload = plans.map((p, i) => ({
+      if (nextPlans.length < 1) {
+        throw new Error('Serve almeno un piano nel catalogo.')
+      }
+      const payload = nextPlans.map((p, i) => ({
         ...p,
         label: p.label.trim(),
         tagline: p.tagline.trim(),
         stripePriceId: (p.stripePriceId ?? '').trim() || null,
+        stripeProductId: (p.stripeProductId ?? '').trim() || null,
         features: p.features.map((f) => f.trim()).filter(Boolean),
         sortOrder: i + 1,
       }))
       const saved = await putAdminBillingSettings({ plans: payload })
-      const next = normalizePlans(saved.plans)
-      setPlans(next)
+      const normalized = normalizePlans(saved.plans)
+      setPlans(normalized)
       setLocks(saved.planLocks ?? {})
-      setSelectedKey((prev) => (next.some((p) => p.key === prev) ? prev : next[0]?.key ?? ''))
-      setDirty(false)
-      setToast('Catalogo salvato. Unica fonte per clienti e checkout Stripe.')
+      setDraft(null)
+      setToast(successMsg)
     } catch (err) {
-      setError(billingSettingsError(err))
+      const msg =
+        err instanceof Error && err.name === 'Error' && !('status' in err)
+          ? err.message
+          : billingSettingsError(err)
+      setModalError(msg)
+      setError(msg)
+      throw err
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function saveDraft() {
+    if (!draft) return
+    const next = isNewDraft
+      ? [...plans, draft]
+      : plans.map((p) => (p.key === draft.key ? draft : p))
+    try {
+      await persistCatalog(next, isNewDraft ? 'Piano creato e collegato a Stripe.' : 'Piano salvato.')
+    } catch {
+      // errore già in modal
+    }
+  }
+
+  async function deleteDraft() {
+    if (!draft || isNewDraft) return
+    const lock = locks[draft.key]
+    if (lock?.locked) {
+      setModalError(`Non puoi eliminare questo piano: ha ${lock.activeSubscribers} iscritti attivi.`)
+      return
+    }
+    if (plans.length <= 1) {
+      setModalError('Serve almeno un piano nel catalogo.')
+      return
+    }
+    if (!confirm(`Eliminare definitivamente «${draft.label}» dal catalogo?`)) return
+    const next = plans.filter((p) => p.key !== draft.key).map((p, i) => ({ ...p, sortOrder: i + 1 }))
+    try {
+      await persistCatalog(next, `«${draft.label}» eliminato.`)
+    } catch {
+      // errore già in modal
     }
   }
 
@@ -272,286 +493,94 @@ export function AdminPlansCatalogSection() {
         <div>
           <h2 className="dash-section__title">Catalogo piani</h2>
           <p className="dash-section__subtitle">
-            Unica gestione: crea, modifica ed elimina piani (nome, prezzo, feature, prova, Stripe Price
-            ID). Quello che salvi qui è ciò che vedono i clienti. La sezione Stripe sotto serve solo
-            a collegare webhook e chiavi.
+            Card dei piani come le vedono i clienti. Modifica o elimina da popup — Stripe Price creato
+            in automatico al salvataggio.
           </p>
         </div>
         <div className="dash-admin-plans__actions">
           <button type="button" className="dash-btn dash-btn--ghost" onClick={() => void load()} disabled={saving}>
             Ricarica
           </button>
-          <button type="button" className="dash-btn dash-btn--ghost" onClick={addPlan} disabled={saving}>
+          <button type="button" className="dash-btn dash-btn--primary" onClick={openNew} disabled={saving}>
             + Nuovo piano
-          </button>
-          <button
-            type="button"
-            className="dash-btn dash-btn--primary"
-            disabled={saving || !dirty}
-            onClick={() => void save()}
-          >
-            {saving ? 'Salvataggio…' : dirty ? 'Salva catalogo' : 'Salvato'}
           </button>
         </div>
       </div>
 
-      {error ? (
+      {error && !draft ? (
         <div className="dash-profile-preview dash-profile-preview--alert" role="alert">
           {error}
         </div>
       ) : null}
 
-      <div className="dash-admin-plans__layout">
-        <aside className="dash-admin-plans__list" aria-label="Elenco piani">
-          {plans.map((p) => {
-            const isSel = p.key === selected?.key
-            const lock = locks[p.key]
-            return (
-              <button
-                key={p.key}
-                type="button"
-                className={`dash-admin-plans__list-item${isSel ? ' is-selected' : ''}${p.active ? '' : ' is-inactive'}`}
-                onClick={() => setSelectedKey(p.key)}
-              >
-                <span className="dash-admin-plans__list-icon" aria-hidden>
-                  <IconCreditCard size={16} />
+      <div className="dash-admin-plans__cards" role="list">
+        {plans.map((p) => {
+          const lock = locks[p.key]
+          return (
+            <article
+              key={p.key}
+              className={`dash-admin-plans__card${!p.active ? ' is-inactive' : ''}`}
+              role="listitem"
+            >
+              <div className="dash-admin-plans__card-top">
+                <span className="dash-admin-plans__card-icon" aria-hidden>
+                  <IconCreditCard size={18} />
                 </span>
-                <span className="dash-admin-plans__list-body">
+                <div className="dash-admin-plans__card-meta">
                   <strong>{p.label}</strong>
                   <span>
                     {AUDIENCE_LABELS[p.audience]} · {formatPlanPriceLabel(p)}
-                    {lock?.locked ? ` · ${lock.activeSubscribers} iscritti` : ''}
+                    {p.trialDays > 0 ? ` · ${p.trialDays}gg prova` : ''}
                   </span>
-                </span>
-                {lock?.locked ? <span className="dash-admin-plans__pill">Bloccato</span> : null}
-                {!p.active ? <span className="dash-admin-plans__pill">Off</span> : null}
-              </button>
-            )
-          })}
-        </aside>
-
-        <div className="dash-admin-plans__editor">
-          {selected ? (
-            <>
-              {isLocked ? (
-                <div className="dash-stripe-security-note" role="status" style={{ marginBottom: 16 }}>
-                  <strong>Piano con iscritti attivi ({selectedLock?.activeSubscribers}).</strong> Prezzo,
-                  intervallo, audience e Stripe Price ID non sono modificabili. Puoi ancora aggiornare
-                  nome, tagline, feature e visibilità. Eliminazione bloccata fino a che non restano
-                  abbonamenti active/trialing.
                 </div>
-              ) : null}
-
-              <div className="dash-admin-plans__editor-grid">
-                <div className="dash-form-field">
-                  <label className="dash-form-label" htmlFor="plan-label">
-                    Nome piano (cliente)
-                  </label>
-                  <input
-                    id="plan-label"
-                    className="dash-form-input"
-                    value={selected.label}
-                    onChange={(e) => {
-                      const label = e.target.value
-                      const patch: Partial<PlanCatalogEntry> = { label }
-                      if (!isLocked && !selected.stripePriceId) {
-                        patch.key = slugifyKey(label, selected.audience)
-                      }
-                      updateSelected(patch)
-                    }}
-                  />
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label" htmlFor="plan-audience">
-                    Audience
-                  </label>
-                  <select
-                    id="plan-audience"
-                    className="dash-form-input"
-                    value={selected.audience}
-                    disabled={isLocked}
-                    onChange={(e) =>
-                      updateSelected({ audience: e.target.value as BillingAudience })
-                    }
-                  >
-                    <option value="professional">{AUDIENCE_LABELS.professional}</option>
-                    <option value="agency">{AUDIENCE_LABELS.agency}</option>
-                    <option value="structure">{AUDIENCE_LABELS.structure}</option>
-                  </select>
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label" htmlFor="plan-amount">
-                    Prezzo (€)
-                  </label>
-                  <input
-                    id="plan-amount"
-                    className="dash-form-input"
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    disabled={isLocked}
-                    value={(selected.amountCents / 100).toFixed(2)}
-                    onChange={(e) =>
-                      updateSelected({
-                        amountCents: Math.round(Math.max(0, Number(e.target.value) || 0) * 100),
-                      })
-                    }
-                  />
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label" htmlFor="plan-interval">
-                    Intervallo
-                  </label>
-                  <select
-                    id="plan-interval"
-                    className="dash-form-input"
-                    value={selected.interval}
-                    disabled={isLocked}
-                    onChange={(e) =>
-                      updateSelected({ interval: e.target.value === 'year' ? 'year' : 'month' })
-                    }
-                  >
-                    <option value="month">Mensile</option>
-                    <option value="year">Annuale</option>
-                  </select>
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label" htmlFor="plan-trial">
-                    Giorni di prova
-                  </label>
-                  <input
-                    id="plan-trial"
-                    className="dash-form-input"
-                    type="number"
-                    min={0}
-                    max={90}
-                    value={selected.trialDays}
-                    onChange={(e) => updateSelected({ trialDays: Number(e.target.value) || 0 })}
-                  />
-                </div>
-                <div className="dash-form-field">
-                  <label className="dash-form-label" htmlFor="plan-active">
-                    Visibile ai clienti
-                  </label>
-                  <label className="dash-admin-plans__toggle">
-                    <input
-                      id="plan-active"
-                      type="checkbox"
-                      checked={selected.active}
-                      onChange={(e) => updateSelected({ active: e.target.checked })}
-                    />
-                    <span>{selected.active ? 'Attivo nel catalogo pubblico' : 'Nascosto'}</span>
-                  </label>
-                </div>
-                <div className="dash-form-field dash-admin-plans__span-2">
-                  <label className="dash-form-label" htmlFor="plan-tagline">
-                    Tagline
-                  </label>
-                  <input
-                    id="plan-tagline"
-                    className="dash-form-input"
-                    value={selected.tagline}
-                    placeholder="Breve descrizione sotto il prezzo"
-                    onChange={(e) => updateSelected({ tagline: e.target.value })}
-                  />
-                </div>
-                <div className="dash-form-field dash-admin-plans__span-2">
-                  <label className="dash-form-label" htmlFor="plan-price-id">
-                    Stripe Price ID
-                  </label>
-                  <input
-                    id="plan-price-id"
-                    className="dash-form-input"
-                    value={selected.stripePriceId ?? ''}
-                    placeholder="price_…"
-                    autoComplete="off"
-                    spellCheck={false}
-                    disabled={isLocked}
-                    onChange={(e) => updateSelected({ stripePriceId: e.target.value.trim() || null })}
-                  />
-                  <p className="dash-admin-plans__hint">
-                    Unico posto dove collegare Stripe: crea il Price in Dashboard Stripe (importo fisso),
-                    copia <code>price_…</code> qui. Se cambi il prezzo UI, crea un nuovo Price e aggiorna
-                    l’ID (solo se non ci sono iscritti attivi).
-                  </p>
-                </div>
-                <div className="dash-form-field dash-admin-plans__span-2">
-                  <label className="dash-form-label" htmlFor="plan-key">
-                    Chiave interna
-                  </label>
-                  <input
-                    id="plan-key"
-                    className="dash-form-input"
-                    value={selected.key}
-                    disabled={isLocked}
-                    onChange={(e) => updateSelected({ key: e.target.value.trim() })}
-                  />
+                <div className="dash-admin-plans__card-pills">
+                  {lock?.locked ? <span className="dash-admin-plans__pill">Bloccato</span> : null}
+                  {!p.active ? <span className="dash-admin-plans__pill">Off</span> : null}
+                  {p.stripePriceId ? (
+                    <span className="dash-admin-plans__pill dash-admin-plans__pill--ok">Stripe</span>
+                  ) : (
+                    <span className="dash-admin-plans__pill">No Price</span>
+                  )}
                 </div>
               </div>
-
-              <div className="dash-admin-plans__features">
-                <div className="dash-admin-plans__features-head">
-                  <strong>Feature (come le vede il cliente)</strong>
-                  <button type="button" className="dash-btn dash-btn--ghost" onClick={addFeature}>
-                    + Feature
-                  </button>
-                </div>
-                {selected.features.map((f, i) => (
-                  <div key={i} className="dash-admin-plans__feature-row">
-                    <input
-                      className="dash-form-input"
-                      value={f}
-                      placeholder="Es. Candidature illimitate"
-                      onChange={(e) => setFeature(i, e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="dash-btn dash-btn--ghost"
-                      aria-label="Rimuovi feature"
-                      onClick={() => removeFeature(i)}
-                    >
-                      <IconClose size={14} />
-                    </button>
-                  </div>
+              {p.tagline ? <p className="dash-admin-plans__card-tagline">{p.tagline}</p> : null}
+              <ul className="dash-admin-plans__card-features">
+                {(p.features.length > 0 ? p.features.slice(0, 4) : ['—']).map((f) => (
+                  <li key={f}>
+                    <IconCheck size={12} />
+                    <span>{f}</span>
+                  </li>
                 ))}
-              </div>
-
-              <div className="dash-admin-plans__danger">
+              </ul>
+              <div className="dash-admin-plans__card-price">{formatPlanEuro(p.amountCents)}</div>
+              <div className="dash-admin-plans__card-actions">
                 <button
                   type="button"
-                  className="dash-btn dash-btn--ghost"
-                  disabled={plans.length <= 1 || isLocked}
-                  onClick={() => removePlan(selected.key)}
-                  title={isLocked ? 'Bloccato: ci sono iscritti attivi' : undefined}
+                  className="dash-btn dash-btn--primary"
+                  onClick={() => openEdit(p)}
+                  disabled={saving}
                 >
-                  Elimina piano
+                  Modifica
                 </button>
               </div>
-            </>
-          ) : (
-            <p className="dash-empty-mini">Nessun piano selezionato.</p>
-          )}
-        </div>
-
-        <div className="dash-admin-plans__preview" aria-label="Anteprima come la vedono i clienti">
-          <div className="dash-admin-plans__preview-head">
-            <strong>Anteprima cliente</strong>
-            <span>Allineata alle card in dashboard</span>
-          </div>
-          <div className="dash-plans dash-admin-plans__preview-grid">
-            {activePreview.length === 0 ? (
-              <p className="dash-empty-mini">Nessun piano attivo da mostrare.</p>
-            ) : (
-              activePreview.map((p) => <CustomerPreviewCard key={p.key} plan={p} />)
-            )}
-          </div>
-          {selected && !selected.active ? (
-            <div className="dash-admin-plans__preview-off">
-              <CustomerPreviewCard plan={selected} />
-            </div>
-          ) : null}
-        </div>
+            </article>
+          )
+        })}
       </div>
+
+      {draft ? (
+        <PlanEditModal
+          draft={draft}
+          isNew={isNewDraft}
+          lock={locks[draft.key]}
+          saving={saving}
+          error={modalError}
+          onChange={patchDraft}
+          onClose={closeModal}
+          onSave={() => void saveDraft()}
+          onDelete={() => void deleteDraft()}
+        />
+      ) : null}
     </div>
   )
 }

@@ -8,6 +8,7 @@ use App\Models\Subscription;
 use App\Services\Auth\AdminStepUpService;
 use App\Services\Stripe\PlanCatalogLockService;
 use App\Services\Stripe\StripeDiagnosticService;
+use App\Services\Stripe\StripePlanCatalogSyncService;
 use App\Services\Stripe\SubscriptionBillingService;
 use App\Support\AdminSensitiveAction;
 use App\Support\ApiResponse;
@@ -22,6 +23,7 @@ class AdminBillingController
         private readonly SubscriptionBillingService $billing,
         private readonly AdminStepUpService $stepUp,
         private readonly PlanCatalogLockService $planLocks,
+        private readonly StripePlanCatalogSyncService $planSync,
     ) {}
 
     public function settings(): JsonResponse
@@ -54,10 +56,12 @@ class AdminBillingController
             'plans.*.interval' => ['nullable', 'in:month,year'],
             'plans.*.trialDays' => ['nullable', 'integer', 'min:0', 'max:90'],
             'plans.*.stripePriceId' => ['nullable', 'string', 'max:120'],
+            'plans.*.stripeProductId' => ['nullable', 'string', 'max:120'],
             'plans.*.features' => ['nullable', 'array'],
             'plans.*.features.*' => ['string', 'max:160'],
             'plans.*.active' => ['nullable', 'boolean'],
             'plans.*.sortOrder' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'plans.*.syncStripe' => ['nullable', 'boolean'],
         ]);
 
         $touchesKeys = ! empty($data['secretKey'])
@@ -197,6 +201,15 @@ class AdminBillingController
                         'validation',
                     );
                 }
+                $productId = isset($plan['stripeProductId']) ? trim((string) $plan['stripeProductId']) : '';
+                if ($productId !== '' && ! str_starts_with($productId, 'prod_')) {
+                    return ApiResponse::error(
+                        'Ogni Stripe Product ID deve iniziare con prod_.',
+                        422,
+                        ["plans.{$i}.stripeProductId" => ['Formato non valido.']],
+                        'validation',
+                    );
+                }
                 $normalized[] = [
                     'key' => (string) $plan['key'],
                     'audience' => (string) $plan['audience'],
@@ -207,6 +220,7 @@ class AdminBillingController
                     'interval' => (string) ($plan['interval'] ?? 'month'),
                     'trialDays' => (int) ($plan['trialDays'] ?? 14),
                     'stripePriceId' => $priceId !== '' ? $priceId : null,
+                    'stripeProductId' => $productId !== '' ? $productId : null,
                     'features' => array_values(array_filter(
                         array_map('strval', $plan['features'] ?? []),
                         static fn ($f) => trim($f) !== '',
@@ -219,6 +233,13 @@ class AdminBillingController
             $lockError = $this->planLocks->validateCatalogUpdate($settings, $normalized);
             if ($lockError !== null) {
                 return ApiResponse::error($lockError, 422, [], 'plan_locked');
+            }
+
+            // Crea automaticamente Product/Price su Stripe se manca o se è cambiato l’importo.
+            try {
+                $normalized = $this->planSync->ensurePrices($settings, $normalized);
+            } catch (\RuntimeException $e) {
+                return ApiResponse::error($e->getMessage(), 502, [], 'stripe_price_sync_failed');
             }
 
             $settings->plans_catalog = $normalized;
@@ -398,5 +419,61 @@ class AdminBillingController
         AuditLog::record($request->user()->id, 'billing.admin_portal_link', Subscription::class, (string) $sub->id);
 
         return response()->json($result);
+    }
+
+    /** Sposta abbonamento fallito/scaduto nel cestino (soft). */
+    public function trashSubscription(Request $request, string $id): JsonResponse
+    {
+        $sub = Subscription::query()->findOrFail($id);
+        if (! $sub->canMoveToTrash()) {
+            return ApiResponse::error(
+                'Puoi cestinare solo abbonamenti falliti, scaduti o già in cancellazione — non quelli attivi.',
+                422,
+                [],
+                'trash_not_allowed',
+            );
+        }
+
+        $sub->trashed_at = now();
+        $sub->pushHistory('admin_trashed', ['by' => $request->user()->id]);
+        $sub->save();
+
+        AuditLog::record($request->user()->id, 'billing.subscription_trashed', Subscription::class, (string) $sub->id);
+
+        return response()->json(['ok' => true, 'id' => (string) $sub->id, 'trashedAt' => $sub->trashed_at?->toIso8601String()]);
+    }
+
+    public function restoreSubscription(Request $request, string $id): JsonResponse
+    {
+        $sub = Subscription::query()->findOrFail($id);
+        if (! $sub->isTrashed()) {
+            return ApiResponse::error('Abbonamento non è nel cestino.', 422, [], 'not_trashed');
+        }
+
+        $sub->trashed_at = null;
+        $sub->pushHistory('admin_restored', ['by' => $request->user()->id]);
+        $sub->save();
+
+        AuditLog::record($request->user()->id, 'billing.subscription_restored', Subscription::class, (string) $sub->id);
+
+        return response()->json(['ok' => true, 'id' => (string) $sub->id]);
+    }
+
+    /** Eliminazione definitiva dal DB (solo se già nel cestino). */
+    public function forceDeleteSubscription(Request $request, string $id): JsonResponse
+    {
+        $sub = Subscription::query()->findOrFail($id);
+        if (! $sub->isTrashed()) {
+            return ApiResponse::error('Sposta prima l’abbonamento nel cestino.', 422, [], 'not_trashed');
+        }
+
+        $sid = (string) $sub->id;
+        AuditLog::record($request->user()->id, 'billing.subscription_force_deleted', Subscription::class, $sid, [
+            'userId' => (string) $sub->user_id,
+            'status' => $sub->status,
+        ]);
+        $sub->delete();
+
+        return response()->json(['ok' => true, 'id' => $sid]);
     }
 }

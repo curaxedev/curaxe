@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'cancel_at',
     'cancel_at_period_end',
     'history',
+    'trashed_at',
 ])]
 class Subscription extends Model
 {
@@ -34,7 +35,36 @@ class Subscription extends Model
             'cancel_at' => 'datetime',
             'cancel_at_period_end' => 'boolean',
             'history' => 'array',
+            'trashed_at' => 'datetime',
         ];
+    }
+
+    public function scopeNotTrashed($query)
+    {
+        return $query->whereNull('trashed_at');
+    }
+
+    public function scopeOnlyTrashed($query)
+    {
+        return $query->whereNotNull('trashed_at');
+    }
+
+    public function isTrashed(): bool
+    {
+        return $this->trashed_at !== null;
+    }
+
+    /** Falliti / scaduti / cancellati: spostabili nel cestino. */
+    public function canMoveToTrash(): bool
+    {
+        if ($this->isTrashed()) {
+            return false;
+        }
+        if (in_array($this->status, ['active', 'trialing'], true) && ! $this->cancel_at_period_end) {
+            return false;
+        }
+
+        return true;
     }
 
     public function user(): BelongsTo

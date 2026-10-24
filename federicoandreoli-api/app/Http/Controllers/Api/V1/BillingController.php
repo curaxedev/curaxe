@@ -114,7 +114,15 @@ class BillingController
             return ApiResponse::error('Non autorizzato.', 403, [], 'forbidden');
         }
 
-        $rows = Subscription::query()->with('user')->orderByDesc('updated_at')->get()
+        $trash = filter_var($request->query('trash', false), FILTER_VALIDATE_BOOLEAN);
+        $query = Subscription::query()->with('user')->orderByDesc('updated_at');
+        if ($trash) {
+            $query->onlyTrashed();
+        } else {
+            $query->notTrashed();
+        }
+
+        $rows = $query->get()
             ->map(fn (Subscription $s) => [
                 'id' => (string) $s->id,
                 'userId' => (string) $s->user_id,
@@ -127,6 +135,8 @@ class BillingController
                 'currentPeriodEnd' => $s->current_period_end?->toIso8601String(),
                 'cancelAtPeriodEnd' => $s->cancel_at_period_end,
                 'stripeSubscriptionId' => $s->stripe_subscription_id,
+                'trashedAt' => $s->trashed_at?->toIso8601String(),
+                'canTrash' => $s->canMoveToTrash(),
             ]);
 
         return response()->json($rows);
@@ -141,22 +151,25 @@ class BillingController
         $settings = BillingSetting::current();
         $mrrCents = 0;
         Subscription::query()
+            ->notTrashed()
             ->whereIn('status', ['active', 'trialing'])
             ->get(['audience'])
             ->each(function (Subscription $s) use ($settings, &$mrrCents) {
                 $mrrCents += $settings->amountCentsForAudience((string) $s->audience);
             });
 
-        $active = Subscription::query()->whereIn('status', ['active', 'trialing'])->count();
-        $canceling = Subscription::query()->where('cancel_at_period_end', true)->count();
-        $pastDue = Subscription::query()->where('status', 'past_due')->count();
-        $trialing = Subscription::query()->where('status', 'trialing')->count();
+        $active = Subscription::query()->notTrashed()->whereIn('status', ['active', 'trialing'])->count();
+        $canceling = Subscription::query()->notTrashed()->where('cancel_at_period_end', true)->count();
+        $pastDue = Subscription::query()->notTrashed()->where('status', 'past_due')->count();
+        $trialing = Subscription::query()->notTrashed()->where('status', 'trialing')->count();
+        $trashed = Subscription::query()->onlyTrashed()->count();
 
         return response()->json([
             'activeSubscriptions' => $active,
             'cancelingAtPeriodEnd' => $canceling,
             'pastDue' => $pastDue,
             'trialing' => $trialing,
+            'trashed' => $trashed,
             'mrrEstimate' => (int) round($mrrCents / 100),
             'mrrCents' => $mrrCents,
         ]);

@@ -332,7 +332,7 @@ export function LoginPage() {
                       <OtpCodeInput
                         value={otpCode}
                         onChange={setOtpCode}
-                        name="code"
+                        name="one-time-code"
                         aria-label="Codice OTP a 6 cifre"
                       />
                     </div>

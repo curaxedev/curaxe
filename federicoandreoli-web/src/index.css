@@ -15,6 +15,7 @@ html {
   overflow-x: clip;
   overflow-y: auto;
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   width: 100%;
   max-width: 100%;
 }
@@ -44,4 +45,24 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: clip;
+}
+
+img,
+video,
+canvas,
+svg,
+iframe {
+  max-width: 100%;
+}
+
+/*
+ * iOS Safari zoomma la viewport se un input ha font-size < 16px al focus.
+ * Forziamo ≥16px su tutti i campi editabili (sito, login, dashboard).
+ */
+@media (max-width: 860px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

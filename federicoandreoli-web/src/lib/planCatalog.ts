@@ -16,6 +16,7 @@ export type PlanCatalogEntry = {
   interval: 'month' | 'year'
   trialDays: number
   stripePriceId?: string | null
+  stripeProductId?: string | null
   features: string[]
   active: boolean
   sortOrder: number
@@ -135,6 +136,7 @@ export function emptyPlanDraft(audience: BillingAudience = 'professional'): Plan
     interval: 'month',
     trialDays: 14,
     stripePriceId: null,
+    stripeProductId: null,
     features: [''],
     active: true,
     sortOrder: 99,

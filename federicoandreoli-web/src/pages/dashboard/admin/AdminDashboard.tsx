@@ -69,11 +69,14 @@ import { AdminStripeSetupSection } from './AdminStripeSetupSection'
 import { AdminPlansCatalogSection } from './AdminPlansCatalogSection'
 import { AdminSecuritySection } from './AdminSecuritySection'
 import {
+  deleteAdminSubscriptionPermanent,
   postAdminCancelSubscription,
   postAdminCheckoutLink,
   postAdminExtendTrial,
   postAdminPortalLink,
+  postAdminRestoreSubscription,
   postAdminSubscriptionRefund,
+  postAdminTrashSubscription,
 } from '../../../lib/adminBillingSettingsApi'
 
 
@@ -675,7 +678,8 @@ function SectionUsers() {
 
 /* ── Section: Subscriptions + Stripe landlord wizard ── */
 function SectionSubscriptions() {
-  const { subscriptions, stats, loading, error, reload } = useAdminBilling()
+  const [showTrash, setShowTrash] = useState(false)
+  const { subscriptions, stats, loading, error, reload } = useAdminBilling(showTrash)
   const [actionBusy, setActionBusy] = useState<string | null>(null)
 
   const mrrLabel = stats
@@ -684,13 +688,19 @@ function SectionSubscriptions() {
 
   async function runAction(
     id: string,
-    kind: 'refund' | 'trial' | 'cancel' | 'checkout' | 'portal',
+    kind: 'refund' | 'trial' | 'cancel' | 'checkout' | 'portal' | 'trash' | 'restore' | 'purge',
   ) {
     setActionBusy(`${kind}-${id}`)
     try {
       if (kind === 'refund') await postAdminSubscriptionRefund(id, undefined, 'requested_by_customer')
       if (kind === 'trial') await postAdminExtendTrial(id, 7)
       if (kind === 'cancel') await postAdminCancelSubscription(id)
+      if (kind === 'trash') await postAdminTrashSubscription(id)
+      if (kind === 'restore') await postAdminRestoreSubscription(id)
+      if (kind === 'purge') {
+        if (!confirm('Eliminare definitivamente questo abbonamento dal database?')) return
+        await deleteAdminSubscriptionPermanent(id)
+      }
       if (kind === 'checkout') {
         const { url } = await postAdminCheckoutLink(id)
         await navigator.clipboard.writeText(url)
@@ -704,12 +714,13 @@ function SectionSubscriptions() {
       if (kind !== 'checkout' && kind !== 'portal') await reload()
     } catch {
       // errori gestiti a livello API; reload comunque
+      await reload()
     } finally {
       setActionBusy(null)
     }
   }
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <div>
         <div className="dash-section-header">
@@ -720,7 +731,7 @@ function SectionSubscriptions() {
     )
   }
 
-  if (error) {
+  if (error && !stats) {
     return (
       <div>
         <div className="dash-section-header">
@@ -745,7 +756,24 @@ function SectionSubscriptions() {
           <h2 className="dash-section__title">Abbonamenti clienti</h2>
           <p className="dash-section__subtitle">
             {stats?.activePremium ?? 0} attivi/trial · MRR {mrrLabel}
+            {(stats?.trashed ?? 0) > 0 ? ` · ${stats?.trashed} nel cestino` : ''}
           </p>
+        </div>
+        <div className="dash-admin-plans__actions">
+          <button
+            type="button"
+            className={`dash-btn ${showTrash ? 'dash-btn--ghost' : 'dash-btn--primary'}`}
+            onClick={() => setShowTrash(false)}
+          >
+            Attivi
+          </button>
+          <button
+            type="button"
+            className={`dash-btn ${showTrash ? 'dash-btn--primary' : 'dash-btn--ghost'}`}
+            onClick={() => setShowTrash(true)}
+          >
+            Cestino{typeof stats?.trashed === 'number' ? ` (${stats.trashed})` : ''}
+          </button>
         </div>
       </div>
 
@@ -780,6 +808,12 @@ function SectionSubscriptions() {
         </div>
       </div>
 
+      {showTrash ? (
+        <p className="dash-section__subtitle" style={{ marginBottom: 12 }}>
+          Abbonamenti falliti o scaduti spostati qui. Puoi ripristinarli o eliminarli definitivamente.
+        </p>
+      ) : null}
+
       <div className="dash-table-wrap">
         <table className="dash-table">
           <thead>
@@ -793,10 +827,16 @@ function SectionSubscriptions() {
             </tr>
           </thead>
           <tbody>
-            {subscriptions.length === 0 ? (
+            {loading ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: 'var(--space-5)' }}>
-                  Nessun abbonamento registrato.
+                  Caricamento…
+                </td>
+              </tr>
+            ) : subscriptions.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: 'var(--space-5)' }}>
+                  {showTrash ? 'Cestino vuoto.' : 'Nessun abbonamento registrato.'}
                 </td>
               </tr>
             ) : (
@@ -816,53 +856,90 @@ function SectionSubscriptions() {
                   <td>{s.audience === 'agency' ? 'B2B' : s.audience === 'structure' ? 'RSA' : 'PRO'}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        className="dash-btn dash-btn--ghost"
-                        style={{ fontSize: 12, padding: '4px 8px' }}
-                        disabled={actionBusy !== null}
-                        title="Apre Stripe Checkout (carta solo su Stripe)"
-                        onClick={() => void runAction(s.id, 'checkout')}
-                      >
-                        Link Checkout
-                      </button>
-                      <button
-                        type="button"
-                        className="dash-btn dash-btn--ghost"
-                        style={{ fontSize: 12, padding: '4px 8px' }}
-                        disabled={actionBusy !== null}
-                        title="Customer Portal Stripe (carta, disdetta, fatture)"
-                        onClick={() => void runAction(s.id, 'portal')}
-                      >
-                        Link Portal
-                      </button>
-                      <button
-                        type="button"
-                        className="dash-btn dash-btn--ghost"
-                        style={{ fontSize: 12, padding: '4px 8px' }}
-                        disabled={actionBusy !== null}
-                        onClick={() => void runAction(s.id, 'trial')}
-                      >
-                        +7gg prova
-                      </button>
-                      <button
-                        type="button"
-                        className="dash-btn dash-btn--ghost"
-                        style={{ fontSize: 12, padding: '4px 8px' }}
-                        disabled={actionBusy !== null}
-                        onClick={() => void runAction(s.id, 'refund')}
-                      >
-                        Rimborso
-                      </button>
-                      <button
-                        type="button"
-                        className="dash-btn dash-btn--ghost"
-                        style={{ fontSize: 12, padding: '4px 8px' }}
-                        disabled={actionBusy !== null}
-                        onClick={() => void runAction(s.id, 'cancel')}
-                      >
-                        Cancella
-                      </button>
+                      {showTrash ? (
+                        <>
+                          <button
+                            type="button"
+                            className="dash-btn dash-btn--ghost"
+                            style={{ fontSize: 12, padding: '4px 8px' }}
+                            disabled={actionBusy !== null}
+                            onClick={() => void runAction(s.id, 'restore')}
+                          >
+                            Ripristina
+                          </button>
+                          <button
+                            type="button"
+                            className="dash-btn dash-btn--ghost"
+                            style={{ fontSize: 12, padding: '4px 8px', color: '#D95F5F' }}
+                            disabled={actionBusy !== null}
+                            onClick={() => void runAction(s.id, 'purge')}
+                          >
+                            Elimina
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="dash-btn dash-btn--ghost"
+                            style={{ fontSize: 12, padding: '4px 8px' }}
+                            disabled={actionBusy !== null}
+                            title="Apre Stripe Checkout (carta solo su Stripe)"
+                            onClick={() => void runAction(s.id, 'checkout')}
+                          >
+                            Link Checkout
+                          </button>
+                          <button
+                            type="button"
+                            className="dash-btn dash-btn--ghost"
+                            style={{ fontSize: 12, padding: '4px 8px' }}
+                            disabled={actionBusy !== null}
+                            title="Customer Portal Stripe"
+                            onClick={() => void runAction(s.id, 'portal')}
+                          >
+                            Link Portal
+                          </button>
+                          <button
+                            type="button"
+                            className="dash-btn dash-btn--ghost"
+                            style={{ fontSize: 12, padding: '4px 8px' }}
+                            disabled={actionBusy !== null}
+                            onClick={() => void runAction(s.id, 'trial')}
+                          >
+                            +7gg prova
+                          </button>
+                          <button
+                            type="button"
+                            className="dash-btn dash-btn--ghost"
+                            style={{ fontSize: 12, padding: '4px 8px' }}
+                            disabled={actionBusy !== null}
+                            onClick={() => void runAction(s.id, 'refund')}
+                          >
+                            Rimborso
+                          </button>
+                          <button
+                            type="button"
+                            className="dash-btn dash-btn--ghost"
+                            style={{ fontSize: 12, padding: '4px 8px' }}
+                            disabled={actionBusy !== null}
+                            onClick={() => void runAction(s.id, 'cancel')}
+                          >
+                            Cancella
+                          </button>
+                          {s.canTrash || s.status === 'failed' || s.status === 'expiring' ? (
+                            <button
+                              type="button"
+                              className="dash-btn dash-btn--ghost"
+                              style={{ fontSize: 12, padding: '4px 8px' }}
+                              disabled={actionBusy !== null}
+                              title="Sposta nel cestino"
+                              onClick={() => void runAction(s.id, 'trash')}
+                            >
+                              Cestino
+                            </button>
+                          ) : null}
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

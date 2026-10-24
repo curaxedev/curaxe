@@ -335,38 +335,37 @@
 }
 
 /* ── OTP: sei caselle distinte (grid responsive, niente clip) ────── */
-.auth-otp-boxes {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: clamp(6px, 2.4vw, 10px);
+/* OTP: un solo input (obbligatorio per suggerimento codice da tastiera iOS/Android) */
+.auth-otp-single-wrap {
   width: 100%;
   max-width: 22rem;
   margin: 4px auto 0;
-  padding: 4px 2px;
-  overflow: visible;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
-.auth-field .auth-otp-box,
-.auth-otp-box {
+.auth-field .auth-otp-single,
+.auth-otp-single {
   box-sizing: border-box;
   width: 100% !important;
   max-width: none !important;
-  min-width: 0 !important;
-  flex: none;
-  height: 52px;
-  min-height: 52px !important;
-  padding: 0 !important;
+  min-height: 56px !important;
+  height: 56px;
+  padding: 12px 16px !important;
   border: 1.5px solid color-mix(in srgb, var(--color-border) 85%, var(--home-ink-band) 15%);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--color-surface, #fff);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
   text-align: center;
   font-family: var(--font-heading, inherit);
-  font-size: clamp(1.15rem, 4.8vw, 1.4rem) !important;
+  /* ≥16px: evita zoom iOS al focus */
+  font-size: 1.35rem !important;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
   color: var(--home-ink-band, var(--color-ink-strong));
   caret-color: var(--color-primary);
   transition:
@@ -375,39 +374,42 @@
     background 0.15s ease;
 }
 
-.auth-otp-box:hover:not(:disabled) {
+.auth-otp-single::placeholder {
+  letter-spacing: 0.35em;
+  text-indent: 0.35em;
+  color: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+  font-weight: 600;
+}
+
+.auth-otp-single:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
 }
 
-.auth-field .auth-otp-box:focus,
-.auth-field .auth-otp-box:focus-visible,
-.auth-otp-box:focus,
-.auth-otp-box:focus-visible {
+.auth-field .auth-otp-single:focus,
+.auth-field .auth-otp-single:focus-visible,
+.auth-otp-single:focus,
+.auth-otp-single:focus-visible {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
   background: #fff;
-  z-index: 1;
-  position: relative;
 }
 
-.auth-otp-box:disabled {
+.auth-otp-single:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-@media (max-width: 360px) {
-  .auth-otp-boxes {
-    gap: 5px;
-    padding: 3px 1px;
-  }
+.auth-otp-single-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
 
-  .auth-field .auth-otp-box,
-  .auth-otp-box {
-    height: 46px;
-    min-height: 46px !important;
-    border-radius: 10px;
-  }
+/* retrocompat se restano classi vecchie in markup statico */
+.auth-otp-boxes {
+  display: none;
 }
 
 .auth-link-resend {
@@ -932,7 +934,7 @@
 
 .auth-input-suffix:hover { color: var(--color-text); }
 
-.auth-field input:not(.auth-input-wrap input):not(.auth-otp-box),
+.auth-field input:not(.auth-input-wrap input):not(.auth-otp-box):not(.auth-otp-single),
 .auth-field select,
 .auth-field textarea {
   width: 100%;
@@ -946,12 +948,21 @@
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.auth-field input:not(.auth-otp-box):focus-visible,
+.auth-field input:not(.auth-otp-box):not(.auth-otp-single):focus-visible,
 .auth-field select:focus-visible,
 .auth-field textarea:focus-visible {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(42, 92, 130, 0.12);
+}
+
+@media (max-width: 860px) {
+  .auth-field input:not(.auth-input-wrap input):not(.auth-otp-box):not(.auth-otp-single),
+  .auth-field .auth-input-wrap input,
+  .auth-field select,
+  .auth-field textarea {
+    font-size: 16px;
+  }
 }
 
 .auth-field--icon .auth-input-wrap { padding-left: 0; }

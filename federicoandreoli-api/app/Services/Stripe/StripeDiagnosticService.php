@@ -94,8 +94,8 @@ class StripeDiagnosticService
             'Price ID piani (catalogo)',
             $pricesOk,
             $pricesOk
-                ? 'Ogni audience attiva ha un Price ID nel Catalogo piani'
-                : 'Apri Catalogo piani e collega un price_… a Professionista, Agenzia e Struttura',
+                ? 'Ogni audience attiva ha un Price ID (creato automaticamente al salvataggio piano)'
+                : 'Salva i piani nel Catalogo: Stripe Product/Price vengono creati automaticamente se le chiavi sono configurate',
         );
 
         $webhookUrl = rtrim((string) config('app.url'), '/').'/api/v1/webhooks/stripe';

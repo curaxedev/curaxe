@@ -198,7 +198,9 @@ export function DashboardMessagingSection({
   const waHref = counterpartyPhone ? toWhatsAppUrl(counterpartyPhone) : null
 
   return (
-    <div className="dash-msg-page">
+    <div
+      className={`dash-msg-page${selectedThreadId ? ' dash-msg-page--thread' : ''}`}
+    >
       <div className="dash-section-header dash-msg-page__header">
         <div>
           <h2 className="dash-section__title">{title}</h2>

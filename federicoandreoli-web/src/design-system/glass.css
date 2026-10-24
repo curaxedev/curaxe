@@ -2190,7 +2190,7 @@
     0 1px 0 rgba(255, 255, 255, 0.5) inset;
 }
 
-.auth-shell--glass .auth-field input:not(.auth-input-wrap input):not(.auth-otp-box),
+.auth-shell--glass .auth-field input:not(.auth-input-wrap input):not(.auth-otp-box):not(.auth-otp-single),
 .auth-shell--glass .auth-field select,
 .auth-shell--glass .auth-field textarea {
   background: var(--glass-auth-input-bg);
@@ -2200,14 +2200,15 @@
   border-radius: var(--glass-radius-md);
 }
 
-.auth-shell--glass .auth-field input:not(.auth-otp-box):focus-visible,
+.auth-shell--glass .auth-field input:not(.auth-otp-box):not(.auth-otp-single):focus-visible,
 .auth-shell--glass .auth-field select:focus-visible,
 .auth-shell--glass .auth-field textarea:focus-visible {
   border-color: rgba(42, 92, 130, 0.35);
   box-shadow: 0 0 0 3px rgba(42, 92, 130, 0.1);
 }
 
-.auth-shell--glass .auth-otp-box {
+.auth-shell--glass .auth-otp-box,
+.auth-shell--glass .auth-otp-single {
   background: var(--glass-auth-input-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -2215,7 +2216,8 @@
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset;
 }
 
-.auth-shell--glass .auth-otp-box:focus-visible {
+.auth-shell--glass .auth-otp-box:focus-visible,
+.auth-shell--glass .auth-otp-single:focus-visible {
   border-color: rgba(42, 92, 130, 0.45);
   box-shadow:
     0 0 0 3px rgba(42, 92, 130, 0.14),

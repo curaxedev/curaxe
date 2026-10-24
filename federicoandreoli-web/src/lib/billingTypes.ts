@@ -109,6 +109,8 @@ export type AdminSubscriptionRow = {
   amount: string
   renewal: string
   status: AdminSubscriptionStatus
+  trashedAt?: string | null
+  canTrash?: boolean
 }
 
 export type AdminBillingStats = {
@@ -116,6 +118,7 @@ export type AdminBillingStats = {
   renewalsWithin7Days: number
   failedPayments: number
   mrrCents: number
+  trashed?: number
 }
 
 export type BillingInvoice = {

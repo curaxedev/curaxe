@@ -6,7 +6,7 @@ function adminBillingErrorMessage(): string {
   return 'Impossibile caricare i dati di fatturazione. Riprova.'
 }
 
-export function useAdminBilling() {
+export function useAdminBilling(trash = false) {
   const [subscriptions, setSubscriptions] = useState<AdminSubscriptionRow[]>([])
   const [stats, setStats] = useState<AdminBillingStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -17,7 +17,7 @@ export function useAdminBilling() {
     setError(null)
     try {
       const [rows, billingStats] = await Promise.all([
-        getAdminBillingSubscriptions(),
+        getAdminBillingSubscriptions({ trash }),
         getAdminBillingStats(),
       ])
       setSubscriptions(rows)
@@ -29,7 +29,7 @@ export function useAdminBilling() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [trash])
 
   useEffect(() => {
     void reload()

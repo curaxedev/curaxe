@@ -1,7 +1,7 @@
 /**
  * Admin Stripe billing settings + diagnostic (landlord wizard).
  */
-import { HttpError, httpGet, httpPost, httpPut } from './http'
+import { HttpError, httpDelete, httpGet, httpPost, httpPut } from './http'
 import { withAdminStepUp } from './adminSecurityApi'
 import { isMockApiEnabled } from './runtimeConfig'
 import { DEFAULT_PLAN_CATALOG, type PlanCatalogEntry } from './planCatalog'
@@ -248,6 +248,33 @@ export async function postAdminPortalLink(id: string): Promise<{ url: string }> 
   }
   return withAdminStepUp('billing.subscription', (token) =>
     httpPost<{ url: string }>(`/api/v1/admin/billing/subscriptions/${id}/portal-link`, {
+      headers: token ? { 'X-Step-Up-Token': token } : undefined,
+    }),
+  )
+}
+
+export async function postAdminTrashSubscription(id: string): Promise<void> {
+  if (isMockApiEnabled()) return
+  await withAdminStepUp('billing.subscription', (token) =>
+    httpPost(`/api/v1/admin/billing/subscriptions/${id}/trash`, {
+      headers: token ? { 'X-Step-Up-Token': token } : undefined,
+    }),
+  )
+}
+
+export async function postAdminRestoreSubscription(id: string): Promise<void> {
+  if (isMockApiEnabled()) return
+  await withAdminStepUp('billing.subscription', (token) =>
+    httpPost(`/api/v1/admin/billing/subscriptions/${id}/restore`, {
+      headers: token ? { 'X-Step-Up-Token': token } : undefined,
+    }),
+  )
+}
+
+export async function deleteAdminSubscriptionPermanent(id: string): Promise<void> {
+  if (isMockApiEnabled()) return
+  await withAdminStepUp('billing.subscription', (token) =>
+    httpDelete(`/api/v1/admin/billing/subscriptions/${id}`, {
       headers: token ? { 'X-Step-Up-Token': token } : undefined,
     }),
   )
