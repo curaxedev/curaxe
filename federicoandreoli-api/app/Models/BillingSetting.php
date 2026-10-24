@@ -333,24 +333,34 @@ class BillingSetting extends Model
     }
 
     /**
-     * Setup completo se ogni audience attiva (professional/agency/structure)
-     * ha almeno un piano attivo con Stripe Price ID — fonte unica: catalogo.
+     * Ogni audience presente nel catalogo attivo ha almeno un Price ID.
+     * Se un’audience non ha piani attivi, non è richiesta.
      */
     public function catalogHasRequiredPrices(): bool
     {
-        $needed = ['professional' => false, 'agency' => false, 'structure' => false];
+        $needed = [];
         foreach ($this->resolvedPlansCatalog() as $plan) {
             if (! ($plan['active'] ?? true)) {
                 continue;
             }
             $audience = (string) ($plan['audience'] ?? '');
+            if ($audience === '' || ! in_array($audience, ['professional', 'agency', 'structure'], true)) {
+                continue;
+            }
+            if (! array_key_exists($audience, $needed)) {
+                $needed[$audience] = false;
+            }
             $priceId = is_string($plan['stripePriceId'] ?? null) ? trim((string) $plan['stripePriceId']) : '';
-            if ($priceId !== '' && array_key_exists($audience, $needed)) {
+            if ($priceId !== '' && str_starts_with($priceId, 'price_')) {
                 $needed[$audience] = true;
             }
         }
 
-        return $needed['professional'] && $needed['agency'] && $needed['structure'];
+        if ($needed === []) {
+            return false;
+        }
+
+        return ! in_array(false, $needed, true);
     }
 
     /**

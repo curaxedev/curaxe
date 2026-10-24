@@ -244,6 +244,16 @@ class AdminBillingController
 
             $settings->plans_catalog = $normalized;
             $settings->syncLegacyColumnsFromCatalog();
+
+            // Se chiavi + prezzi ok, marca setup completo senza richiedere il click «Fine» del wizard.
+            if (
+                $settings->setup_completed_at === null
+                && $settings->decryptedSecretKey() !== null
+                && $settings->decryptedWebhookSecret() !== null
+                && $settings->catalogHasRequiredPrices()
+            ) {
+                $settings->setup_completed_at = now();
+            }
         }
 
         if (! empty($data['markSetupComplete'])) {

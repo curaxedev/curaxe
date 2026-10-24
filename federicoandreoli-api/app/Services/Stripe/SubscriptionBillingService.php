@@ -103,13 +103,20 @@ class SubscriptionBillingService
             ];
         }
 
-        if (! $settings->isSetupComplete()) {
-            throw new \InvalidArgumentException('Configurazione Stripe incompleta. Contatta l’amministratore.');
-        }
-
+        // Checkout richiede solo chiave secret + Price del piano di QUESTA audience.
+        // Non bloccare se manca ancora il Price di un’altra audience o se il wizard
+        // non ha cliccato «Fine» (setup_completed_at).
         $priceId = $settings->priceIdForAudience($audience);
         if ($priceId === null || $priceId === '') {
-            throw new \InvalidArgumentException('Price ID Stripe non configurato per questo piano.');
+            $label = match ($audience) {
+                'agency' => 'Agenzia',
+                'structure' => 'Struttura',
+                default => 'Professionista',
+            };
+
+            throw new \InvalidArgumentException(
+                "Piano «{$label}» senza Price Stripe. In Admin → Abbonamenti → Catalogo piani apri il piano, salva: il Price si crea in automatico.",
+            );
         }
 
         $sub = $this->ensureSubscription($user);
