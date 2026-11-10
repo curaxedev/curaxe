@@ -8,10 +8,13 @@ use App\Models\Subscription;
 /**
  * Blocca modifiche commerciali / eliminazione piani con abbonati active|trialing.
  *
- * Motivo business: gli iscritti restano sul Price Stripe originale (grandfathering).
- * Cambiare amount/interval creerebbe un nuovo Price: i nuovi checkout userebbero
- * il prezzo nuovo, gli esistenti no — senza migrazione esplicita è incoerente.
- * Per ora: lock duro. Migrazione Subscription Schedule = release dedicata.
+ * Motivo business + coerenza consumer (IT/UE):
+ * chi ha accettato un abbonamento a prezzo X deve restare su quel Price Stripe
+ * (grandfathering) finché non vede e accetta un cambio piano/listino.
+ * Cambiare amount/interval nel catalogo crea un NUOVO Price solo per i NUOVI checkout;
+ * gli abbonati esistenti NON vengono migrati in automatico (né da sync catalogo).
+ * Lock duro su campi commerciali se ci sono active/trialing. Migrazione esplicita
+ * (Customer Portal / Subscription Schedule + accettazione) = release dedicata.
  */
 final class PlanCatalogLockService
 {

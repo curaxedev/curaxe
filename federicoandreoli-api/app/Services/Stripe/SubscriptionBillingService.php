@@ -504,12 +504,34 @@ class SubscriptionBillingService
         $sub->status = (string) ($stripeSub->status ?? $sub->status);
         $sub->cancel_at_period_end = (bool) ($stripeSub->cancel_at_period_end ?? false);
         $priceId = null;
+        $contractedAmountCents = null;
+        $contractedCurrency = null;
+        $contractedInterval = null;
         if (isset($stripeSub->items->data[0]->price)) {
             $price = $stripeSub->items->data[0]->price;
             $priceId = is_string($price) ? $price : ($price->id ?? null);
+            if (is_object($price)) {
+                $contractedAmountCents = isset($price->unit_amount) ? (int) $price->unit_amount : null;
+                $contractedCurrency = isset($price->currency) ? strtolower((string) $price->currency) : null;
+                $contractedInterval = isset($price->recurring->interval)
+                    ? (string) $price->recurring->interval
+                    : null;
+            }
         }
+        $previousPriceId = $sub->price_id;
         if (is_string($priceId) && $priceId !== '') {
+            // Il Price Stripe sottoscritto è il contratto economico: non lo “sostituiamo”
+            // mai dal catalogo admin. Solo sync da Stripe (checkout/webhook/portal).
             $sub->price_id = $priceId;
+            if ($previousPriceId !== $priceId || $sub->wasRecentlyCreated) {
+                $sub->pushHistory('price_contracted', [
+                    'priceId' => $priceId,
+                    'amountCents' => $contractedAmountCents,
+                    'currency' => $contractedCurrency,
+                    'interval' => $contractedInterval,
+                    'note' => 'Prezzo accettato in fase di sottoscrizione (immutabile finché l’utente non cambia piano consapevolmente).',
+                ]);
+            }
         }
 
         if (isset($stripeSub->current_period_start)) {

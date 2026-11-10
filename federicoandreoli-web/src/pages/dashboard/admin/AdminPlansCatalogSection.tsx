@@ -115,15 +115,18 @@ function PlanEditModal({
         <div className="dash-modal__body">
           {isLocked ? (
             <p className="dash-modal__lead" style={{ color: 'var(--color-text-muted)' }}>
-              Piano con {lock?.activeSubscribers ?? 0} iscritti attivi/in prova: prezzo, intervallo e
-              Price ID Stripe sono bloccati (gli abbonati restano sul prezzo storico). Puoi aggiornare
-              nome, feature, prova e visibilità catalogo.
+              Piano con {lock?.activeSubscribers ?? 0} iscritti attivi/in prova: prezzo e intervallo
+              bloccati. Chi ha già sottoscritto resta sul Price accettato al checkout (non cambia da
+              solo). Per un listino nuovo senza toccare gli esistenti, crea un altro piano oppure
+              pianifica una migrazione con accettazione esplicita. Puoi aggiornare nome, feature e
+              visibilità.
             </p>
           ) : (
             <p className="dash-modal__lead">
-              Su Stripe i Price sono immutabili: se cambi importo o intervallo creiamo un nuovo Price,
-              archiviamo il precedente e aggiorniamo il Product. Nome/feature non creano prezzi nuovi.
-              Non serve copiare a mano il Price ID.
+              Su Stripe i Price sono immutabili: se cambi importo/intervallo creiamo un nuovo Price per
+              i prossimi checkout, archiviamo il precedente e aggiorniamo il Product. Gli abbonamenti
+              già attivi non vengono spostati sul nuovo prezzo in automatico. Nome/feature non creano
+              prezzi nuovi.
             </p>
           )}
 
