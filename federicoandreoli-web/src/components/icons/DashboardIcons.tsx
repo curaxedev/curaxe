@@ -384,3 +384,25 @@ export function IconWhatsApp(props: IconProps) {
     </Icon>
   )
 }
+
+export function IconTrash(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 7h15" />
+      <path d="M9.5 7V5.5a1.5 1.5 0 0 1 1.5-1.5h2a1.5 1.5 0 0 1 1.5 1.5V7" />
+      <path d="M6.5 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12" />
+      <path d="M10 11v6M14 11v6" />
+    </Icon>
+  )
+}
+
+export function IconRefresh(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 12a7.5 7.5 0 0 1 12.7-5.4L19.5 9" />
+      <path d="M19.5 4.5V9H15" />
+      <path d="M19.5 12a7.5 7.5 0 0 1-12.7 5.4L4.5 15" />
+      <path d="M4.5 19.5V15H9" />
+    </Icon>
+  )
+}
