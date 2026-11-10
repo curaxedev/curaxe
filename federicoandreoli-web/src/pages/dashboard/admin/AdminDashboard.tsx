@@ -24,19 +24,11 @@ import { useAdminBilling } from '../../../hooks/useAdminBilling'
 import { useAdminJobModeration } from '../../../hooks/useAdminJobModeration'
 import { useAdminKycQueue } from '../../../hooks/useAdminKycQueue'
 import { useAdminSettings } from '../../../hooks/useAdminSettings'
-import { useAdminTickets } from '../../../hooks/useAdminTickets'
 import { useAdminUsers } from '../../../hooks/useAdminUsers'
 import {
   ADMIN_EMAIL_NOTIFICATION_LABELS,
   type AdminEmailNotificationKey,
 } from '../../../lib/adminSettingsApi'
-import {
-  ADMIN_TICKET_PRIORITY_LABELS,
-  ADMIN_TICKET_STATUS_LABELS,
-  formatAdminTicketDate,
-  formatAdminTicketDateTime,
-} from '../../../lib/adminTicketApi'
-import type { AdminTicket, AdminTicketMessage } from '../../../lib/adminTicketTypes'
 import {
   buildAdminAnalyticsSnapshot,
   exportAdminAnalyticsCsv,
@@ -49,9 +41,6 @@ import {
   IconClose,
   IconCreditCard,
   IconGrid,
-  IconInbox,
-  IconList,
-  IconMessages,
   IconProfile,
   IconSettings,
   IconShield,
@@ -61,7 +50,6 @@ import {
 } from '../../../components/icons/DashboardIcons'
 import { AccountSettingsSection } from '../AccountSettingsSection'
 import { DashboardLayout } from '../DashboardLayout'
-import { AdminRequestsSection } from './sections/AdminRequestsSection'
 import { getAdminOverview, type AdminOverviewPayload } from '../../../lib/adminOverviewApi'
 import { getApiBaseUrl } from '../../../lib/runtimeConfig'
 import { httpGetBlob } from '../../../lib/http'
@@ -234,12 +222,10 @@ function SectionOverview() {
           { value: formatIntIt(kpis?.professionals ?? 0), label: 'Professionisti', color: 'var(--color-primary)' },
           { value: formatIntIt(kpis?.families ?? 0), label: 'Famiglie', color: 'var(--color-sage)' },
           { value: formatIntIt(kpis?.agenciesStructures ?? 0), label: 'Agenzie / Strutture', color: 'var(--color-accent)' },
-          { value: formatIntIt(kpis?.activeRequests ?? 0), label: 'Richieste attive', color: '#5B4BCC' },
           { value: formatIntIt(kpis?.premiumSubscriptions ?? 0), label: 'Abbonamenti Premium', color: 'var(--color-primary)' },
           { value: formatEurIt(kpis?.mrrEstimateEur ?? (billingStats ? billingStats.mrrCents / 100 : 0)), label: 'MRR stimato / mese', color: 'var(--color-sage)' },
           { value: formatIntIt(kpis?.pendingKyc ?? 0), label: 'KYC in coda', color: 'var(--color-accent)' },
           { value: formatIntIt(kpis?.pendingJobs ?? 0), label: 'Annunci da moderare', color: 'var(--color-primary)' },
-          { value: formatIntIt(kpis?.openTickets ?? 0), label: 'Ticket aperti', color: '#5B4BCC' },
         ].map((kpi) => (
           <div key={kpi.label} className="dash-admin-kpi">
             <div className="dash-admin-kpi__value" style={{ color: kpi.color }}>{kpi.value}</div>
@@ -948,253 +934,6 @@ function SectionSubscriptions() {
           </tbody>
         </table>
       </div>
-    </div>
-  )
-}
-
-function TicketThreadMessage({ message }: { message: AdminTicketMessage }) {
-  const isAdmin = message.author === 'admin'
-  const isSystem = message.author === 'system'
-  return (
-    <div
-      className={`dash-ticket-msg${isSystem ? ' dash-ticket-msg--system' : isAdmin ? ' dash-ticket-msg--admin' : ' dash-ticket-msg--user'}`}
-    >
-      <div className="dash-ticket-msg__meta">
-        {message.authorName} · {formatAdminTicketDateTime(message.sentAt)}
-      </div>
-      <div className="dash-ticket-msg__body">{message.body}</div>
-    </div>
-  )
-}
-
-function TicketThreadModal({
-  ticket,
-  loading,
-  error,
-  actionLoading,
-  onClose,
-  onTakeCharge,
-  onCloseTicket,
-}: {
-  ticket: AdminTicket | null
-  loading: boolean
-  error: string | null
-  actionLoading: boolean
-  onClose: () => void
-  onTakeCharge: () => void
-  onCloseTicket: () => void
-}) {
-  return (
-    <div className="dash-modal-overlay" onClick={onClose}>
-      <div
-        className="dash-modal"
-        role="dialog"
-        aria-labelledby="ticket-thread-title"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 640 }}
-      >
-        <div className="dash-modal__header">
-          <span className="dash-modal__title" id="ticket-thread-title">
-            {ticket ? `${ticket.id} — ${ticket.category}` : 'Conversazione ticket'}
-          </span>
-          <button type="button" className="dash-modal__close" onClick={onClose} aria-label="Chiudi">
-            <IconClose size={18} />
-          </button>
-        </div>
-        <div className="dash-modal__body">
-          {loading ? (
-            <div className="dash-skeleton" style={{ width: '100%', height: 120 }} aria-busy="true" />
-          ) : error ? (
-            <p role="alert" style={{ color: 'var(--color-danger, #c62828)' }}>{error}</p>
-          ) : ticket ? (
-            <>
-              <p style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' }}>
-                Utente: {ticket.userName} · {formatAdminTicketDate(ticket.openedAt)} ·{' '}
-                <span className={`dash-badge dash-badge--${ticket.priority}`}>
-                  {ADMIN_TICKET_PRIORITY_LABELS[ticket.priority]}
-                </span>
-              </p>
-              {ticket.messages.map((m) => (
-                <TicketThreadMessage key={m.id} message={m} />
-              ))}
-            </>
-          ) : null}
-        </div>
-        {ticket && !loading && !error ? (
-          <div className="dash-modal__footer">
-            {ticket.status === 'open' ? (
-              <button
-                type="button"
-                className="dash-btn dash-btn--primary"
-                onClick={onTakeCharge}
-                disabled={actionLoading}
-              >
-                {actionLoading ? '…' : 'Prendi in carico'}
-              </button>
-            ) : null}
-            {ticket.status !== 'closed' ? (
-              <button
-                type="button"
-                className="dash-btn dash-btn--sage"
-                onClick={onCloseTicket}
-                disabled={actionLoading}
-              >
-                {actionLoading ? '…' : 'Chiudi ticket'}
-              </button>
-            ) : null}
-            <button type="button" className="dash-btn dash-btn--ghost" onClick={onClose}>
-              Chiudi
-            </button>
-          </div>
-        ) : (
-          <div className="dash-modal__footer">
-            <button type="button" className="dash-btn dash-btn--primary" onClick={onClose}>
-              Chiudi
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-/* ── Section: Tickets ───────────────────────────────────────── */
-function SectionTickets() {
-  const ticketsHook = useAdminTickets()
-
-  if (ticketsHook.loading) {
-    return (
-      <div>
-        <div className="dash-section-header">
-          <div>
-            <h2 className="dash-section__title">Dispute e assistenza</h2>
-            <p className="dash-section__subtitle">Caricamento ticket…</p>
-          </div>
-        </div>
-        <VerifyLoadSkeleton />
-      </div>
-    )
-  }
-
-  if (ticketsHook.error) {
-    return (
-      <div>
-        <div className="dash-section-header">
-          <div>
-            <h2 className="dash-section__title">Dispute e assistenza</h2>
-          </div>
-        </div>
-        <VerifyErrorState message={ticketsHook.error} onRetry={ticketsHook.reload} />
-      </div>
-    )
-  }
-
-  return (
-    <div className="dash-admin-tickets">
-      <VerifyToast message={ticketsHook.toast ?? ''} visible={Boolean(ticketsHook.toast)} />
-
-      <div className="dash-section-header">
-        <div>
-          <h2 className="dash-section__title">Dispute e assistenza</h2>
-          <p className="dash-section__subtitle">
-            {ticketsHook.tickets.filter((t) => t.status !== 'closed').length} ticket aperti
-          </p>
-        </div>
-      </div>
-
-      {ticketsHook.actionError && !ticketsHook.threadTargetId ? (
-        <div className="dash-profile-preview dash-profile-preview--alert" role="alert">
-          {ticketsHook.actionError}
-          <button
-            type="button"
-            className="dash-btn dash-btn--ghost dash-profile-preview__action"
-            onClick={ticketsHook.clearActionError}
-          >
-            Chiudi
-          </button>
-        </div>
-      ) : null}
-
-      {ticketsHook.tickets.length === 0 ? (
-        <div className="dash-empty-state">
-          <div className="dash-empty-state__icon">
-            <IconInbox size={28} />
-          </div>
-          <div className="dash-empty-state__title">Nessun ticket</div>
-          <div className="dash-empty-state__sub">Non ci sono richieste di assistenza al momento.</div>
-        </div>
-      ) : null}
-
-      <div className="dash-ticket-list">
-      {ticketsHook.tickets.map((t) => {
-        const busy = ticketsHook.actionLoadingId === t.id
-        return (
-          <div key={t.id} className="dash-ticket">
-            <div className="dash-ticket__id">{t.id}</div>
-            <div className="dash-ticket__info">
-              <div className="dash-ticket__title">{t.category}</div>
-              <div className="dash-ticket__meta">
-                Utente: {t.userName} · {formatAdminTicketDate(t.openedAt)} ·{' '}
-                <span className={`dash-badge dash-badge--${t.priority}`}>
-                  {ADMIN_TICKET_PRIORITY_LABELS[t.priority]}
-                </span>
-              </div>
-            </div>
-            <div className="dash-ticket__actions">
-              <span
-                className={`dash-badge dash-badge--${t.status === 'open' ? 'new' : t.status === 'in-progress' ? 'ongoing' : 'closed'}`}
-              >
-                {ADMIN_TICKET_STATUS_LABELS[t.status]}
-              </span>
-              <button
-                type="button"
-                className="dash-btn dash-btn--ghost"
-                onClick={() => void ticketsHook.openThread(t.id)}
-              >
-                Vedi
-              </button>
-              {t.status === 'open' ? (
-                <button
-                  type="button"
-                  className="dash-btn dash-btn--primary"
-                  onClick={() => void ticketsHook.takeCharge(t.id)}
-                  disabled={busy}
-                >
-                  {busy ? '…' : 'Prendi in carico'}
-                </button>
-              ) : null}
-              {t.status !== 'closed' ? (
-                <button
-                  type="button"
-                  className="dash-btn dash-btn--sage"
-                  onClick={() => void ticketsHook.closeTicket(t.id)}
-                  disabled={busy}
-                >
-                  {busy ? '…' : 'Chiudi'}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        )
-      })}
-      </div>
-
-      {ticketsHook.threadTargetId ? (
-        <TicketThreadModal
-          ticket={ticketsHook.threadTicket}
-          loading={ticketsHook.threadLoading}
-          error={ticketsHook.threadError}
-          actionLoading={ticketsHook.actionLoadingId === ticketsHook.threadTargetId}
-          onClose={ticketsHook.closeThread}
-          onTakeCharge={() => {
-            if (ticketsHook.threadTargetId) void ticketsHook.takeCharge(ticketsHook.threadTargetId)
-          }}
-          onCloseTicket={() => {
-            if (ticketsHook.threadTargetId) void ticketsHook.closeTicket(ticketsHook.threadTargetId)
-          }}
-        />
-      ) : null}
     </div>
   )
 }
@@ -2108,9 +1847,7 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: <IconGrid size={18} /> },
   { id: 'utenti', label: 'Gestione utenti', tabLabel: 'Utenti', icon: <IconUsers size={18} /> },
-  { id: 'richieste', label: 'Richieste', icon: <IconList size={18} /> },
   { id: 'abbonamenti', label: 'Abbonamenti', icon: <IconCreditCard size={18} /> },
-  { id: 'dispute', label: 'Dispute e assistenza', tabLabel: 'Assistenza', icon: <IconMessages size={18} /> },
   { id: 'verifica', label: 'Verifica profili', tabLabel: 'Verifica', icon: <IconShield size={18} /> },
   { id: 'moderazione', label: 'Moderazione annunci', tabLabel: 'Annunci', icon: <IconBriefcase size={18} /> },
   { id: 'impostazioni', label: 'Impostazioni piattaforma', tabLabel: 'Piattaforma', icon: <IconSettings size={18} /> },
@@ -2126,9 +1863,7 @@ export function AdminDashboard() {
     switch (activeSection) {
       case 'overview':      return <SectionOverview />
       case 'utenti':        return <SectionUsers />
-      case 'richieste':     return <AdminRequestsSection />
       case 'abbonamenti':   return <SectionSubscriptions />
-      case 'dispute':       return <SectionTickets />
       case 'verifica':      return <SectionVerify />
       case 'moderazione':   return <SectionJobModeration />
       case 'impostazioni':  return <SectionSettings onGoToPlans={() => setActiveSection('abbonamenti')} />

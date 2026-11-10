@@ -210,17 +210,12 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/admin/job-postings/{id}/reject', [AdminController::class, 'rejectJob']);
 
             Route::get('/admin/overview', [AdminOpsController::class, 'overview']);
-            Route::get('/admin/family-requests', [AdminOpsController::class, 'familyRequests']);
             Route::get('/admin/kyc/pending', [AdminOpsController::class, 'kycPending']);
             Route::post('/admin/kyc/{id}/approve', [AdminOpsController::class, 'kycApprove'])
                 ->middleware('step_up:kyc.decide');
             Route::post('/admin/kyc/{id}/reject', [AdminOpsController::class, 'kycReject'])
                 ->middleware('step_up:kyc.decide');
             Route::get('/admin/kyc/documents/{id}/file', [AdminOpsController::class, 'kycDocumentFile']);
-            Route::get('/admin/tickets', [AdminOpsController::class, 'tickets']);
-            Route::get('/admin/tickets/{id}', [AdminOpsController::class, 'showTicket']);
-            Route::post('/admin/tickets/{id}/take', [AdminOpsController::class, 'takeTicket']);
-            Route::post('/admin/tickets/{id}/close', [AdminOpsController::class, 'closeTicket']);
             Route::get('/admin/settings', [AdminOpsController::class, 'settings']);
             Route::patch('/admin/settings', [AdminOpsController::class, 'updateSettings'])
                 ->middleware('step_up:settings.platform');

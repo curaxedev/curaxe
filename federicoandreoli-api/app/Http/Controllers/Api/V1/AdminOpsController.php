@@ -4,15 +4,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domains\Auth\Enums\UserRole;
 use App\Models\AuditLog;
-use App\Models\FamilyRequest;
 use App\Models\JobPosting;
 use App\Models\PlatformSetting;
 use App\Services\Platform\PlatformSettingsReader;
 use App\Models\ProfessionalDocument;
 use App\Models\ProfessionalProfile;
 use App\Models\Subscription;
-use App\Models\SupportTicket;
-use App\Models\SupportTicketMessage;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -35,14 +32,12 @@ class AdminOpsController
         $structures = (int) ($usersByRole[UserRole::Structure->value] ?? 0);
         $totalUsers = User::query()->count();
 
-        $activeRequests = FamilyRequest::query()->where('status', 'active')->count();
         $activeSubs = Subscription::query()->whereIn('status', ['active', 'trialing'])->count();
         $pendingJobs = JobPosting::query()->whereIn('status', ['pending_review', 'pending'])->count();
         $pendingKyc = ProfessionalProfile::query()
             ->where('is_verified', false)
             ->whereHas('user.professionalDocuments')
             ->count();
-        $openTickets = SupportTicket::query()->whereIn('status', ['open', 'in-progress'])->count();
 
         $billing = \App\Models\BillingSetting::current();
         $mrrEstimate = (int) round(
@@ -77,38 +72,15 @@ class AdminOpsController
                 'professionals' => $professionals,
                 'families' => $families,
                 'agenciesStructures' => $agencies + $structures,
-                'activeRequests' => $activeRequests,
                 'premiumSubscriptions' => $activeSubs,
                 'mrrEstimateEur' => $mrrEstimate,
                 'pendingJobs' => $pendingJobs,
                 'pendingKyc' => $pendingKyc,
-                'openTickets' => $openTickets,
             ],
             'revenueMonthly' => $months,
         ]);
     }
 
-    public function familyRequests(): JsonResponse
-    {
-        $rows = FamilyRequest::query()
-            ->with('user')
-            ->orderByDesc('id')
-            ->limit(200)
-            ->get()
-            ->map(function (FamilyRequest $r) {
-                return [
-                    'id' => (string) $r->id,
-                    'requester' => $r->user?->name ?? 'Famiglia',
-                    'type' => $r->assistance_type ?: '—',
-                    'zone' => $r->comune !== '' ? $r->comune : '—',
-                    'date' => $r->created_at?->toIso8601String(),
-                    'status' => $r->status,
-                    'applications' => $r->applicationCount(),
-                ];
-            });
-
-        return response()->json($rows);
-    }
 
     public function kycPending(): JsonResponse
     {
@@ -214,74 +186,6 @@ class AdminOpsController
         ]);
     }
 
-    public function tickets(): JsonResponse
-    {
-        $tickets = SupportTicket::query()
-            ->with('messages')
-            ->orderByDesc('id')
-            ->limit(200)
-            ->get()
-            ->map(fn (SupportTicket $t) => $this->mapTicket($t));
-
-        return response()->json($tickets);
-    }
-
-    public function showTicket(int $id): JsonResponse
-    {
-        $ticket = SupportTicket::query()->with('messages')->find($id);
-        if ($ticket === null) {
-            return ApiResponse::error('Ticket non trovato.', 404, [], 'not_found');
-        }
-
-        return response()->json($this->mapTicket($ticket));
-    }
-
-    public function takeTicket(Request $request, int $id): JsonResponse
-    {
-        $ticket = SupportTicket::query()->with('messages')->find($id);
-        if ($ticket === null) {
-            return ApiResponse::error('Ticket non trovato.', 404, [], 'not_found');
-        }
-
-        $admin = $request->user();
-        $ticket->assigned_to = $admin->email;
-        $ticket->status = 'in-progress';
-        $ticket->save();
-
-        SupportTicketMessage::query()->create([
-            'support_ticket_id' => $ticket->id,
-            'author' => 'system',
-            'author_name' => 'Sistema',
-            'body' => 'Ticket preso in carico da '.$admin->name.'.',
-        ]);
-
-        AuditLog::record($admin->id, 'ticket.take', 'support_ticket', (string) $ticket->id);
-
-        return response()->json($this->mapTicket($ticket->fresh('messages')));
-    }
-
-    public function closeTicket(Request $request, int $id): JsonResponse
-    {
-        $ticket = SupportTicket::query()->with('messages')->find($id);
-        if ($ticket === null) {
-            return ApiResponse::error('Ticket non trovato.', 404, [], 'not_found');
-        }
-
-        $ticket->status = 'closed';
-        $ticket->save();
-
-        SupportTicketMessage::query()->create([
-            'support_ticket_id' => $ticket->id,
-            'author' => 'system',
-            'author_name' => 'Sistema',
-            'body' => 'Ticket chiuso.',
-        ]);
-
-        AuditLog::record($request->user()->id, 'ticket.close', 'support_ticket', (string) $ticket->id);
-
-        return response()->json($this->mapTicket($ticket->fresh('messages')));
-    }
-
     public function settings(): JsonResponse
     {
         return response()->json($this->settingsPayload());
@@ -343,29 +247,6 @@ class AdminOpsController
         return array_merge($value, [
             'updatedAt' => $row?->updated_at?->toIso8601String() ?? now()->toIso8601String(),
         ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function mapTicket(SupportTicket $t): array
-    {
-        return [
-            'id' => (string) $t->id,
-            'userName' => $t->user_name !== '' ? $t->user_name : ($t->user?->name ?? 'Utente'),
-            'category' => $t->category,
-            'openedAt' => $t->created_at?->toIso8601String(),
-            'priority' => $t->priority,
-            'status' => $t->status,
-            'assignedTo' => $t->assigned_to,
-            'messages' => $t->messages->map(fn (SupportTicketMessage $m) => [
-                'id' => (string) $m->id,
-                'author' => $m->author,
-                'authorName' => $m->author_name,
-                'body' => $m->body,
-                'sentAt' => $m->created_at?->toIso8601String(),
-            ])->values()->all(),
-        ];
     }
 
     /**

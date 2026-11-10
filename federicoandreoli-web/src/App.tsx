@@ -16,9 +16,6 @@ import { RegisterWizardProvider } from './pages/auth/RegisterWizardContext'
 const ComeFunzionaPage = lazy(() =>
   import('./pages/ComeFunzionaPage').then((m) => ({ default: m.ComeFunzionaPage })),
 )
-const ContattiPage = lazy(() =>
-  import('./pages/ContattiPage').then((m) => ({ default: m.ContattiPage })),
-)
 const ProfilesDirectoryPage = lazy(() =>
   import('./pages/ProfilesDirectoryPage').then((m) => ({ default: m.ProfilesDirectoryPage })),
 )
@@ -148,7 +145,6 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/come-funziona" element={<ComeFunzionaPage />} />
-                <Route path="/contatti" element={<ContattiPage />} />
                 <Route path="/profili" element={<ProfilesDirectoryPage />} />
                 <Route path="/profili/:id" element={<ProfileDetailPage />} />
                 <Route path="/strutture/:id" element={<StructureDetailPage />} />

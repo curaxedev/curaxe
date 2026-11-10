@@ -3,7 +3,6 @@ import { BrandLogo } from './BrandLogo'
 import { IconHeart, IconStar } from './icons/DashboardIcons'
 import { useCookieConsent } from '../context/CookieConsentContext'
 import { BRAND_NAME } from '../lib/brand'
-import { contattiPath } from '../lib/siteRoutes'
 import { registerWorkerProfileHref } from '../pages/auth/registerQuery'
 
 function SocialLinkedIn() {
@@ -60,7 +59,6 @@ export function SiteFooter() {
   const colPlatform: FooterLink[] = [
     { label: `Perché ${BRAND_NAME}`, href: ecosistemaHref },
     { label: 'Famiglie e strutture', href: searchHref },
-    { label: 'Centro assistenza', href: contattiPath },
     { label: 'Sicurezza e privacy', href: '/privacy' },
   ]
 
@@ -68,7 +66,6 @@ export function SiteFooter() {
     { label: 'Termini di servizio', href: '/termini' },
     { label: 'Privacy policy', href: '/privacy' },
     { label: 'Cookie policy', href: '/cookie' },
-    { label: 'Contatti', href: contattiPath },
   ]
 
   const renderLink = (item: FooterLink) => {

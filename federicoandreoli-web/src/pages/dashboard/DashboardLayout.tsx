@@ -8,12 +8,10 @@ import {
   IconLogout,
   IconMoreDots,
   IconStar,
-  IconSupport,
 } from '../../components/icons/DashboardIcons'
 import { BrandLogo } from '../../components/BrandLogo'
 import { FamilyHeaderProfileSearch } from '../../components/FamilyHeaderProfileSearch'
 import { LoggedInAccountMenu } from '../../components/LoggedInAccountMenu'
-import { contattiPath } from '../../lib/siteRoutes'
 
 export type AccountType = 'professional' | 'family' | 'agency' | 'structure' | 'admin'
 
@@ -200,10 +198,6 @@ export function DashboardLayout({
               </div>
             </div>
           )}
-          <button className="dash-sidebar__support" onClick={() => navigate(contattiPath)}>
-            <IconSupport size={14} />
-            Supporto
-          </button>
           <button
             type="button"
             className="dash-sidebar__logout"
@@ -370,10 +364,6 @@ export function DashboardLayout({
             </ul>
 
             <div className="dash-more__footer">
-              <button type="button" className="dash-more__footer-btn" onClick={() => navigate(contattiPath)}>
-                <IconSupport size={16} />
-                Supporto
-              </button>
               <button
                 type="button"
                 className="dash-more__footer-btn dash-more__footer-btn--danger"

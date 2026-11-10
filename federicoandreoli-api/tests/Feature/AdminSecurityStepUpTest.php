@@ -58,8 +58,10 @@ class AdminSecurityStepUpTest extends TestCase
         $admin = $this->admin();
         Sanctum::actingAs($admin);
 
+        // Prima passkey: richiede conferma password (anti session hijack).
         $payload = $this->postJson('/api/v1/admin/passkeys/register/options', [
             'name' => 'Chiavetta YubiKey',
+            'password' => 'DemoPass123!',
         ])
             ->assertOk()
             ->json();

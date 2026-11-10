@@ -80,7 +80,7 @@ const ACCOUNT_TYPES = [
     variant: 'admin' as const,
     icon: <IconShield />,
     title: 'Admin piattaforma',
-    desc: 'Supervisiona utenti, richieste, abbonamenti, dispute e verifiche profili.',
+    desc: 'Supervisiona utenti, abbonamenti e verifiche profili.',
     cta: 'Entra come Admin',
   },
 ]

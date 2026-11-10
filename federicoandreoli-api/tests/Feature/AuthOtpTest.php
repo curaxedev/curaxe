@@ -65,16 +65,19 @@ class AuthOtpTest extends TestCase
         $this->assertDatabaseCount('login_otps', 0);
     }
 
-    public function test_request_for_password_account_returns_password_required(): void
+    public function test_request_for_password_account_returns_same_opaque_accepted(): void
     {
+        // Anti-enumerazione: account password-only e sconosciuti ricevono lo stesso 202.
         User::factory()->create([
             'email' => 'info@auracare.it',
             'role' => UserRole::Agency,
         ]);
 
         $this->postJson('/api/v1/auth/email-otp/request', ['email' => 'info@auracare.it'])
-            ->assertUnprocessable()
-            ->assertJsonPath('error_code', 'password_required');
+            ->assertStatus(202);
+
+        $this->postJson('/api/v1/auth/email-otp/request', ['email' => 'sconosciuto@example.com'])
+            ->assertStatus(202);
     }
 
     public function test_verify_with_correct_code_returns_token_and_user(): void

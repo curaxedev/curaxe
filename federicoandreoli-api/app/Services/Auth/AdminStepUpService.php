@@ -110,25 +110,40 @@ final class AdminStepUpService
 
     /**
      * Consuma (single-use) un token step-up. Ritorna true se valido.
+     * Il token viene rimosso solo a verifica riuscita (o se scaduto / usato da altro utente).
+     * Un'azione sbagliata non brucia il token.
      */
     public function consume(User $user, string $action, ?string $token): bool
     {
         if ($token === null || $token === '') {
             return false;
         }
-        $stored = cache()->pull($this->tokenKey($token));
+
+        $key = $this->tokenKey($token);
+        $stored = cache()->get($key);
         if (! is_array($stored)) {
             return false;
         }
-        if ((int) ($stored['user_id'] ?? 0) !== $user->id) {
-            return false;
-        }
-        if (($stored['action'] ?? '') !== $action) {
-            return false;
-        }
+
         if ((int) ($stored['exp'] ?? 0) < now()->timestamp) {
+            cache()->forget($key);
+
             return false;
         }
+
+        if ((int) ($stored['user_id'] ?? 0) !== (int) $user->id) {
+            // Token presentato da un altro soggetto: invalida per evitare replay.
+            cache()->forget($key);
+
+            return false;
+        }
+
+        if (($stored['action'] ?? '') !== $action) {
+            // Azione errata: non consumare — consente di ritentare con l'header corretto.
+            return false;
+        }
+
+        cache()->forget($key);
 
         return true;
     }

@@ -66,8 +66,9 @@ class PasswordResetTest extends TestCase
         Mail::assertNothingOutgoing();
     }
 
-    public function test_request_for_otp_account_returns_otp_only_account(): void
+    public function test_request_for_otp_account_returns_same_opaque_accepted(): void
     {
+        // Anti-enumerazione: account OTP-only non rivelano il canale; stessa risposta 202.
         User::factory()->create([
             'email' => 'maria.rossi@email.it',
             'role' => UserRole::Professional,
@@ -75,8 +76,10 @@ class PasswordResetTest extends TestCase
         ]);
 
         $this->postJson('/api/v1/auth/password-reset/request', ['email' => 'maria.rossi@email.it'])
-            ->assertUnprocessable()
-            ->assertJsonPath('error_code', 'otp_only_account');
+            ->assertStatus(202);
+
+        $this->postJson('/api/v1/auth/password-reset/request', ['email' => 'sconosciuto@example.com'])
+            ->assertStatus(202);
     }
 
     public function test_validate_token_returns_payload(): void

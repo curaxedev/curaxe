@@ -1,9 +1,6 @@
 /** Pagina spiegazione servizio e piattaforma (header «?», link aiuto). */
 export const comeFunzionaPath = '/come-funziona'
 
-/** Hub contatti e supporto (footer, dashboard sidebar). */
-export const contattiPath = '/contatti'
-
 /** Directory profili con ricerca geografica (demo / mock). */
 export const profilesDirectoryPath = '/profili'
 
