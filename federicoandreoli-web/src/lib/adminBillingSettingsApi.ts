@@ -24,6 +24,8 @@ export type BillingSettingsPayload = {
   plans: PlanCatalogEntry[]
   /** Blocco edit commerciale se ci sono iscritti active/trialing sul Price ID. */
   planLocks?: Record<string, PlanLockInfo>
+  /** Storico cambi listino con policy (audit produzione). */
+  planPriceChanges?: PlanPriceChangeRecord[]
   portalConfigurationId: string | null
   webhookEndpointId: string | null
   webhookUrl: string
@@ -72,8 +74,41 @@ export const STRIPE_WIZARD_STEPS = [
 ] as const
 
 export type PlanLockInfo = {
+  /** Iscritti su Price corrente + storici (grandfather). */
   activeSubscribers: number
+  /** Iscritti solo sul Price di catalogo attuale (target della policy). */
+  currentPriceSubscribers?: number
   locked: boolean
+}
+
+export type PlanPriceChangePolicy =
+  | 'grandfather_indefinite'
+  | 'grandfather_months'
+  | 'cancel_at_period_end'
+  | 'cancel_immediately'
+
+export type PlanPriceChangePolicyInput = {
+  policy: PlanPriceChangePolicy
+  grandfatherMonths?: number
+  notes?: string
+}
+
+export type PlanPriceChangeRecord = {
+  id: string
+  planKey: string
+  planLabel?: string | null
+  policy: PlanPriceChangePolicy | string
+  grandfatherMonths?: number | null
+  graceEndsAt?: string | null
+  oldPriceId?: string | null
+  newPriceId?: string | null
+  oldAmountCents?: number | null
+  newAmountCents?: number | null
+  affectedSubscriptions: number
+  status: string
+  notes?: string | null
+  createdAt?: string | null
+  createdBy?: string | null
 }
 
 const MOCK_SETTINGS: BillingSettingsPayload = {
@@ -130,6 +165,8 @@ export type UpdateBillingSettingsInput = {
   portalConfigurationId?: string
   markSetupComplete?: boolean
   plans?: PlanCatalogEntry[]
+  /** Obbligatorie se si cambia prezzo/intervallo su piano con iscritti. */
+  priceChangePolicies?: Record<string, PlanPriceChangePolicyInput>
 }
 
 function billingSettingsStepUpAction(input: UpdateBillingSettingsInput): string | null {

@@ -287,6 +287,37 @@ class SubscriptionBillingService
     }
 
     /**
+     * Disdetta immediata su Stripe (nessuna prorata automatica lato Curaxe).
+     * Usare solo con policy admin esplicita + step-up.
+     */
+    public function cancelImmediately(User $user): Subscription
+    {
+        $sub = $this->ensureSubscription($user);
+        $settings = BillingSetting::current();
+        $client = $this->clients->make($settings);
+
+        if ($client !== null && is_string($sub->stripe_subscription_id) && $sub->stripe_subscription_id !== '') {
+            try {
+                $client->subscriptions->cancel($sub->stripe_subscription_id, [
+                    'prorate' => false,
+                ]);
+            } catch (ApiErrorException $e) {
+                throw new \RuntimeException('Stripe cancel immediata non riuscita: '.$e->getMessage(), 0, $e);
+            }
+        }
+
+        $sub->status = 'canceled';
+        $sub->cancel_at_period_end = false;
+        $sub->cancel_at = now();
+        $sub->pushHistory('canceled_immediately', [
+            'note' => 'Chiusura immediata da admin (cambio listino / policy).',
+        ]);
+        $sub->save();
+
+        return $sub->fresh();
+    }
+
+    /**
      * @return array{url: string}
      */
     public function createPortalSession(User $user, ?string $returnUrl = null): array

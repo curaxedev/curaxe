@@ -7,6 +7,7 @@ use App\Models\BillingSetting;
 use App\Models\Subscription;
 use App\Services\Auth\AdminStepUpService;
 use App\Services\Stripe\PlanCatalogLockService;
+use App\Services\Stripe\PlanPriceChangeService;
 use App\Services\Stripe\StripeDiagnosticService;
 use App\Services\Stripe\StripePlanCatalogSyncService;
 use App\Services\Stripe\SubscriptionBillingService;
@@ -24,6 +25,7 @@ class AdminBillingController
         private readonly AdminStepUpService $stepUp,
         private readonly PlanCatalogLockService $planLocks,
         private readonly StripePlanCatalogSyncService $planSync,
+        private readonly PlanPriceChangeService $priceChanges,
     ) {}
 
     public function settings(): JsonResponse
@@ -62,6 +64,13 @@ class AdminBillingController
             'plans.*.active' => ['nullable', 'boolean'],
             'plans.*.sortOrder' => ['nullable', 'integer', 'min:0', 'max:100'],
             'plans.*.syncStripe' => ['nullable', 'boolean'],
+            'priceChangePolicies' => ['sometimes', 'array'],
+            'priceChangePolicies.*.policy' => [
+                'required_with:priceChangePolicies',
+                'in:grandfather_indefinite,grandfather_months,cancel_at_period_end,cancel_immediately',
+            ],
+            'priceChangePolicies.*.grandfatherMonths' => ['nullable', 'integer', 'min:1', 'max:36'],
+            'priceChangePolicies.*.notes' => ['nullable', 'string', 'max:500'],
         ]);
 
         $touchesKeys = ! empty($data['secretKey'])
@@ -236,12 +245,26 @@ class AdminBillingController
                 ];
             }
 
-            $lockError = $this->planLocks->validateCatalogUpdate($settings, $normalized);
+            $policiesByKey = [];
+            if (isset($data['priceChangePolicies']) && is_array($data['priceChangePolicies'])) {
+                foreach ($data['priceChangePolicies'] as $planKey => $policyRow) {
+                    if (! is_array($policyRow)) {
+                        continue;
+                    }
+                    $policiesByKey[(string) $planKey] = $policyRow;
+                }
+            }
+
+            $lockError = $this->planLocks->validateCatalogUpdate($settings, $normalized, $policiesByKey);
             if ($lockError !== null) {
                 return ApiResponse::error($lockError, 422, [], 'plan_locked');
             }
 
             $previousPlans = $settings->resolvedPlansCatalog();
+            $previousByKey = [];
+            foreach ($previousPlans as $prev) {
+                $previousByKey[(string) ($prev['key'] ?? '')] = $prev;
+            }
 
             // Sync Stripe: Prices immutabili → nuovo Price solo se importo/intervallo/valuta cambiano;
             // il Price precedente viene archiviato; Product.default_price aggiornato.
@@ -250,6 +273,32 @@ class AdminBillingController
                 $normalized = $this->planSync->ensurePrices($settings, $normalized);
             } catch (\RuntimeException $e) {
                 return ApiResponse::error($e->getMessage(), 502, [], 'stripe_price_sync_failed');
+            }
+
+            // Applica policy agli iscritti sul Price storico (mai migrazione silenziosa).
+            foreach ($normalized as $afterPlan) {
+                $key = (string) ($afterPlan['key'] ?? '');
+                $beforePlan = $previousByKey[$key] ?? null;
+                if ($beforePlan === null || ! isset($policiesByKey[$key])) {
+                    continue;
+                }
+                $beforePrice = (string) ($beforePlan['stripePriceId'] ?? '');
+                $afterPrice = (string) ($afterPlan['stripePriceId'] ?? '');
+                $commercial = $this->planLocks->hasCommercialDiff($beforePlan, $afterPlan)
+                    || ($beforePrice !== '' && $afterPrice !== '' && $beforePrice !== $afterPrice);
+                if (! $commercial || $this->planLocks->activeCountOnCurrentPrice($beforePlan) < 1) {
+                    continue;
+                }
+                try {
+                    $this->priceChanges->recordAndApply(
+                        $request->user(),
+                        $beforePlan,
+                        $afterPlan,
+                        $policiesByKey[$key],
+                    );
+                } catch (\InvalidArgumentException $e) {
+                    return ApiResponse::error($e->getMessage(), 422, [], 'plan_policy_invalid');
+                }
             }
 
             $settings->plans_catalog = $normalized;

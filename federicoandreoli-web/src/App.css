@@ -14264,6 +14264,86 @@ button.candidacy-auth-dialog__btn {
 .dash-admin-plan-modal__danger {
   color: #D95F5F !important;
 }
+.dash-admin-plans__policy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.dash-admin-plans__policy-opt {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-border, #ddd) 100%, transparent);
+  border-radius: 10px;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--color-surface, #fff) 92%, transparent);
+}
+.dash-admin-plans__policy-opt.is-on {
+  border-color: color-mix(in srgb, var(--color-accent, #8b1e2d) 55%, transparent);
+  background: color-mix(in srgb, var(--color-accent, #8b1e2d) 8%, transparent);
+}
+.dash-admin-plans__policy-opt input {
+  margin-top: 3px;
+}
+.dash-admin-plans__policy-opt strong {
+  display: block;
+  font-size: 0.92rem;
+}
+.dash-admin-plans__policy-opt small {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-muted, #666);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.dash-admin-plans__audit {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border, #ddd) 80%, transparent);
+}
+.dash-admin-plans__audit-head h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.dash-admin-plans__audit-head p {
+  margin: 0 0 12px;
+  color: var(--color-text-muted, #666);
+  font-size: 0.85rem;
+}
+.dash-admin-plans__audit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-admin-plans__audit-list li {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface, #f7f5f2) 100%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border, #e5e0d8) 70%, transparent);
+}
+.dash-admin-plans__audit-main,
+.dash-admin-plans__audit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+  font-size: 0.82rem;
+}
+.dash-admin-plans__audit-meta {
+  margin-top: 4px;
+  color: var(--color-text-muted, #666);
+}
+.dash-admin-plans__audit-status {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
 
 @media (max-width: 640px) {
   .dash-admin-plans__editor-grid {
