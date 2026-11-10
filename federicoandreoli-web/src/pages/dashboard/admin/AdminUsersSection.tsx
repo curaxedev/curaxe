@@ -36,7 +36,7 @@ function UsersToast({ message, visible }: { message: string; visible: boolean })
   )
 }
 
-type DetailTab = 'profilo' | 'sicurezza' | 'abbonamento' | 'kyc' | 'attivita'
+type DetailTab = 'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'kyc' | 'attivita'
 type StatusChipFilter = AdminUserStatus | 'all' | 'professionals' | 'today'
 
 function splitName(fullName: string): { first: string; last: string } {
@@ -161,6 +161,7 @@ function UserDetailView({
   onRefresh,
   onToggleStatus,
   onDelete,
+  onResendConsents,
 }: {
   detail: AdminUserDetail | null
   loading: boolean
@@ -172,6 +173,7 @@ function UserDetailView({
   onRefresh: () => void
   onToggleStatus: () => void
   onDelete: () => void
+  onResendConsents: () => void
 }) {
   const [tab, setTab] = useState<DetailTab>(initialTab)
 
@@ -196,9 +198,15 @@ function UserDetailView({
     { id: 'profilo', label: 'Profilo' },
     { id: 'sicurezza', label: 'Sicurezza' },
     { id: 'abbonamento', label: 'Abbonamento' },
+    { id: 'privacy', label: 'Privacy' },
     { id: 'kyc', label: 'KYC / Verifica' },
     { id: 'attivita', label: 'Attività' },
   ]
+
+  const privacyAt = detail?.privacyAcceptedAt
+    ? formatAdminUserDateTime(detail.privacyAcceptedAt)
+    : '—'
+  const newsletterLabel = detail?.newsletterConsent ? 'Iscritto' : 'Non iscritto'
 
   return (
     <div className="admin-users-detail">
@@ -493,6 +501,82 @@ function UserDetailView({
             </section>
           ) : null}
 
+          {tab === 'privacy' ? (
+            <section className="admin-users-panel">
+              <div className="admin-users-panel__head">
+                <div>
+                  <h2 className="admin-users-panel__title">Privacy e newsletter</h2>
+                  <p className="admin-users-panel__sub">
+                    Timestamp accettazione privacy e stato comunicazioni
+                  </p>
+                </div>
+                <span
+                  className={
+                    detail?.newsletterConsent
+                      ? 'admin-users__status admin-users__status--active'
+                      : 'admin-users__status admin-users__status--neutral'
+                  }
+                >
+                  {newsletterLabel}
+                </span>
+              </div>
+              <div className="admin-users-form">
+                <div className="admin-users-field">
+                  <label>Privacy accettata</label>
+                  <input readOnly value={detail?.privacyAccepted ? 'Sì' : 'No'} />
+                </div>
+                <div className="admin-users-field">
+                  <label>Privacy accettata il</label>
+                  <input readOnly value={privacyAt} />
+                </div>
+                <div className="admin-users-field">
+                  <label>Newsletter / comunicazioni</label>
+                  <input readOnly value={newsletterLabel} />
+                </div>
+                <div className="admin-users-field">
+                  <label>Versione policy</label>
+                  <input readOnly value={detail?.consentVersion ?? '—'} />
+                </div>
+                <div className="admin-users-field">
+                  <label>Termini</label>
+                  <input readOnly value={detail?.consents?.termini ? 'Accettati' : '—'} />
+                </div>
+                <div className="admin-users-field">
+                  <label>Profilazione</label>
+                  <input
+                    readOnly
+                    value={detail?.consents?.profilazione ? 'Consentita' : 'Non consentita'}
+                  />
+                </div>
+              </div>
+              {(detail?.consentHistory?.length ?? 0) > 0 ? (
+                <ul className="admin-users-activity" aria-label="Storico consensi">
+                  {detail!.consentHistory!.map((entry, i) => (
+                    <li key={`${entry.recordedAt ?? i}`} className="admin-users-activity__item">
+                      <span className="admin-users-activity__label">
+                        v{entry.version ?? '—'} · privacy {entry.privacy ? 'ok' : 'no'} · newsletter{' '}
+                        {entry.comunicazioni ? 'sì' : 'no'}
+                      </span>
+                      <span className="admin-users-activity__date">
+                        {entry.recordedAt ? formatAdminUserDateTime(entry.recordedAt) : '—'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="admin-users-panel__cta"
+                  disabled={actionLoading}
+                  onClick={onResendConsents}
+                >
+                  {actionLoading ? '…' : 'Reinvia consensi'}
+                </button>
+              </div>
+            </section>
+          ) : null}
+
           {tab === 'abbonamento' ? (
             <section className="admin-users-panel">
               <div className="admin-users-panel__head">
@@ -696,6 +780,10 @@ export function AdminUsersSection() {
             if (!confirmDelete(adminUsers.detail.name, adminUsers.detail.email)) return
             void adminUsers.remove(adminUsers.detail.id)
           }}
+          onResendConsents={() => {
+            if (!adminUsers.detailTargetId) return
+            void adminUsers.resendConsents(adminUsers.detailTargetId)
+          }}
         />
       </div>
     )
@@ -758,6 +846,14 @@ export function AdminUsersSection() {
             onClick={() => exportUsersCsv(visibleUsers)}
           >
             Esporta CSV →
+          </button>
+          <button
+            type="button"
+            className="admin-users__ghost-cta"
+            onClick={() => void adminUsers.exportNewsletter()}
+            title="Scarica iscritti newsletter (comunicazioni = sì)"
+          >
+            Newsletter CSV →
           </button>
           <button
             type="button"
@@ -871,6 +967,8 @@ export function AdminUsersSection() {
               <th>Status</th>
               <th>Abbonamento</th>
               <th>Visibilità</th>
+              <th>Privacy</th>
+              <th>Newsletter</th>
               <th>Iscritto</th>
               <th aria-label="Azioni" />
             </tr>
@@ -878,7 +976,7 @@ export function AdminUsersSection() {
           <tbody>
             {visibleUsers.length === 0 ? (
               <tr>
-                <td colSpan={8} className="admin-users__empty">
+                <td colSpan={10} className="admin-users__empty">
                   Nessun utente corrisponde ai filtri selezionati.
                 </td>
               </tr>
@@ -938,6 +1036,36 @@ export function AdminUsersSection() {
                     <td>
                       <span className={visibilityClass(u.profileVisible)}>
                         {visibilityLabel(u.profileVisible)}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="admin-users__sub-cell"
+                        title="Apri Privacy"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          adminUsers.openDetail(u.id, { tab: 'privacy' })
+                        }}
+                      >
+                        <span className="admin-users__date">
+                          {u.privacyAcceptedAt
+                            ? formatAdminUserDate(u.privacyAcceptedAt)
+                            : u.privacyAccepted
+                              ? 'Sì'
+                              : '—'}
+                        </span>
+                      </button>
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          u.newsletterConsent
+                            ? 'admin-users__status admin-users__status--active'
+                            : 'admin-users__status admin-users__status--neutral'
+                        }
+                      >
+                        {u.newsletterConsent ? 'Sì' : 'No'}
                       </span>
                     </td>
                     <td className="admin-users__date">{formatAdminUserDate(u.registeredAt)}</td>

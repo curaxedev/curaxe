@@ -41,12 +41,11 @@ import {
   IconUpload,
   IconUsers,
 } from '../../../components/icons/DashboardIcons'
-import { AccountSettingsSection } from '../AccountSettingsSection'
 import { DashboardLayout } from '../DashboardLayout'
 import { getAdminOverview, type AdminOverviewPayload } from '../../../lib/adminOverviewApi'
 import { getApiBaseUrl } from '../../../lib/runtimeConfig'
 import { httpGetBlob } from '../../../lib/http'
-import { AdminSecuritySection } from './AdminSecuritySection'
+import { AdminAccountSection } from './AdminAccountSection'
 import { AdminSubscriptionsSection } from './AdminSubscriptionsSection'
 import { AdminUsersSection } from './AdminUsersSection'
 import './admin-dashboard-home.css'
@@ -683,35 +682,42 @@ function SectionJobModeration() {
   }
 
   return (
-    <div className="dash-admin-moderation">
+    <div className="admin-queue">
       <VerifyToast message={mod.toast ?? ''} visible={Boolean(mod.toast)} />
 
-      <div className="dash-section-header">
+      <div className="admin-queue__crumb">
+        <span>Admin</span>
+        <span className="admin-queue__crumb-sep">›</span>
+        <strong>Moderazione</strong>
+      </div>
+
+      <div className="admin-queue__head">
         <div>
-          <h2 className="dash-section__title">Moderazione annunci B2B</h2>
-          <p className="dash-section__subtitle">
-            {mod.pending.length} annunci in attesa di approvazione
-          </p>
+          <h1 className="admin-queue__title">Moderazione</h1>
+          <p className="admin-queue__count">{mod.pending.length} annunci B2B in coda</p>
+        </div>
+        <div className="admin-queue__pills">
+          <span className="admin-queue__pill">{mod.pending.length} pending</span>
         </div>
       </div>
 
       {mod.actionError && !mod.rejectTarget ? (
-        <div className="dash-profile-preview dash-profile-preview--alert" role="alert">
-          {mod.actionError}
-          <button type="button" className="dash-btn dash-btn--ghost dash-profile-preview__action" onClick={mod.clearActionError}>
+        <div className="admin-users__alert" role="alert">
+          <span>{mod.actionError}</span>
+          <button type="button" className="dash-btn dash-btn--ghost" onClick={mod.clearActionError}>
             Chiudi
           </button>
         </div>
       ) : null}
 
       {mod.pending.length === 0 ? (
-        <div className="dash-profile-preview dash-profile-preview--success">
+        <div className="admin-queue__empty admin-queue__empty--ok">
           <IconCheck size={16} />
           Nessun annuncio in coda di moderazione.
         </div>
       ) : (
-        <div className="dash-table-wrap">
-          <table className="dash-table">
+        <div className="admin-queue__table-wrap">
+          <table className="admin-queue__table">
             <thead>
               <tr>
                 <th>Annuncio</th>
@@ -719,7 +725,7 @@ function SectionJobModeration() {
                 <th>Tipo</th>
                 <th>Sede</th>
                 <th>Inviato</th>
-                <th>Azioni</th>
+                <th aria-label="Azioni" />
               </tr>
             </thead>
             <tbody>
@@ -727,13 +733,15 @@ function SectionJobModeration() {
                 const busy = mod.actionLoadingId === item.id
                 return (
                   <tr key={item.id}>
-                    <td style={{ fontWeight: 600 }}>{item.title}</td>
+                    <td>
+                      <div className="admin-queue__name">{item.title}</div>
+                    </td>
                     <td>{item.ownerDisplayName}</td>
                     <td>{ADMIN_JOB_OWNER_TYPE_LABELS[item.ownerType]}</td>
                     <td>{item.locationLabel}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatAdminJobModerationDate(item.submittedAt)}</td>
+                    <td className="admin-users__date">{formatAdminJobModerationDate(item.submittedAt)}</td>
                     <td>
-                      <div className="dash-table__actions">
+                      <div className="admin-queue__actions">
                         <button
                           type="button"
                           className="dash-btn dash-btn--sage"
@@ -807,90 +815,117 @@ function SectionVerify() {
   }
 
   return (
-    <div className="dash-admin-verify">
+    <div className="admin-queue">
       <VerifyToast message={kyc.toast ?? ''} visible={Boolean(kyc.toast)} />
 
-      <div className="dash-section-header">
+      <div className="admin-queue__crumb">
+        <span>Admin</span>
+        <span className="admin-queue__crumb-sep">›</span>
+        <strong>Verifica</strong>
+      </div>
+
+      <div className="admin-queue__head">
         <div>
-          <h2 className="dash-section__title">Verifica profili</h2>
-          <p className="dash-section__subtitle">{kyc.pending.length} profili in attesa di verifica</p>
+          <h1 className="admin-queue__title">Verifica</h1>
+          <p className="admin-queue__count">{kyc.pending.length} profili KYC in coda</p>
+        </div>
+        <div className="admin-queue__pills">
+          <span className="admin-queue__pill">{kyc.pending.length} pending</span>
+          <span className="admin-queue__pill admin-queue__pill--muted">Documenti</span>
         </div>
       </div>
 
       {kyc.actionError && !kyc.rejectTargetId ? (
-        <div className="dash-profile-preview dash-profile-preview--alert" role="alert">
-          {kyc.actionError}
-          <button type="button" className="dash-btn dash-btn--ghost dash-profile-preview__action" onClick={kyc.clearActionError}>
+        <div className="admin-users__alert" role="alert">
+          <span>{kyc.actionError}</span>
+          <button type="button" className="dash-btn dash-btn--ghost" onClick={kyc.clearActionError}>
             Chiudi
           </button>
         </div>
       ) : null}
 
       {kyc.pending.length === 0 ? (
-        <div className="dash-profile-preview dash-profile-preview--success">
+        <div className="admin-queue__empty admin-queue__empty--ok">
           <IconCheck size={16} />
-          Nessun profilo in attesa di verifica. Ottimo lavoro!
+          Nessun profilo in attesa di verifica.
         </div>
-      ) : null}
-
-      <div className="dash-verify-list">
-      {kyc.pending.map((p) => {
-        const busy = kyc.actionLoadingId === p.id
-        return (
-          <div key={p.id} className="dash-verify-card">
-            <div className="dash-verify-card__avatar">{p.initials}</div>
-            <div className="dash-verify-card__info">
-              <div className="dash-verify-card__name">
-                {p.name}
-                <Link
-                  to={profileDetailPath(p.professionalId)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ marginLeft: 8, fontSize: 'var(--text-xs)', fontWeight: 500 }}
-                >
-                  Vedi profilo
-                </Link>
-              </div>
-              <div className="dash-verify-card__meta">
-                {p.category} · Richiesta il {formatAdminKycDate(p.submittedAt)}
-              </div>
-              <div className="dash-verify-card__docs">
-                Documenti: {formatAdminKycDocumentsSummary(p.documents)}
-              </div>
-            </div>
-            <div className="dash-verify-card__actions">
-              <button
-                type="button"
-                className="dash-btn dash-btn--ghost"
-                onClick={() => kyc.openDocuments(p)}
-                disabled={busy}
-              >
-                Vedi documenti
-              </button>
-              <button
-                type="button"
-                className="dash-btn dash-btn--sage"
-                onClick={() => void kyc.approve(p.id)}
-                disabled={busy}
-              >
-                {busy ? '…' : 'Approva'}
-              </button>
-              <button type="button" className="dash-btn dash-btn--ghost" disabled title="Disponibile in un prossimo sprint">
-                Richiedi info
-              </button>
-              <button
-                type="button"
-                className="dash-btn dash-btn--danger"
-                onClick={() => kyc.openReject(p.id)}
-                disabled={busy}
-              >
-                Rifiuta
-              </button>
-            </div>
-          </div>
-        )
-      })}
-      </div>
+      ) : (
+        <div className="admin-queue__table-wrap">
+          <table className="admin-queue__table">
+            <thead>
+              <tr>
+                <th>Profilo</th>
+                <th>Categoria</th>
+                <th>Documenti</th>
+                <th>Richiesta</th>
+                <th aria-label="Azioni" />
+              </tr>
+            </thead>
+            <tbody>
+              {kyc.pending.map((p) => {
+                const busy = kyc.actionLoadingId === p.id
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <div className="admin-queue__guest">
+                        <div className="admin-queue__avatar" aria-hidden>
+                          {p.initials}
+                        </div>
+                        <div>
+                          <div className="admin-queue__name">{p.name}</div>
+                          <Link
+                            className="admin-queue__meta"
+                            to={profileDetailPath(p.professionalId)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Vedi profilo →
+                          </Link>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{p.category}</td>
+                    <td>
+                      <span className="admin-queue__meta">
+                        {formatAdminKycDocumentsSummary(p.documents)}
+                      </span>
+                    </td>
+                    <td className="admin-users__date">{formatAdminKycDate(p.submittedAt)}</td>
+                    <td>
+                      <div className="admin-queue__actions">
+                        <button
+                          type="button"
+                          className="dash-btn dash-btn--ghost"
+                          onClick={() => kyc.openDocuments(p)}
+                          disabled={busy}
+                        >
+                          Documenti
+                        </button>
+                        <button
+                          type="button"
+                          className="dash-btn dash-btn--sage"
+                          onClick={() => void kyc.approve(p.id)}
+                          disabled={busy}
+                        >
+                          {busy ? '…' : 'Approva'}
+                        </button>
+                        <button
+                          type="button"
+                          className="dash-btn dash-btn--danger"
+                          onClick={() => kyc.openReject(p.id)}
+                          disabled={busy}
+                        >
+                          Rifiuta
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {kyc.documentsTarget ? (
         <KycDocumentsModal item={kyc.documentsTarget} onClose={kyc.closeDocuments} />
@@ -1309,12 +1344,7 @@ export function AdminDashboard() {
       case 'verifica':      return <SectionVerify />
       case 'moderazione':   return <SectionJobModeration />
       case 'impostazioni':  return <SectionSettings onGoToPlans={() => setActiveSection('abbonamenti')} />
-      case 'account':       return (
-        <div className="dash-admin-account">
-          <AccountSettingsSection title="Il mio account" subtitle="Email, password e notifiche personali" />
-          <AdminSecuritySection />
-        </div>
-      )
+      case 'account':       return <AdminAccountSection />
       default:              return null
     }
   }

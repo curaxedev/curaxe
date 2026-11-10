@@ -2511,3 +2511,386 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Admin Account (WineOS boxes) ───────────────────────────── */
+.admin-account {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 1280px;
+}
+
+.admin-account__crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+
+.admin-account__crumb-sep { opacity: 0.45; }
+.admin-account__crumb strong { color: var(--color-text); font-weight: 700; }
+
+.admin-account__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.admin-account__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.7rem, 2.4vw, 2.15rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: var(--color-text);
+}
+
+.admin-account__sub {
+  margin: 6px 0 0;
+  max-width: 52ch;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.admin-account__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.admin-account-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.admin-account-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-border) 28%, #fff);
+}
+
+.admin-account-panel__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.admin-account-panel__sub {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.admin-account-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--color-border) 55%, #fff);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.admin-account-panel__badge--lock {
+  background: color-mix(in srgb, #c44b4b 12%, #fff);
+  color: #8f3434;
+}
+
+.admin-account-panel__body {
+  padding: 14px 16px 18px;
+}
+
+.admin-account-panel__body--settings .dash-section-header {
+  display: none;
+}
+
+.admin-account-panel__body--settings .dash-settings-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.admin-account-panel__body--settings .dash-settings-card {
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.admin-account-panel__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-primary) 6%, #fff);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.admin-account-panel__body .dash-admin-security {
+  margin-top: 0;
+  max-width: none;
+}
+
+.admin-account-panel__body .dash-admin-security__hero {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .admin-account__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Billing invoices + trial/paid ──────────────────────────── */
+.admin-billing__status-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.admin-billing__kind {
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+
+.admin-billing__invoices {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-billing__invoices-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.admin-billing__invoices-head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.admin-billing__invoices-head span,
+.admin-billing__invoices-empty {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.admin-billing__invoice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-billing__invoice-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-border) 22%, #fff);
+}
+
+.admin-billing__invoice-item strong {
+  display: block;
+  font-size: 0.84rem;
+}
+
+.admin-billing__invoice-item span {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.admin-billing__invoice-amt {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+
+/* ── Admin queues (Verifica / Moderazione) ──────────────────── */
+.admin-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 1280px;
+}
+
+.admin-queue__crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+
+.admin-queue__crumb-sep { opacity: 0.45; }
+.admin-queue__crumb strong { color: var(--color-text); }
+
+.admin-queue__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-queue__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.55rem, 2.2vw, 1.95rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+.admin-queue__count {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.admin-queue__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-queue__pill {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  font-weight: 650;
+  background: #1c1c1c;
+  color: #fff;
+}
+
+.admin-queue__pill--muted {
+  background: color-mix(in srgb, var(--color-border) 55%, #fff);
+  color: var(--color-text);
+}
+
+.admin-queue__table-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  overflow: auto;
+}
+
+.admin-queue__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.admin-queue__table th {
+  text-align: left;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-border) 35%, #fff);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-queue__table td {
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  vertical-align: middle;
+}
+
+.admin-queue__guest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-queue__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color-primary) 12%, #fff);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.admin-queue__name {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.admin-queue__meta {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.admin-queue__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.admin-queue__empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.admin-queue__empty--ok {
+  border: 1px solid color-mix(in srgb, var(--color-sage, #5a8f7b) 30%, var(--color-border));
+  background: color-mix(in srgb, var(--color-sage, #5a8f7b) 10%, #fff);
+  border-radius: 14px;
+  color: color-mix(in srgb, var(--color-sage, #5a8f7b) 80%, #000);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+}

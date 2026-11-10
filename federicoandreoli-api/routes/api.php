@@ -164,6 +164,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware('role:platform_admin')->group(function (): void {
             Route::get('/admin/billing/subscriptions', [BillingController::class, 'adminSubscriptions']);
+            Route::get('/admin/billing/subscriptions/{id}/invoices', [BillingController::class, 'adminSubscriptionInvoices']);
             Route::get('/admin/billing/stats', [BillingController::class, 'adminStats']);
             Route::get('/admin/billing/settings', [AdminBillingController::class, 'settings']);
             Route::put('/admin/billing/settings', [AdminBillingController::class, 'updateSettings']);
@@ -200,10 +201,13 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('/admin/passkeys/{id}', [AdminPasskeyController::class, 'rename']);
             Route::delete('/admin/passkeys/{id}', [AdminPasskeyController::class, 'destroy']);
             Route::get('/admin/users', [AdminController::class, 'users']);
+            Route::get('/admin/users/newsletter-export', [AdminController::class, 'exportNewsletterSubscribers']);
             Route::get('/admin/users/{id}', [AdminController::class, 'showUser']);
             Route::post('/admin/users/{id}/suspend', [AdminController::class, 'suspendUser'])
                 ->middleware('step_up:users.mutate');
             Route::post('/admin/users/{id}/reactivate', [AdminController::class, 'reactivateUser'])
+                ->middleware('step_up:users.mutate');
+            Route::post('/admin/users/{id}/resend-consents', [AdminController::class, 'resendConsents'])
                 ->middleware('step_up:users.mutate');
             Route::delete('/admin/users/{id}', [AdminController::class, 'destroyUser'])
                 ->middleware('step_up:users.mutate');

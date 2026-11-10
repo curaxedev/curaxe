@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domains\Auth\Enums\UserRole;
 use App\Models\BillingSetting;
 use App\Models\Subscription;
+use App\Models\User;
 use App\Services\Platform\FeatureGate;
 use App\Services\Stripe\SubscriptionBillingService;
 use App\Support\ApiResponse;
@@ -161,6 +162,40 @@ class BillingController
             ]);
 
         return response()->json($rows);
+    }
+
+    public function adminSubscriptionInvoices(Request $request, int $id): JsonResponse
+    {
+        if ($request->user()->role !== UserRole::PlatformAdmin) {
+            return ApiResponse::error('Non autorizzato.', 403, [], 'forbidden');
+        }
+
+        $sub = Subscription::query()->find($id);
+        if ($sub === null) {
+            return ApiResponse::error('Abbonamento non trovato.', 404, [], 'not_found');
+        }
+
+        /** @var User|null $user */
+        $user = User::query()->find($sub->user_id);
+        if ($user === null) {
+            return ApiResponse::error('Utente abbonamento non trovato.', 404, [], 'not_found');
+        }
+
+        try {
+            $invoices = $this->billing->listInvoices($user);
+        } catch (\RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), 503, [], 'not_configured');
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Impossibile caricare le fatture.', 502, [], 'stripe_error');
+        }
+
+        return response()->json([
+            'subscriptionId' => (string) $sub->id,
+            'userId' => (string) $user->id,
+            'billingKind' => $sub->status === 'trialing' ? 'trial' : 'paid',
+            'rawStatus' => $sub->status,
+            'invoices' => $invoices,
+        ]);
     }
 
     public function adminStats(Request $request): JsonResponse

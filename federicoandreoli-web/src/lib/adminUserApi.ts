@@ -16,7 +16,7 @@ import {
   formatAdminUserDateTime,
 } from '../services/adminUserService'
 import { withAdminStepUp } from './adminSecurityApi'
-import { HttpError, httpDelete, httpGet, httpPost } from './http'
+import { HttpError, httpDelete, httpGet, httpGetBlob, httpPost } from './http'
 import { isMockApiEnabled } from './runtimeConfig'
 
 export type {
@@ -36,6 +36,17 @@ export {
   formatAdminUserDateTime,
 }
 
+type AdminUserConsentApi = {
+  privacy?: boolean
+  termini?: boolean
+  maggiorenne?: boolean
+  comunicazioni?: boolean
+  profilazione?: boolean
+  version?: string | null
+  recordedAt?: string | null
+  source?: string | null
+}
+
 type AdminUserApiRow = {
   id: string
   name: string
@@ -51,6 +62,12 @@ type AdminUserApiRow = {
   trialEndsAt?: string | null
   subscriptionPeriodEnd?: string | null
   cancelAtPeriodEnd?: boolean
+  privacyAccepted?: boolean
+  privacyAcceptedAt?: string | null
+  newsletterConsent?: boolean
+  consentVersion?: string | null
+  consents?: AdminUserConsentApi | null
+  consentHistory?: AdminUserConsentApi[]
   activity?: Array<{ id: string; action: string; at?: string }>
   kycDocuments?: Array<{ id: string; type: string; label: string; status: string }>
 }
@@ -89,6 +106,20 @@ function initialsFrom(name: string): string {
   return (parts[0] ?? 'U').slice(0, 2).toUpperCase()
 }
 
+function mapConsent(c?: AdminUserConsentApi | null) {
+  if (!c) return null
+  return {
+    privacy: Boolean(c.privacy),
+    termini: Boolean(c.termini),
+    maggiorenne: Boolean(c.maggiorenne),
+    comunicazioni: Boolean(c.comunicazioni),
+    profilazione: Boolean(c.profilazione),
+    version: c.version ?? null,
+    recordedAt: c.recordedAt ?? null,
+    source: c.source ?? null,
+  }
+}
+
 function mapListItem(row: AdminUserApiRow): AdminUserListItem {
   return {
     id: row.id,
@@ -111,6 +142,10 @@ function mapListItem(row: AdminUserApiRow): AdminUserListItem {
     trialEndsAt: row.trialEndsAt ?? null,
     subscriptionPeriodEnd: row.subscriptionPeriodEnd ?? null,
     cancelAtPeriodEnd: Boolean(row.cancelAtPeriodEnd),
+    privacyAccepted: Boolean(row.privacyAccepted ?? row.consents?.privacy),
+    privacyAcceptedAt: row.privacyAcceptedAt ?? row.consents?.recordedAt ?? null,
+    newsletterConsent: Boolean(row.newsletterConsent ?? row.consents?.comunicazioni),
+    consentVersion: row.consentVersion ?? row.consents?.version ?? null,
   }
 }
 
@@ -133,6 +168,8 @@ export async function getAdminUserDetail(
     const row = await httpGet<AdminUserApiRow>(`/api/v1/admin/users/${userId}`)
     return {
       ...mapListItem(row),
+      consents: mapConsent(row.consents),
+      consentHistory: (row.consentHistory ?? []).map((c) => mapConsent(c)!).filter(Boolean),
       activity: (row.activity ?? []).map((a) => ({
         id: a.id,
         type: 'profile_update' as const,
@@ -153,6 +190,76 @@ export async function getAdminUserDetail(
     }
   } catch (err) {
     throw toAdminError(err, 'Impossibile caricare il dettaglio utente.')
+  }
+}
+
+export async function exportAdminNewsletterCsv(): Promise<void> {
+  if (isMockApiEnabled()) {
+    const users = await fetchAdminUsers()
+    const headers = [
+      'user_id',
+      'name',
+      'email',
+      'role',
+      'privacy_accepted_at',
+      'newsletter',
+      'consent_version',
+      'registered_at',
+    ]
+    const lines = users
+      .filter((u) => u.newsletterConsent)
+      .map((u) =>
+        [
+          u.id,
+          u.name,
+          u.email,
+          u.role,
+          u.privacyAcceptedAt ?? '',
+          'yes',
+          u.consentVersion ?? '',
+          u.registeredAt,
+        ]
+          .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+          .join(','),
+      )
+    const blob = new Blob([[headers.join(','), ...lines].join('\n') + '\n'], {
+      type: 'text/csv;charset=utf-8',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `newsletter-subscribers-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    return
+  }
+  try {
+    const blob = await httpGetBlob('/api/v1/admin/users/newsletter-export')
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `newsletter-subscribers-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    throw toAdminError(err, 'Esportazione newsletter non riuscita.')
+  }
+}
+
+export async function postAdminUserResendConsents(
+  userId: string,
+): Promise<{ ok: boolean; sentTo: string }> {
+  if (isMockApiEnabled()) {
+    return { ok: true, sentTo: 'mock@example.it' }
+  }
+  try {
+    return await withAdminStepUp('users.mutate', (token) =>
+      httpPost<{ ok: boolean; sentTo: string }>(`/api/v1/admin/users/${userId}/resend-consents`, {
+        headers: token ? { 'X-Step-Up-Token': token } : undefined,
+      }),
+    )
+  } catch (err) {
+    throw toAdminError(err, 'Invio consensi non riuscito.')
   }
 }
 

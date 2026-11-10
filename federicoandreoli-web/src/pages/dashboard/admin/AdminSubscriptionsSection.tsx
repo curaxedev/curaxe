@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAdminBilling } from '../../../hooks/useAdminBilling'
-import type { AdminSubscriptionRow, AdminSubscriptionStatus } from '../../../lib/billingTypes'
+import { getAdminSubscriptionInvoices } from '../../../lib/billingApi'
+import type {
+  AdminSubscriptionRow,
+  AdminSubscriptionStatus,
+  BillingInvoice,
+} from '../../../lib/billingTypes'
 import {
   deleteAdminSubscriptionPermanent,
   getAdminBillingSettings,
@@ -92,6 +97,9 @@ export function AdminSubscriptionsSection() {
     synced: 0,
   })
   const [showStripeSetup, setShowStripeSetup] = useState(false)
+  const [invoices, setInvoices] = useState<BillingInvoice[]>([])
+  const [invoicesLoading, setInvoicesLoading] = useState(false)
+  const [invoicesError, setInvoicesError] = useState<string | null>(null)
 
   const { subscriptions, stats, loading, error, reload } = useAdminBilling(showTrash)
 
@@ -115,6 +123,33 @@ export function AdminSubscriptionsSection() {
     const t = window.setTimeout(() => setToast(null), 2800)
     return () => window.clearTimeout(t)
   }, [toast])
+
+  useEffect(() => {
+    if (!selectedId || showTrash) {
+      setInvoices([])
+      setInvoicesError(null)
+      return
+    }
+    let cancelled = false
+    setInvoicesLoading(true)
+    setInvoicesError(null)
+    void getAdminSubscriptionInvoices(selectedId)
+      .then((data) => {
+        if (cancelled) return
+        setInvoices(data.invoices)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setInvoices([])
+        setInvoicesError(err instanceof Error ? err.message : 'Fatture non disponibili.')
+      })
+      .finally(() => {
+        if (!cancelled) setInvoicesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedId, showTrash])
 
   const counts = useMemo(() => {
     const active = subscriptions.filter((s) => s.status === 'active').length
@@ -378,7 +413,15 @@ export function AdminSubscriptionsSection() {
                         {s.cancelAtPeriodEnd ? 'Fine periodo' : 'Automatico'}
                       </td>
                       <td>
-                        <span className={st.className}>{st.label}</span>
+                        <div className="admin-billing__status-stack">
+                          <span className={st.className}>{st.label}</span>
+                          <span className="admin-billing__kind">
+                            {(s.billingKind ?? (s.rawStatus === 'trialing' ? 'trial' : 'paid')) ===
+                            'trial'
+                              ? 'Prova'
+                              : 'Pagato'}
+                          </span>
+                        </div>
                       </td>
                       <td className="admin-billing__date">
                         {formatPeriodDate(s.currentPeriodEnd ?? s.renewal)}
@@ -472,17 +515,26 @@ export function AdminSubscriptionsSection() {
                 <strong>{statusMeta(selected.status).label}</strong>
               </div>
               <div>
+                <span className="admin-billing__metric-label">Tipo billing</span>
+                <strong>
+                  {(selected.billingKind ??
+                    (selected.rawStatus === 'trialing' ? 'trial' : 'paid')) === 'trial'
+                    ? 'In prova'
+                    : 'A pagamento'}
+                </strong>
+              </div>
+              <div>
                 <span className="admin-billing__metric-label">Periodo</span>
                 <strong>{formatPeriodDate(selected.currentPeriodEnd ?? selected.renewal)}</strong>
               </div>
               <div>
-                <span className="admin-billing__metric-label">Prova</span>
+                <span className="admin-billing__metric-label">Prova fino al</span>
                 <strong>
                   {selected.trialEndsAt ? formatPeriodDate(selected.trialEndsAt) : '—'}
                 </strong>
               </div>
               <div>
-                <span className="admin-billing__metric-label">Billing</span>
+                <span className="admin-billing__metric-label">Raw Stripe</span>
                 <strong>{selected.rawStatus ?? selected.status}</strong>
               </div>
             </div>
@@ -530,6 +582,48 @@ export function AdminSubscriptionsSection() {
                 </button>
               </div>
             ) : null}
+
+            <div className="admin-billing__invoices">
+              <div className="admin-billing__invoices-head">
+                <h3>Fatture Stripe</h3>
+                {invoicesLoading ? <span>Caricamento…</span> : null}
+              </div>
+              {invoicesError ? (
+                <p className="admin-billing__invoices-empty">{invoicesError}</p>
+              ) : invoices.length === 0 && !invoicesLoading ? (
+                <p className="admin-billing__invoices-empty">Nessuna fattura disponibile.</p>
+              ) : (
+                <ul className="admin-billing__invoice-list">
+                  {invoices.map((inv) => (
+                    <li key={inv.id} className="admin-billing__invoice-item">
+                      <div>
+                        <strong>{inv.number ?? inv.id}</strong>
+                        <span>
+                          {inv.createdAt ? formatPeriodDate(inv.createdAt) : '—'} ·{' '}
+                          {inv.status ?? '—'}
+                        </span>
+                      </div>
+                      <div className="admin-billing__invoice-amt">
+                        {(inv.amountPaid / 100).toLocaleString('it-IT', {
+                          style: 'currency',
+                          currency: (inv.currency || 'eur').toUpperCase(),
+                        })}
+                      </div>
+                      {inv.hostedInvoiceUrl ? (
+                        <a
+                          className="admin-billing__ghost-link"
+                          href={inv.hostedInvoiceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Apri
+                        </a>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </section>
         ) : null}
       </div>

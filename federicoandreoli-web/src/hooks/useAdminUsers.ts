@@ -5,7 +5,9 @@ import {
   getAdminUserDetail,
   getAdminUsers,
   deleteAdminUser,
+  exportAdminNewsletterCsv,
   postAdminUserReactivate,
+  postAdminUserResendConsents,
   postAdminUserSuspend,
 } from '../lib/adminUserApi'
 import type {
@@ -38,7 +40,7 @@ export function useAdminUsers() {
 
   const [detailTargetId, setDetailTargetId] = useState<string | null>(null)
   const [detailInitialTab, setDetailInitialTab] = useState<
-    'profilo' | 'sicurezza' | 'abbonamento' | 'kyc' | 'attivita'
+    'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'kyc' | 'attivita'
   >('profilo')
   const [detail, setDetail] = useState<AdminUserDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -98,7 +100,9 @@ export function useAdminUsers() {
   const openDetail = useCallback(
     (
       userId: string,
-      opts?: { tab?: 'profilo' | 'sicurezza' | 'abbonamento' | 'kyc' | 'attivita' },
+      opts?: {
+        tab?: 'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'kyc' | 'attivita'
+      },
     ) => {
       setDetailInitialTab(opts?.tab ?? 'profilo')
       setDetailTargetId(userId)
@@ -217,6 +221,36 @@ export function useAdminUsers() {
     setActionError(null)
   }, [])
 
+  const exportNewsletter = useCallback(async (): Promise<boolean> => {
+    setActionError(null)
+    try {
+      await exportAdminNewsletterCsv()
+      showToast('CSV newsletter scaricato.')
+      return true
+    } catch (err) {
+      setActionError(userErrorMessage(err, 'Esportazione newsletter non riuscita.'))
+      return false
+    }
+  }, [showToast])
+
+  const resendConsents = useCallback(
+    async (userId: string): Promise<boolean> => {
+      setActionLoadingId(userId)
+      setActionError(null)
+      try {
+        const result = await postAdminUserResendConsents(userId)
+        showToast(`Consensi reinviati a ${result.sentTo}.`)
+        return true
+      } catch (err) {
+        setActionError(userErrorMessage(err, 'Invio consensi non riuscito.'))
+        return false
+      } finally {
+        setActionLoadingId(null)
+      }
+    },
+    [showToast],
+  )
+
   return {
     users,
     filteredUsers,
@@ -243,6 +277,8 @@ export function useAdminUsers() {
     reactivate,
     toggleStatus,
     remove,
+    exportNewsletter,
+    resendConsents,
     clearActionError,
   }
 }

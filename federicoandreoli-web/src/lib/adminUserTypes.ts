@@ -44,6 +44,21 @@ export type AdminUserRecord = {
   trialEndsAt?: string | null
   subscriptionPeriodEnd?: string | null
   cancelAtPeriodEnd?: boolean
+  privacyAccepted?: boolean
+  privacyAcceptedAt?: string | null
+  newsletterConsent?: boolean
+  consentVersion?: string | null
+}
+
+export type AdminUserConsentSnapshot = {
+  privacy: boolean
+  termini: boolean
+  maggiorenne: boolean
+  comunicazioni: boolean
+  profilazione: boolean
+  version: string | null
+  recordedAt: string | null
+  source: string | null
 }
 
 export type AdminUserListItem = Pick<
@@ -63,11 +78,17 @@ export type AdminUserListItem = Pick<
   | 'trialEndsAt'
   | 'subscriptionPeriodEnd'
   | 'cancelAtPeriodEnd'
+  | 'privacyAccepted'
+  | 'privacyAcceptedAt'
+  | 'newsletterConsent'
+  | 'consentVersion'
 >
 
 export type AdminUserDetail = AdminUserRecord & {
   activity: AdminUserActivityEntry[]
   kycDocuments: AdminKycDocument[]
+  consents?: AdminUserConsentSnapshot | null
+  consentHistory?: AdminUserConsentSnapshot[]
 }
 
 export type AdminUserStore = {

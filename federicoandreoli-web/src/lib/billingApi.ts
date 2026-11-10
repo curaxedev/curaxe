@@ -229,6 +229,7 @@ export async function getAdminBillingSubscriptions(
             ? 'active'
             : 'failed',
         rawStatus: r.status,
+        billingKind: r.status === 'trialing' ? 'trial' : 'paid',
         currentPeriodEnd: periodEnd,
         trialEndsAt: r.trialEndsAt ?? null,
         cancelAtPeriodEnd: Boolean(r.cancelAtPeriodEnd),
@@ -238,6 +239,41 @@ export async function getAdminBillingSubscriptions(
     })
   } catch (err) {
     throw toBillingError(err, 'Impossibile caricare gli abbonamenti admin.')
+  }
+}
+
+export async function getAdminSubscriptionInvoices(
+  subscriptionId: string,
+): Promise<{ billingKind: 'trial' | 'paid'; invoices: BillingInvoice[] }> {
+  if (isMockApiEnabled()) {
+    return {
+      billingKind: 'paid',
+      invoices: [
+        {
+          id: 'inv_mock_1',
+          number: 'CURAXE-1001',
+          status: 'paid',
+          amountDue: 1990,
+          amountPaid: 1990,
+          currency: 'eur',
+          createdAt: new Date().toISOString(),
+          hostedInvoiceUrl: null,
+          invoicePdf: null,
+        },
+      ],
+    }
+  }
+  try {
+    const raw = await httpGet<{
+      billingKind?: 'trial' | 'paid'
+      invoices?: BillingInvoice[]
+    }>(`/api/v1/admin/billing/subscriptions/${subscriptionId}/invoices`)
+    return {
+      billingKind: raw.billingKind === 'trial' ? 'trial' : 'paid',
+      invoices: Array.isArray(raw.invoices) ? raw.invoices : [],
+    }
+  } catch (err) {
+    throw toBillingError(err, 'Impossibile caricare le fatture admin.')
   }
 }
 

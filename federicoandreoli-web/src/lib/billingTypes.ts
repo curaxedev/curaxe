@@ -110,6 +110,8 @@ export type AdminSubscriptionRow = {
   renewal: string
   status: AdminSubscriptionStatus
   rawStatus?: string | null
+  /** trial | paid derived from Stripe/raw status */
+  billingKind?: 'trial' | 'paid'
   currentPeriodEnd?: string | null
   trialEndsAt?: string | null
   cancelAtPeriodEnd?: boolean

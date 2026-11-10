@@ -56,11 +56,14 @@ function SettingsSkeleton() {
 type AccountSettingsSectionProps = {
   title?: string
   subtitle?: string
+  /** Nasconde il titolo sezione (utile quando wrappato in un panel WineOS). */
+  hideHeader?: boolean
 }
 
 export function AccountSettingsSection({
   title = 'Impostazioni account',
   subtitle = 'Email, password, preferenze e diritti GDPR',
+  hideHeader = false,
 }: AccountSettingsSectionProps) {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
@@ -200,13 +203,15 @@ export function AccountSettingsSection({
   }
 
   return (
-    <div>
-      <div className="dash-section-header">
-        <div>
-          <h1 className="dash-section-title">{title}</h1>
-          <p className="dash-section-sub">{subtitle}</p>
+    <div className={hideHeader ? 'dash-account-settings dash-account-settings--embedded' : 'dash-account-settings'}>
+      {hideHeader ? null : (
+        <div className="dash-section-header">
+          <div>
+            <h1 className="dash-section-title">{title}</h1>
+            <p className="dash-section-sub">{subtitle}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {error && (
         <div className="dash-card" role="alert" style={{ marginBottom: 'var(--space-4)', borderColor: 'var(--color-accent)' }}>

@@ -65,6 +65,10 @@ function createSeedStore(): AdminUserStore {
       subscriptionActive: true,
       subscriptionStatus: 'active',
       subscriptionPlan: 'premium',
+      privacyAccepted: true,
+      privacyAcceptedAt: '2026-03-15T09:05:00.000Z',
+      newsletterConsent: true,
+      consentVersion: '2026-06',
     },
     {
       id: 'usr-2',
@@ -79,6 +83,10 @@ function createSeedStore(): AdminUserStore {
       subscriptionActive: false,
       subscriptionStatus: null,
       subscriptionPlan: null,
+      privacyAccepted: true,
+      privacyAcceptedAt: '2026-03-20T14:32:00.000Z',
+      newsletterConsent: false,
+      consentVersion: '2026-06',
     },
     {
       id: 'usr-3',
@@ -93,6 +101,10 @@ function createSeedStore(): AdminUserStore {
       subscriptionActive: true,
       subscriptionStatus: 'active',
       subscriptionPlan: 'premium',
+      privacyAccepted: true,
+      privacyAcceptedAt: '2026-02-10T11:02:00.000Z',
+      newsletterConsent: true,
+      consentVersion: '2026-06',
     },
     {
       id: 'usr-4',
