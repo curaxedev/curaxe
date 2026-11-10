@@ -209,6 +209,8 @@ Route::prefix('v1')->group(function (): void {
                 ->middleware('step_up:users.mutate');
             Route::post('/admin/users/{id}/resend-consents', [AdminController::class, 'resendConsents'])
                 ->middleware('step_up:users.mutate');
+            Route::post('/admin/users/{id}/visibility', [AdminController::class, 'setUserVisibility'])
+                ->middleware('step_up:users.mutate');
             Route::delete('/admin/users/{id}', [AdminController::class, 'destroyUser'])
                 ->middleware('step_up:users.mutate');
             Route::get('/admin/job-postings/pending', [AdminController::class, 'pendingJobs']);

@@ -36,7 +36,7 @@ function UsersToast({ message, visible }: { message: string; visible: boolean })
   )
 }
 
-type DetailTab = 'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'kyc' | 'attivita'
+type DetailTab = 'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'visibilita' | 'kyc' | 'attivita'
 type StatusChipFilter = AdminUserStatus | 'all' | 'professionals' | 'today'
 
 function splitName(fullName: string): { first: string; last: string } {
@@ -162,6 +162,7 @@ function UserDetailView({
   onToggleStatus,
   onDelete,
   onResendConsents,
+  onSetVisibility,
 }: {
   detail: AdminUserDetail | null
   loading: boolean
@@ -174,6 +175,7 @@ function UserDetailView({
   onToggleStatus: () => void
   onDelete: () => void
   onResendConsents: () => void
+  onSetVisibility: (published: boolean) => void
 }) {
   const [tab, setTab] = useState<DetailTab>(initialTab)
 
@@ -196,12 +198,29 @@ function UserDetailView({
 
   const tabs: { id: DetailTab; label: string }[] = [
     { id: 'profilo', label: 'Profilo' },
+    { id: 'visibilita', label: 'Visibilità' },
     { id: 'sicurezza', label: 'Sicurezza' },
     { id: 'abbonamento', label: 'Abbonamento' },
     { id: 'privacy', label: 'Privacy' },
     { id: 'kyc', label: 'KYC / Verifica' },
     { id: 'attivita', label: 'Attività' },
   ]
+
+  const visibility = detail?.visibility
+  const visibilityHint =
+    detail?.visibilityReasonLabel ||
+    (detail?.profileVisible === null
+      ? 'N/D: nessun profilo in directory pubblica.'
+      : detail?.profileVisible
+        ? 'Profilo pubblicato in directory.'
+        : 'Profilo nascosto dalla directory.')
+  const previewHref =
+    visibility?.previewPath ||
+    (detail?.professionalId
+      ? profileDetailPath(detail.professionalId)
+      : detail?.organizationId
+        ? `/strutture/${detail.organizationId}`
+        : null)
 
   const privacyAt = detail?.privacyAcceptedAt
     ? formatAdminUserDateTime(detail.privacyAcceptedAt)
@@ -233,11 +252,12 @@ function UserDetailView({
                     {ADMIN_USER_ROLE_LABELS[detail.role]}
                   </span>
                   <span className={subPill.className}>{subPill.label}</span>
-                  {detail.profileVisible !== null ? (
-                    <span className={visibilityClass(detail.profileVisible)}>
-                      {visibilityLabel(detail.profileVisible)}
-                    </span>
-                  ) : null}
+                  <span
+                    className={visibilityClass(detail.profileVisible)}
+                    title={visibilityHint}
+                  >
+                    {visibilityLabel(detail.profileVisible)}
+                  </span>
                 </div>
                 <div className="admin-users-detail__sub">
                   <span>{detail.email}</span>
@@ -440,9 +460,15 @@ function UserDetailView({
                     <label htmlFor="admin-user-role">Ruolo</label>
                     <input id="admin-user-role" readOnly value={ADMIN_USER_ROLE_LABELS[detail.role]} />
                   </div>
-                  <div className="admin-users-field">
+                  <div className="admin-users-field admin-users-field--full">
                     <label htmlFor="admin-user-vis">Visibilità</label>
                     <input id="admin-user-vis" readOnly value={visibilityLabel(detail.profileVisible)} />
+                    <p className="admin-users-panel__sub" style={{ marginTop: 6 }}>
+                      {visibilityHint}{' '}
+                      <button type="button" className="admin-users__text-link" onClick={() => setTab('visibilita')}>
+                        Apri scheda Visibilità →
+                      </button>
+                    </p>
                   </div>
                   <div className="admin-users-field admin-users-field--full">
                     <label htmlFor="admin-user-joined">Iscritto</label>
@@ -499,6 +525,166 @@ function UserDetailView({
                 )}
               </div>
             </section>
+          ) : null}
+
+          {tab === 'visibilita' ? (
+            <div className="admin-users-detail__grid">
+              <section className="admin-users-panel">
+                <div className="admin-users-panel__head">
+                  <div>
+                    <h2 className="admin-users-panel__title">Gestione visibilità</h2>
+                    <p className="admin-users-panel__sub">
+                      Perché compare N/D o Nascosto, e controllo pubblicazione directory
+                    </p>
+                  </div>
+                  <span className={visibilityClass(detail.profileVisible)} title={visibilityHint}>
+                    {visibilityLabel(detail.profileVisible)}
+                  </span>
+                </div>
+
+                <div className="admin-users-field">
+                  <label>Motivo</label>
+                  <textarea readOnly rows={3} value={visibilityHint} />
+                </div>
+
+                {(visibility?.blockers?.length ?? detail.visibilityBlockers?.length ?? 0) > 0 ? (
+                  <div className="admin-users-visibility-blockers">
+                    <h3 className="admin-users-panel__title" style={{ fontSize: '0.95rem' }}>
+                      Motivi / check profilo
+                    </h3>
+                    <ul>
+                      {(visibility?.blockers ?? detail.visibilityBlockers ?? []).map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="admin-users-panel__sub">
+                    Nessun blocco di completezza rilevato. Se è nascosto, è una scelta di pubblicazione.
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                  {detail.canToggleVisibility || visibility?.canToggle ? (
+                    <>
+                      <button
+                        type="button"
+                        className="admin-users-panel__cta"
+                        disabled={
+                          actionLoading ||
+                          detail.profileVisible === true ||
+                          detail.status === 'suspended'
+                        }
+                        title={
+                          detail.status === 'suspended'
+                            ? 'Riattiva l’account prima di pubblicare'
+                            : undefined
+                        }
+                        onClick={() => onSetVisibility(true)}
+                      >
+                        {actionLoading ? '…' : 'Rendi visibile'}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-users-panel__cta admin-users-panel__cta--ghost"
+                        disabled={actionLoading || detail.profileVisible === false}
+                        onClick={() => onSetVisibility(false)}
+                      >
+                        {actionLoading ? '…' : 'Nascondi in directory'}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="admin-users-panel__sub">
+                      Non puoi cambiare la visibilità per questo tipo di account
+                      {detail.status === 'suspended' ? ' (account sospeso)' : ''}.
+                    </p>
+                  )}
+                  {previewHref ? (
+                    <Link
+                      className="admin-users-panel__cta admin-users-panel__cta--ghost"
+                      to={previewHref}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Apri preview profilo
+                    </Link>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="admin-users-panel">
+                <div className="admin-users-panel__head">
+                  <div>
+                    <h2 className="admin-users-panel__title">Visite e contatti</h2>
+                    <p className="admin-users-panel__sub">Metriche directory e conversazioni</p>
+                  </div>
+                </div>
+                <div className="admin-users-detail__metrics" role="list">
+                  <div className="admin-users-metric" role="listitem">
+                    <span className="admin-users-metric__label">Visite totali</span>
+                    <strong className="admin-users-metric__value">
+                      {visibility?.stats.profileViewsTotal ?? 0}
+                    </strong>
+                    <span className="admin-users-metric__meta">Profilo pubblico</span>
+                  </div>
+                  <div className="admin-users-metric" role="listitem">
+                    <span className="admin-users-metric__label">Ultimi 7 giorni</span>
+                    <strong className="admin-users-metric__value">
+                      {visibility?.stats.profileViewsLast7Days ?? 0}
+                    </strong>
+                    <span className="admin-users-metric__meta">Visite recenti</span>
+                  </div>
+                  <div className="admin-users-metric" role="listitem">
+                    <span className="admin-users-metric__label">Conversazioni</span>
+                    <strong className="admin-users-metric__value">
+                      {visibility?.stats.conversationsCount ?? 0}
+                    </strong>
+                    <span className="admin-users-metric__meta">Thread messaggi</span>
+                  </div>
+                </div>
+
+                {(visibility?.recentViews?.length ?? 0) > 0 ? (
+                  <ul className="admin-users-activity" aria-label="Visite recenti">
+                    {visibility!.recentViews.map((view) => (
+                      <li key={view.id} className="admin-users-activity__item">
+                        <span className="admin-users-activity__label">
+                          {view.anonymous
+                            ? 'Visitatore anonimo / non loggato'
+                            : `${view.viewerName ?? 'Utente'}${view.viewerEmail ? ` · ${view.viewerEmail}` : ''}`}
+                        </span>
+                        <span className="admin-users-activity__date">
+                          {view.viewedOn ? formatAdminUserDate(view.viewedOn) : '—'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="admin-users-panel__sub">
+                    {visibility?.kind === 'professional'
+                      ? 'Nessuna visita profilo registrata finora.'
+                      : 'Le visite directory sono disponibili per i profili professionista.'}
+                  </p>
+                )}
+
+                {previewHref ? (
+                  <div className="admin-users-visibility-preview">
+                    <div className="admin-users-panel__head">
+                      <div>
+                        <h3 className="admin-users-panel__title" style={{ fontSize: '0.95rem' }}>
+                          Preview profilo
+                        </h3>
+                        <p className="admin-users-panel__sub">Anteprima pubblica in nuova scheda</p>
+                      </div>
+                    </div>
+                    <iframe
+                      title={`Preview ${detail.name}`}
+                      className="admin-users-visibility-preview__frame"
+                      src={previewHref}
+                    />
+                  </div>
+                ) : null}
+              </section>
+            </div>
           ) : null}
 
           {tab === 'privacy' ? (
@@ -784,6 +970,10 @@ export function AdminUsersSection() {
             if (!adminUsers.detailTargetId) return
             void adminUsers.resendConsents(adminUsers.detailTargetId)
           }}
+          onSetVisibility={(published) => {
+            if (!adminUsers.detailTargetId) return
+            void adminUsers.setVisibility(adminUsers.detailTargetId, published)
+          }}
         />
       </div>
     )
@@ -1034,9 +1224,31 @@ export function AdminUsersSection() {
                       </button>
                     </td>
                     <td>
-                      <span className={visibilityClass(u.profileVisible)}>
-                        {visibilityLabel(u.profileVisible)}
-                      </span>
+                      <button
+                        type="button"
+                        className="admin-users__sub-cell"
+                        title={
+                          u.visibilityReasonLabel ||
+                          (u.profileVisible === null
+                            ? 'N/D: nessun profilo in directory'
+                            : u.profileVisible
+                              ? 'Visibile in directory — apri dettagli'
+                              : 'Nascosto — apri per il motivo e i controlli')
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          adminUsers.openDetail(u.id, { tab: 'visibilita' })
+                        }}
+                      >
+                        <span className={visibilityClass(u.profileVisible)}>
+                          {visibilityLabel(u.profileVisible)}
+                        </span>
+                        {u.visibilityReason === 'not_applicable' ? (
+                          <span className="admin-users__trial-hint">no directory</span>
+                        ) : u.visibilityBlockers && u.visibilityBlockers.length > 0 && !u.profileVisible ? (
+                          <span className="admin-users__trial-hint">check profilo</span>
+                        ) : null}
+                      </button>
                     </td>
                     <td>
                       <button

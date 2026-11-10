@@ -9,6 +9,7 @@ import {
   postAdminUserReactivate,
   postAdminUserResendConsents,
   postAdminUserSuspend,
+  postAdminUserVisibility,
 } from '../lib/adminUserApi'
 import type {
   AdminUserDetail,
@@ -40,7 +41,7 @@ export function useAdminUsers() {
 
   const [detailTargetId, setDetailTargetId] = useState<string | null>(null)
   const [detailInitialTab, setDetailInitialTab] = useState<
-    'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'kyc' | 'attivita'
+    'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'visibilita' | 'kyc' | 'attivita'
   >('profilo')
   const [detail, setDetail] = useState<AdminUserDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -101,7 +102,7 @@ export function useAdminUsers() {
     (
       userId: string,
       opts?: {
-        tab?: 'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'kyc' | 'attivita'
+        tab?: 'profilo' | 'sicurezza' | 'abbonamento' | 'privacy' | 'visibilita' | 'kyc' | 'attivita'
       },
     ) => {
       setDetailInitialTab(opts?.tab ?? 'profilo')
@@ -251,6 +252,30 @@ export function useAdminUsers() {
     [showToast],
   )
 
+  const setVisibility = useCallback(
+    async (userId: string, published: boolean): Promise<boolean> => {
+      setActionLoadingId(userId)
+      setActionError(null)
+      try {
+        const updated = await postAdminUserVisibility(userId, published)
+        updateUserInList(updated)
+        setDetail(updated)
+        showToast(
+          published
+            ? `Profilo di ${updated.name} reso visibile.`
+            : `Profilo di ${updated.name} nascosto dalla directory.`,
+        )
+        return true
+      } catch (err) {
+        setActionError(userErrorMessage(err, 'Aggiornamento visibilità non riuscito.'))
+        return false
+      } finally {
+        setActionLoadingId(null)
+      }
+    },
+    [showToast, updateUserInList],
+  )
+
   return {
     users,
     filteredUsers,
@@ -279,6 +304,7 @@ export function useAdminUsers() {
     remove,
     exportNewsletter,
     resendConsents,
+    setVisibility,
     clearActionError,
   }
 }

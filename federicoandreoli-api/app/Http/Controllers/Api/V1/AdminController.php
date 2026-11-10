@@ -9,8 +9,10 @@ use App\Models\AuditLog;
 use App\Models\ConsentRecord;
 use App\Models\JobPosting;
 use App\Models\LoginOtp;
+use App\Models\MessageThread;
 use App\Models\Organization;
 use App\Models\ProfessionalProfile;
+use App\Models\ProfessionalProfileView;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Support\ApiResponse;
@@ -98,8 +100,60 @@ class AdminController
             ->map(fn (ConsentRecord $record) => $this->consentSnapshot($record))
             ->values()
             ->all();
+        $payload['visibility'] = $this->buildVisibilityDetail($u);
 
         return response()->json($payload);
+    }
+
+    public function setUserVisibility(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'published' => ['required', 'boolean'],
+        ]);
+        $published = (bool) $data['published'];
+
+        $u = User::query()->with(['professionalProfile', 'organization'])->find($id);
+        if ($u === null) {
+            return ApiResponse::error('Utente non trovato.', 404, [], 'not_found');
+        }
+
+        if ($u->suspended_at !== null && $published) {
+            return ApiResponse::error(
+                'Account sospeso: riattivalo prima di renderlo visibile in directory.',
+                422,
+                [],
+                'validation',
+            );
+        }
+
+        $profile = $u->professionalProfile;
+        $org = $u->organization;
+
+        if ($profile === null && $org === null) {
+            return ApiResponse::error(
+                'Questo account non ha un profilo pubblicabile in directory (es. famiglia o admin).',
+                422,
+                [],
+                'validation',
+            );
+        }
+
+        if ($profile !== null) {
+            $profile->forceFill(['is_published' => $published])->save();
+        }
+        if ($org !== null) {
+            $org->forceFill(['is_published' => $published])->save();
+        }
+
+        DirectoryCache::bump();
+        AuditLog::record(
+            $request->user()->id,
+            $published ? 'user.visibility.publish' : 'user.visibility.hide',
+            'user',
+            (string) $u->id,
+        );
+
+        return $this->showUser($id);
     }
 
     /**
@@ -257,7 +311,7 @@ class AdminController
             : $u->subscriptions()->notTrashed()->orderByDesc('id')->first();
 
         $subscriptionActive = $sub !== null && in_array($sub->status, ['active', 'trialing'], true);
-        $profileVisible = $this->resolveProfileVisible($u);
+        $visibility = $this->buildVisibilitySummary($u);
         $professionalId = $u->professionalProfile?->id;
         $consent ??= ConsentRecord::latestForUser((int) $u->id);
         $snap = $this->consentSnapshot($consent);
@@ -271,7 +325,12 @@ class AdminController
             'createdAt' => $u->created_at?->toIso8601String(),
             'emailVerifiedAt' => $u->email_verified_at?->toIso8601String(),
             'professionalId' => $professionalId !== null ? (string) $professionalId : null,
-            'profileVisible' => $profileVisible,
+            'organizationId' => $u->organization?->id !== null ? (string) $u->organization->id : null,
+            'profileVisible' => $visibility['profileVisible'],
+            'visibilityReason' => $visibility['reason'],
+            'visibilityReasonLabel' => $visibility['reasonLabel'],
+            'visibilityBlockers' => $visibility['blockers'],
+            'canToggleVisibility' => $visibility['canToggle'],
             'subscriptionActive' => $subscriptionActive,
             'subscriptionStatus' => $sub?->status,
             'subscriptionPlan' => $sub?->plan_type,
@@ -286,14 +345,217 @@ class AdminController
         ];
     }
 
-    private function resolveProfileVisible(User $u): ?bool
+    /**
+     * @return array{
+     *   profileVisible: ?bool,
+     *   reason: string,
+     *   reasonLabel: string,
+     *   blockers: list<string>,
+     *   canToggle: bool,
+     *   kind: 'professional'|'organization'|'none',
+     *   publicProfileId: ?string
+     * }
+     */
+    private function buildVisibilitySummary(User $u): array
     {
-        if ($u->professionalProfile !== null) {
-            return (bool) $u->professionalProfile->is_published;
+        $profile = $u->professionalProfile;
+        $org = $u->organization;
+        $blockers = [];
+
+        if ($u->suspended_at !== null) {
+            $blockers[] = 'Account sospeso: la directory resta nascosta finché non riattivi l\'account.';
         }
 
-        if ($u->organization !== null) {
-            return (bool) $u->organization->is_published;
+        if ($profile !== null) {
+            $blockers = array_merge($blockers, $this->professionalCompletenessBlockers($profile));
+            $visible = (bool) $profile->is_published;
+            $reason = $visible ? 'published' : ($blockers !== [] ? 'incomplete_or_hidden' : 'hidden_manual');
+            $reasonLabel = $visible
+                ? 'Profilo professionista pubblicato in directory.'
+                : ($blockers !== []
+                    ? 'Non visibile: profilo incompleto o nascosto. Vedi i motivi sotto.'
+                    : 'Profilo professionista nascosto manualmente (is_published = false).');
+
+            return [
+                'profileVisible' => $visible,
+                'reason' => $reason,
+                'reasonLabel' => $reasonLabel,
+                'blockers' => array_values(array_unique($blockers)),
+                'canToggle' => true,
+                'kind' => 'professional',
+                'publicProfileId' => (string) $profile->id,
+            ];
+        }
+
+        if ($org !== null) {
+            $blockers = array_merge($blockers, $this->organizationCompletenessBlockers($org));
+            $visible = (bool) $org->is_published;
+            $reason = $visible ? 'published' : ($blockers !== [] ? 'incomplete_or_hidden' : 'hidden_manual');
+            $reasonLabel = $visible
+                ? 'Organizzazione pubblicata in directory.'
+                : ($blockers !== []
+                    ? 'Non visibile: scheda organizzazione incompleta o nascosta.'
+                    : 'Organizzazione nascosta manualmente (is_published = false).');
+
+            return [
+                'profileVisible' => $visible,
+                'reason' => $reason,
+                'reasonLabel' => $reasonLabel,
+                'blockers' => array_values(array_unique($blockers)),
+                'canToggle' => true,
+                'kind' => 'organization',
+                'publicProfileId' => (string) $org->id,
+            ];
+        }
+
+        $roleLabel = match ($u->role) {
+            UserRole::PublicUser => 'account famiglia',
+            UserRole::PlatformAdmin => 'account admin',
+            default => 'questo ruolo',
+        };
+
+        return [
+            'profileVisible' => null,
+            'reason' => 'not_applicable',
+            'reasonLabel' => "N/D: {$roleLabel} non ha un profilo in directory pubblica.",
+            'blockers' => ["La visibilità directory non si applica a {$roleLabel}."],
+            'canToggle' => false,
+            'kind' => 'none',
+            'publicProfileId' => null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildVisibilityDetail(User $u): array
+    {
+        $summary = $this->buildVisibilitySummary($u);
+        $viewsTotal = 0;
+        $viewsLast7 = 0;
+        $recentViews = [];
+
+        if ($summary['kind'] === 'professional' && $u->professionalProfile !== null) {
+            $profileId = (int) $u->professionalProfile->id;
+            $viewsTotal = ProfessionalProfileView::query()
+                ->where('professional_profile_id', $profileId)
+                ->count();
+            $viewsLast7 = ProfessionalProfileView::query()
+                ->where('professional_profile_id', $profileId)
+                ->whereDate('viewed_on', '>=', now()->subDays(6)->toDateString())
+                ->count();
+
+            $rows = ProfessionalProfileView::query()
+                ->where('professional_profile_id', $profileId)
+                ->orderByDesc('viewed_on')
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get(['id', 'viewer_user_id', 'viewer_key', 'viewed_on']);
+
+            $viewerIds = $rows->pluck('viewer_user_id')->filter()->unique()->values()->all();
+            $viewers = $viewerIds === []
+                ? collect()
+                : User::query()->whereIn('id', $viewerIds)->get(['id', 'name', 'email'])->keyBy('id');
+
+            $recentViews = $rows->map(function (ProfessionalProfileView $row) use ($viewers) {
+                $viewer = $row->viewer_user_id ? $viewers->get($row->viewer_user_id) : null;
+
+                return [
+                    'id' => (string) $row->id,
+                    'viewedOn' => $row->viewed_on?->toDateString(),
+                    'viewerName' => $viewer?->name,
+                    'viewerEmail' => $viewer?->email,
+                    'anonymous' => $viewer === null,
+                ];
+            })->values()->all();
+        }
+
+        $contactsCount = $this->countUserConversations((int) $u->id);
+
+        return [
+            ...$summary,
+            'stats' => [
+                'profileViewsTotal' => $viewsTotal,
+                'profileViewsLast7Days' => $viewsLast7,
+                'conversationsCount' => $contactsCount,
+            ],
+            'recentViews' => $recentViews,
+            'previewPath' => $this->publicPreviewPath($summary['kind'], $summary['publicProfileId']),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function professionalCompletenessBlockers(ProfessionalProfile $profile): array
+    {
+        $blockers = [];
+        if (trim((string) $profile->first_name) === '' || trim((string) $profile->last_name) === '') {
+            $blockers[] = 'Nome o cognome mancanti sul profilo professionista.';
+        }
+        if (trim((string) $profile->professional_title) === '' && trim((string) $profile->bio) === '') {
+            $blockers[] = 'Mancano titolo professionale e biografia (profilo incompleto).';
+        }
+        if (
+            trim((string) $profile->comune) === ''
+            && trim((string) ($profile->primary_zone ?? '')) === ''
+        ) {
+            $blockers[] = 'Zona / comune non impostati: difficile comparire in directory locale.';
+        }
+        if (trim((string) ($profile->photo_path ?? '')) === '') {
+            $blockers[] = 'Foto profilo assente (consigliata per la directory).';
+        }
+
+        return $blockers;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function organizationCompletenessBlockers(Organization $org): array
+    {
+        $blockers = [];
+        if (trim((string) $org->name) === '') {
+            $blockers[] = 'Nome organizzazione mancante.';
+        }
+        if (trim((string) ($org->comune ?? '')) === '') {
+            $blockers[] = 'Comune non impostato sulla scheda organizzazione.';
+        }
+
+        return $blockers;
+    }
+
+    private function countUserConversations(int $userId): int
+    {
+        try {
+            return MessageThread::query()
+                ->where(function ($q) use ($userId): void {
+                    $q->whereJsonContains('participant_ids', $userId)
+                        ->orWhereJsonContains('participant_ids', (string) $userId);
+                })
+                ->count();
+        } catch (\Throwable) {
+            return MessageThread::query()
+                ->get(['participant_ids'])
+                ->filter(function (MessageThread $thread) use ($userId): bool {
+                    $ids = $thread->participant_ids ?? [];
+
+                    return in_array($userId, $ids, false) || in_array((string) $userId, $ids, true);
+                })
+                ->count();
+        }
+    }
+
+    private function publicPreviewPath(string $kind, ?string $publicProfileId): ?string
+    {
+        if ($publicProfileId === null) {
+            return null;
+        }
+        if ($kind === 'professional') {
+            return '/profili/'.$publicProfileId;
+        }
+        if ($kind === 'organization') {
+            return '/strutture/'.$publicProfileId;
         }
 
         return null;

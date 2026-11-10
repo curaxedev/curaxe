@@ -38,6 +38,11 @@ export type AdminUserRecord = {
   city?: string
   /** Directory / public profile visibility; null when the account has no publishable profile. */
   profileVisible: boolean | null
+  organizationId?: string
+  visibilityReason?: string | null
+  visibilityReasonLabel?: string | null
+  visibilityBlockers?: string[]
+  canToggleVisibility?: boolean
   subscriptionActive: boolean
   subscriptionStatus?: string | null
   subscriptionPlan?: string | null
@@ -72,6 +77,11 @@ export type AdminUserListItem = Pick<
   | 'registeredAt'
   | 'professionalId'
   | 'profileVisible'
+  | 'organizationId'
+  | 'visibilityReason'
+  | 'visibilityReasonLabel'
+  | 'visibilityBlockers'
+  | 'canToggleVisibility'
   | 'subscriptionActive'
   | 'subscriptionStatus'
   | 'subscriptionPlan'
@@ -84,11 +94,37 @@ export type AdminUserListItem = Pick<
   | 'consentVersion'
 >
 
+export type AdminUserVisibilityRecentView = {
+  id: string
+  viewedOn: string | null
+  viewerName?: string | null
+  viewerEmail?: string | null
+  anonymous: boolean
+}
+
+export type AdminUserVisibilityDetail = {
+  profileVisible: boolean | null
+  reason: string
+  reasonLabel: string
+  blockers: string[]
+  canToggle: boolean
+  kind: 'professional' | 'organization' | 'none'
+  publicProfileId: string | null
+  stats: {
+    profileViewsTotal: number
+    profileViewsLast7Days: number
+    conversationsCount: number
+  }
+  recentViews: AdminUserVisibilityRecentView[]
+  previewPath: string | null
+}
+
 export type AdminUserDetail = AdminUserRecord & {
   activity: AdminUserActivityEntry[]
   kycDocuments: AdminKycDocument[]
   consents?: AdminUserConsentSnapshot | null
   consentHistory?: AdminUserConsentSnapshot[]
+  visibility?: AdminUserVisibilityDetail | null
 }
 
 export type AdminUserStore = {

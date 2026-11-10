@@ -47,6 +47,29 @@ type AdminUserConsentApi = {
   source?: string | null
 }
 
+type AdminUserVisibilityApi = {
+  profileVisible?: boolean | null
+  reason?: string
+  reasonLabel?: string
+  blockers?: string[]
+  canToggle?: boolean
+  kind?: 'professional' | 'organization' | 'none'
+  publicProfileId?: string | null
+  stats?: {
+    profileViewsTotal?: number
+    profileViewsLast7Days?: number
+    conversationsCount?: number
+  }
+  recentViews?: Array<{
+    id: string
+    viewedOn?: string | null
+    viewerName?: string | null
+    viewerEmail?: string | null
+    anonymous?: boolean
+  }>
+  previewPath?: string | null
+}
+
 type AdminUserApiRow = {
   id: string
   name: string
@@ -55,7 +78,13 @@ type AdminUserApiRow = {
   status: string
   createdAt?: string
   professionalId?: string | null
+  organizationId?: string | null
   profileVisible?: boolean | null
+  visibilityReason?: string | null
+  visibilityReasonLabel?: string | null
+  visibilityBlockers?: string[]
+  canToggleVisibility?: boolean
+  visibility?: AdminUserVisibilityApi | null
   subscriptionActive?: boolean
   subscriptionStatus?: string | null
   subscriptionPlan?: string | null
@@ -120,6 +149,32 @@ function mapConsent(c?: AdminUserConsentApi | null) {
   }
 }
 
+function mapVisibilityDetail(v?: AdminUserVisibilityApi | null) {
+  if (!v) return null
+  return {
+    profileVisible: v.profileVisible ?? null,
+    reason: v.reason ?? 'unknown',
+    reasonLabel: v.reasonLabel ?? 'Visibilità non disponibile.',
+    blockers: v.blockers ?? [],
+    canToggle: Boolean(v.canToggle),
+    kind: v.kind ?? 'none',
+    publicProfileId: v.publicProfileId ?? null,
+    stats: {
+      profileViewsTotal: v.stats?.profileViewsTotal ?? 0,
+      profileViewsLast7Days: v.stats?.profileViewsLast7Days ?? 0,
+      conversationsCount: v.stats?.conversationsCount ?? 0,
+    },
+    recentViews: (v.recentViews ?? []).map((row) => ({
+      id: row.id,
+      viewedOn: row.viewedOn ?? null,
+      viewerName: row.viewerName ?? null,
+      viewerEmail: row.viewerEmail ?? null,
+      anonymous: Boolean(row.anonymous ?? !row.viewerName),
+    })),
+    previewPath: v.previewPath ?? null,
+  }
+}
+
 function mapListItem(row: AdminUserApiRow): AdminUserListItem {
   return {
     id: row.id,
@@ -135,7 +190,12 @@ function mapListItem(row: AdminUserApiRow): AdminUserListItem {
           : 'active',
     registeredAt: row.createdAt ?? new Date().toISOString(),
     professionalId: row.professionalId ?? undefined,
+    organizationId: row.organizationId ?? undefined,
     profileVisible: row.profileVisible ?? null,
+    visibilityReason: row.visibilityReason ?? null,
+    visibilityReasonLabel: row.visibilityReasonLabel ?? null,
+    visibilityBlockers: row.visibilityBlockers ?? [],
+    canToggleVisibility: Boolean(row.canToggleVisibility),
     subscriptionActive: Boolean(row.subscriptionActive),
     subscriptionStatus: row.subscriptionStatus ?? null,
     subscriptionPlan: row.subscriptionPlan ?? null,
@@ -170,6 +230,7 @@ export async function getAdminUserDetail(
       ...mapListItem(row),
       consents: mapConsent(row.consents),
       consentHistory: (row.consentHistory ?? []).map((c) => mapConsent(c)!).filter(Boolean),
+      visibility: mapVisibilityDetail(row.visibility),
       activity: (row.activity ?? []).map((a) => ({
         id: a.id,
         type: 'profile_update' as const,
@@ -190,6 +251,68 @@ export async function getAdminUserDetail(
     }
   } catch (err) {
     throw toAdminError(err, 'Impossibile caricare il dettaglio utente.')
+  }
+}
+
+export async function postAdminUserVisibility(
+  userId: string,
+  published: boolean,
+): Promise<AdminUserDetail> {
+  if (isMockApiEnabled()) {
+    const detail = await fetchAdminUserDetail(userId)
+    return {
+      ...detail,
+      profileVisible: published,
+      visibilityReason: published ? 'published' : 'hidden_manual',
+      visibilityReasonLabel: published
+        ? 'Profilo pubblicato (mock).'
+        : 'Profilo nascosto (mock).',
+      visibilityBlockers: [],
+      canToggleVisibility: true,
+      visibility: detail.visibility
+        ? {
+            ...detail.visibility,
+            profileVisible: published,
+            reason: published ? 'published' : 'hidden_manual',
+            reasonLabel: published ? 'Profilo pubblicato (mock).' : 'Profilo nascosto (mock).',
+            blockers: [],
+            canToggle: true,
+          }
+        : null,
+    }
+  }
+  try {
+    const row = await withAdminStepUp('users.mutate', (token) =>
+      httpPost<AdminUserApiRow>(`/api/v1/admin/users/${userId}/visibility`, {
+        body: { published },
+        headers: token ? { 'X-Step-Up-Token': token } : undefined,
+      }),
+    )
+    return {
+      ...mapListItem(row),
+      consents: mapConsent(row.consents),
+      consentHistory: (row.consentHistory ?? []).map((c) => mapConsent(c)!).filter(Boolean),
+      visibility: mapVisibilityDetail(row.visibility),
+      activity: (row.activity ?? []).map((a) => ({
+        id: a.id,
+        type: 'profile_update' as const,
+        label: a.action,
+        occurredAt: a.at ?? new Date().toISOString(),
+      })),
+      kycDocuments: (row.kycDocuments ?? []).map((d) => ({
+        id: d.id,
+        type: d.type === 'identita' ? 'id_card' : d.type === 'attestati' ? 'diploma' : 'other',
+        label: d.label,
+        url: `/api/v1/admin/kyc/documents/${d.id}/file`,
+        mimeType: 'pdf' as const,
+        status: (d.status === 'approved' || d.status === 'rejected' ? d.status : 'pending') as
+          | 'pending'
+          | 'approved'
+          | 'rejected',
+      })),
+    }
+  } catch (err) {
+    throw toAdminError(err, 'Aggiornamento visibilità non riuscito.')
   }
 }
 

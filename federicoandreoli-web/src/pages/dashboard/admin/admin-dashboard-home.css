@@ -1032,6 +1032,45 @@
   white-space: nowrap;
 }
 
+.admin-users__text-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--color-primary, #0f766e);
+  font-weight: 700;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-users-visibility-blockers ul {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: color-mix(in srgb, var(--color-text) 82%, #000);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.admin-users-visibility-preview {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-users-visibility-preview__frame {
+  width: 100%;
+  min-height: 360px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: #fff;
+}
+
 .admin-users__date {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
