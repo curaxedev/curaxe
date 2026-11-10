@@ -1,1 +1,0 @@
-var e={platform_admin:`/dashboard/admin`,professional:`/dashboard/professionale`,public_user:`/dashboard/famiglia`,agency:`/dashboard/agenzia`,structure:`/dashboard/struttura`};function t(t){return e[t]}function n(e,n){let r=t(e),i=n?.trim();return!i||!i.startsWith(`/`)||i.startsWith(`//`)||i.startsWith(`/dashboard`)?r:i}export{n,t};
