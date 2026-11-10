@@ -1,9 +1,19 @@
-import { useEffect, useId, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDashboardPathForRole } from '../../auth/roleDashboard'
 import { useAuth } from '../../auth/useAuth'
 import {
   IconBell,
+  IconChevronLeft,
+  IconChevronRight,
   IconClose,
   IconLogout,
   IconMoreDots,
@@ -12,6 +22,13 @@ import {
 import { BrandLogo } from '../../components/BrandLogo'
 import { FamilyHeaderProfileSearch } from '../../components/FamilyHeaderProfileSearch'
 import { LoggedInAccountMenu } from '../../components/LoggedInAccountMenu'
+import './admin/admin-dashboard-home.css'
+
+const ADMIN_SIDEBAR_COLLAPSED_KEY = 'curaxe.admin.sidebarCollapsed'
+const ADMIN_SIDEBAR_WIDTH_KEY = 'curaxe.admin.sidebarWidth'
+const ADMIN_SIDEBAR_MIN = 200
+const ADMIN_SIDEBAR_MAX = 300
+const ADMIN_SIDEBAR_DEFAULT = 252
 
 export type AccountType = 'professional' | 'family' | 'agency' | 'structure' | 'admin'
 
@@ -73,6 +90,18 @@ export function DashboardLayout({
   const { signOut, user } = useAuth()
   const brandPath = user ? getDashboardPathForRole(user.role) : '/'
   const sheetTitleId = useId()
+  const isAdmin = accountType === 'admin'
+  const [adminCollapsed, setAdminCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === '1'
+  })
+  const [adminWidth, setAdminWidth] = useState(() => {
+    if (typeof window === 'undefined') return ADMIN_SIDEBAR_DEFAULT
+    const raw = Number(window.localStorage.getItem(ADMIN_SIDEBAR_WIDTH_KEY))
+    if (Number.isFinite(raw) && raw >= ADMIN_SIDEBAR_MIN && raw <= ADMIN_SIDEBAR_MAX) return raw
+    return ADMIN_SIDEBAR_DEFAULT
+  })
+  const resizingRef = useRef(false)
 
   useEffect(() => {
     if (!moreOpen) return
@@ -87,6 +116,40 @@ export function DashboardLayout({
       document.body.style.overflow = prev
     }
   }, [moreOpen])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    window.localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, adminCollapsed ? '1' : '0')
+  }, [adminCollapsed, isAdmin])
+
+  useEffect(() => {
+    if (!isAdmin || adminCollapsed) return
+    window.localStorage.setItem(ADMIN_SIDEBAR_WIDTH_KEY, String(adminWidth))
+  }, [adminWidth, adminCollapsed, isAdmin])
+
+  const onResizePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isAdmin || adminCollapsed) return
+    event.preventDefault()
+    resizingRef.current = true
+    const startX = event.clientX
+    const startWidth = adminWidth
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+
+    const onMove = (e: PointerEvent) => {
+      if (!resizingRef.current) return
+      const next = Math.min(ADMIN_SIDEBAR_MAX, Math.max(ADMIN_SIDEBAR_MIN, startWidth + (e.clientX - startX)))
+      setAdminWidth(next)
+    }
+    const onUp = () => {
+      resizingRef.current = false
+      target.releasePointerCapture(event.pointerId)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }, [adminCollapsed, adminWidth, isAdmin])
 
   async function handleLogout() {
     if (loggingOut) return
@@ -124,10 +187,49 @@ export function DashboardLayout({
   const activeInTabs = tabItems.some((item) => item.id === activeSection)
   const moreActive = moreOpen || !activeInTabs
 
+  const shellClass = [
+    'dash-shell',
+    'dash-shell--glass',
+    isAdmin ? 'dash-shell--admin' : '',
+    isAdmin && adminCollapsed ? 'dash-shell--admin-collapsed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const sidebarStyle: CSSProperties | undefined = isAdmin && !adminCollapsed
+    ? ({ ['--dash-sidebar-width' as string]: `${adminWidth}px` } as CSSProperties)
+    : undefined
+
   return (
-    <div className="dash-shell dash-shell--glass">
+    <div className={shellClass} style={sidebarStyle}>
       {/* Sidebar — solo desktop */}
-      <aside className="dash-sidebar">
+      <aside
+        className="dash-sidebar"
+        style={isAdmin && !adminCollapsed ? { width: adminWidth } : undefined}
+        data-collapsed={isAdmin && adminCollapsed ? 'true' : undefined}
+      >
+        {isAdmin ? (
+          <>
+            <button
+              type="button"
+              className="dash-sidebar__toggle"
+              aria-label={adminCollapsed ? 'Espandi menu' : 'Comprimi menu'}
+              aria-expanded={!adminCollapsed}
+              onClick={() => setAdminCollapsed((v) => !v)}
+            >
+              {adminCollapsed ? <IconChevronRight size={14} /> : <IconChevronLeft size={14} />}
+            </button>
+            {!adminCollapsed ? (
+              <div
+                className="dash-sidebar__resize"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Ridimensiona menu"
+                onPointerDown={onResizePointerDown}
+              />
+            ) : null}
+          </>
+        ) : null}
         <div className="dash-sidebar__brand">
           <button
             className="dash-sidebar__brand-link"
@@ -176,11 +278,14 @@ export function DashboardLayout({
           {navItems.map((item) => (
             <button
               key={item.id}
+              type="button"
               className={`dash-sidebar__nav-btn${activeSection === item.id ? ' dash-sidebar__nav-btn--active' : ''}`}
               onClick={() => handleNav(item.id)}
+              title={isAdmin && adminCollapsed ? item.label : undefined}
+              aria-label={item.label}
             >
               <span className="dash-sidebar__nav-icon">{item.icon}</span>
-              {item.label}
+              <span className="dash-sidebar__nav-label">{item.label}</span>
               {typeof item.badge === 'number' && item.badge > 0 && (
                 <span className="dash-sidebar__nav-badge">{item.badge}</span>
               )}
@@ -192,7 +297,7 @@ export function DashboardLayout({
           {accountType !== 'professional' && (
             <div className="dash-sidebar__user">
               <div className="dash-sidebar__avatar">{initials}</div>
-              <div>
+              <div className="dash-sidebar__user-meta">
                 <div className="dash-sidebar__user-name">{userName}</div>
                 <div className="dash-sidebar__user-role">{userRole}</div>
               </div>
@@ -203,9 +308,13 @@ export function DashboardLayout({
             className="dash-sidebar__logout"
             onClick={() => void handleLogout()}
             disabled={loggingOut}
+            title={isAdmin && adminCollapsed ? (loggingOut ? 'Uscita…' : 'Esci') : undefined}
+            aria-label={loggingOut ? 'Uscita in corso' : 'Esci dalla dashboard'}
           >
             <IconLogout size={16} />
-            {loggingOut ? 'Uscita…' : 'Esci dalla dashboard'}
+            <span className="dash-sidebar__logout-label">
+              {loggingOut ? 'Uscita…' : 'Esci dalla dashboard'}
+            </span>
           </button>
         </div>
       </aside>

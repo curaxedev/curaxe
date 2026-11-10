@@ -53,11 +53,8 @@
 .wz-btn-ghost:focus-visible,
 .wz-switch:focus-visible,
 .wz-avail button:focus-visible,
-.contatti-submit:focus-visible,
-.contatti-faq-link:focus-visible,
 .isl-btn:focus-visible,
-.legal-toc__item a:focus-visible,
-.contatti-breadcrumb a:focus-visible {
+.legal-toc__item a:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
@@ -70,7 +67,6 @@
 
 /* ── Contrast — form labels & secondary text ─────────────────────── */
 .auth-field__label,
-.contatti-field__label,
 .wz-field label {
   color: var(--color-text);
 }
@@ -86,8 +82,7 @@
   }
 
   .auth-success-icon,
-  .wz-success-ring--pop,
-  .contatti-alert--success {
+  .wz-success-ring--pop {
     animation: none !important;
   }
 }

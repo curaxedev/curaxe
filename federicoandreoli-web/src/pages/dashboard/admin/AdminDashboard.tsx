@@ -36,6 +36,7 @@ import {
 } from '../../../lib/exportUtils'
 import {
   IconAlert,
+  IconBell,
   IconBriefcase,
   IconCheck,
   IconClose,
@@ -56,6 +57,7 @@ import { httpGetBlob } from '../../../lib/http'
 import { AdminStripeSetupSection } from './AdminStripeSetupSection'
 import { AdminPlansCatalogSection } from './AdminPlansCatalogSection'
 import { AdminSecuritySection } from './AdminSecuritySection'
+import './admin-dashboard-home.css'
 import {
   deleteAdminSubscriptionPermanent,
   postAdminCancelSubscription,
@@ -70,14 +72,14 @@ import {
 
 /* ── Revenue SVG chart ──────────────────────────────────────── */
 function RevenueChart({ data, labels }: { data: number[]; labels: string[] }) {
-  const max = Math.max(...data)
-  const barW = 28
-  const gap = 8
-  const h = 80
+  const max = Math.max(...data, 1)
+  const barW = 22
+  const gap = 6
+  const h = 72
   const totalW = data.length * (barW + gap) - gap
 
   return (
-    <svg viewBox={`0 0 ${totalW} ${h + 20}`} className="dash-chart-svg" style={{ height: 110 }}>
+    <svg viewBox={`0 0 ${totalW} ${h + 20}`} className="dash-chart-svg" style={{ height: 100 }}>
       {data.map((v, i) => {
         const barH = Math.max(6, (v / max) * h)
         const isLast = i === data.length - 1
@@ -126,12 +128,13 @@ function formatEurIt(n: number): string {
   }).format(n)
 }
 
-/* ── Section: Overview ──────────────────────────────────────── */
-function SectionOverview() {
+/* ── Section: Overview (WineOS compact) ─────────────────────── */
+function SectionOverview({ onNavigate }: { onNavigate: (id: string) => void }) {
   const { user } = useAuth()
   const { stats: billingStats } = useAdminBilling()
   const [overview, setOverview] = useState<AdminOverviewPayload | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
     let cancelled = false
@@ -152,10 +155,20 @@ function SectionOverview() {
     }
   }, [])
 
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
+
   const revenueMonthly = overview?.revenueMonthly ?? []
   const chartData = revenueMonthly.map((r) => r.amountEur)
   const chartLabels = revenueMonthly.map((r) => r.month)
   const kpis = overview?.kpis
+  const pendingKyc = kpis?.pendingKyc ?? 0
+  const pendingJobs = kpis?.pendingJobs ?? 0
+  const premium = kpis?.premiumSubscriptions ?? 0
+  const mrr = kpis?.mrrEstimateEur ?? (billingStats ? billingStats.mrrCents / 100 : 0)
+  const platformOk = !loadError
 
   const analyticsSnapshot = useMemo(
     () =>
@@ -170,32 +183,33 @@ function SectionOverview() {
   const updatedLabel = overview?.generatedAt
     ? new Date(overview.generatedAt).toLocaleString('it-IT')
     : '…'
+  const clockTime = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+  const clockDate = now.toLocaleDateString('it-IT', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
 
   return (
-    <div className="dash-admin-overview">
-      <div className="dash-welcome-banner dash-welcome-banner--admin">
-        <div className="dash-welcome-banner__greeting">
-          <span className="dash-welcome-banner__greeting-icon"><IconShield size={16} /></span>
-          Console amministrazione
-        </div>
-        <div className="dash-welcome-banner__name">{user?.name ?? 'Admin'}</div>
-        <div className="dash-welcome-banner__sub">Panoramica piattaforma · aggiornato {updatedLabel}</div>
-      </div>
-
-      <div className="dash-section-header">
+    <div className="admin-home">
+      <header className="admin-home__hero">
         <div>
-          <h2 className="dash-section__title">Metriche chiave</h2>
-          <p className="dash-section__subtitle">KPI reali dalla piattaforma</p>
+          <div className="admin-home__eyebrow">
+            <IconShield size={12} />
+            Console amministrazione
+          </div>
+          <h1 className="admin-home__title">{user?.name ?? 'Admin'}</h1>
+          <p className="admin-home__sub">Panoramica piattaforma · aggiornato {updatedLabel}</p>
         </div>
-        <div className="dash-section-header__actions">
+        <div className="admin-home__hero-actions">
           <button
             type="button"
             className="dash-btn dash-btn--ghost polish-export-btn"
             onClick={() => exportAdminAnalyticsCsv(analyticsSnapshot)}
             aria-label="Esporta report analytics in CSV"
           >
-            <IconUpload size={16} />
-            Esporta CSV
+            <IconUpload size={14} />
+            CSV
           </button>
           <button
             type="button"
@@ -203,47 +217,232 @@ function SectionOverview() {
             onClick={() => exportAdminAnalyticsJson(analyticsSnapshot)}
             aria-label="Esporta report analytics in JSON"
           >
-            <IconUpload size={16} />
-            Esporta JSON
+            <IconUpload size={14} />
+            JSON
           </button>
+          <div className="admin-home__clock" aria-hidden="true">
+            <span className="admin-home__clock-time">{clockTime}</span>
+            <span className="admin-home__clock-date">{clockDate}</span>
+          </div>
         </div>
-      </div>
+      </header>
 
       {loadError ? (
-        <div className="dash-empty-state" role="alert">
-          <div className="dash-empty-state__title">Overview non disponibile</div>
-          <div className="dash-empty-state__sub">{loadError}</div>
+        <div className="admin-home__error" role="alert">
+          Overview non disponibile — {loadError}
         </div>
       ) : null}
 
-      <div className="dash-admin-kpi-grid">
-        {[
-          { value: formatIntIt(kpis?.totalUsers ?? 0), label: 'Utenti totali registrati', color: 'var(--color-primary)' },
-          { value: formatIntIt(kpis?.professionals ?? 0), label: 'Professionisti', color: 'var(--color-primary)' },
-          { value: formatIntIt(kpis?.families ?? 0), label: 'Famiglie', color: 'var(--color-sage)' },
-          { value: formatIntIt(kpis?.agenciesStructures ?? 0), label: 'Agenzie / Strutture', color: 'var(--color-accent)' },
-          { value: formatIntIt(kpis?.premiumSubscriptions ?? 0), label: 'Abbonamenti Premium', color: 'var(--color-primary)' },
-          { value: formatEurIt(kpis?.mrrEstimateEur ?? (billingStats ? billingStats.mrrCents / 100 : 0)), label: 'MRR stimato / mese', color: 'var(--color-sage)' },
-          { value: formatIntIt(kpis?.pendingKyc ?? 0), label: 'KYC in coda', color: 'var(--color-accent)' },
-          { value: formatIntIt(kpis?.pendingJobs ?? 0), label: 'Annunci da moderare', color: 'var(--color-primary)' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="dash-admin-kpi">
-            <div className="dash-admin-kpi__value" style={{ color: kpi.color }}>{kpi.value}</div>
-            <div className="dash-admin-kpi__label">{kpi.label}</div>
+      <div className="admin-home__status-strip" role="list">
+        <div className="admin-home__status" role="listitem">
+          <span
+            className={`admin-home__status-dot ${platformOk ? 'admin-home__status-dot--ok' : 'admin-home__status-dot--warn'}`}
+          />
+          <div className="admin-home__status-meta">
+            <span className="admin-home__status-label">Piattaforma</span>
+            <span className="admin-home__status-value">{platformOk ? 'Operativa' : 'Attenzione'}</span>
           </div>
-        ))}
+        </div>
+        <div className="admin-home__status" role="listitem">
+          <span
+            className={`admin-home__status-dot ${pendingKyc > 0 ? 'admin-home__status-dot--warn' : 'admin-home__status-dot--ok'}`}
+          />
+          <div className="admin-home__status-meta">
+            <span className="admin-home__status-label">KYC in coda</span>
+            <span className="admin-home__status-value">{formatIntIt(pendingKyc)}</span>
+          </div>
+        </div>
+        <div className="admin-home__status" role="listitem">
+          <span
+            className={`admin-home__status-dot ${pendingJobs > 0 ? 'admin-home__status-dot--warn' : 'admin-home__status-dot--ok'}`}
+          />
+          <div className="admin-home__status-meta">
+            <span className="admin-home__status-label">Annunci</span>
+            <span className="admin-home__status-value">{formatIntIt(pendingJobs)} da moderare</span>
+          </div>
+        </div>
+        <div className="admin-home__status" role="listitem">
+          <span className="admin-home__status-dot admin-home__status-dot--info" />
+          <div className="admin-home__status-meta">
+            <span className="admin-home__status-label">Premium attivi</span>
+            <span className="admin-home__status-value">{formatIntIt(premium)}</span>
+          </div>
+        </div>
       </div>
 
-      {chartData.length > 0 ? (
-        <div className="dash-chart-wrap dash-chart-wrap--admin">
-          <div className="dash-chart-title">Revenue stimata (ultimi 10 mesi)</div>
-          <RevenueChart data={chartData} labels={chartLabels} />
-          <p className="dash-chart-footnote">
-            <IconTrendUp size={14} />
-            Stima MRR da catalogo piani × abbonamenti attivi/trial
-          </p>
-        </div>
-      ) : null}
+      <div className="admin-home__bento">
+        <article className="admin-home-card admin-home-card--span-3 admin-home-card--users">
+          <div>
+            <div className="admin-home-card__kicker">Utenti</div>
+            <div className="admin-home-card__value">{formatIntIt(kpis?.totalUsers ?? 0)}</div>
+            <div className="admin-home-card__label">Totale registrati</div>
+          </div>
+          <span className="admin-home-card__icon" aria-hidden="true"><IconUsers size={16} /></span>
+          <div className="admin-home-card__footer">
+            <button type="button" className="admin-home-card__cta" onClick={() => onNavigate('utenti')}>
+              Gestisci →
+            </button>
+          </div>
+        </article>
+
+        <article className="admin-home-card admin-home-card--span-3 admin-home-card--pro">
+          <div>
+            <div className="admin-home-card__kicker">Professionisti</div>
+            <div className="admin-home-card__value">{formatIntIt(kpis?.professionals ?? 0)}</div>
+            <div className="admin-home-card__label">Account attivi</div>
+          </div>
+          <span className="admin-home-card__icon" aria-hidden="true"><IconProfile size={16} /></span>
+        </article>
+
+        <article className="admin-home-card admin-home-card--span-3 admin-home-card--family">
+          <div>
+            <div className="admin-home-card__kicker">Famiglie</div>
+            <div className="admin-home-card__value">{formatIntIt(kpis?.families ?? 0)}</div>
+            <div className="admin-home-card__label">Account attivi</div>
+          </div>
+          <span className="admin-home-card__icon" aria-hidden="true"><IconUsers size={16} /></span>
+        </article>
+
+        <article className="admin-home-card admin-home-card--span-3 admin-home-card--org">
+          <div>
+            <div className="admin-home-card__kicker">Org</div>
+            <div className="admin-home-card__value">{formatIntIt(kpis?.agenciesStructures ?? 0)}</div>
+            <div className="admin-home-card__label">Agenzie / strutture</div>
+          </div>
+          <span className="admin-home-card__icon" aria-hidden="true"><IconBriefcase size={16} /></span>
+        </article>
+
+        <article className="admin-home-card admin-home-card--span-4 admin-home-card--revenue">
+          <div>
+            <div className="admin-home-card__kicker">MRR stimato</div>
+            <div className="admin-home-card__value">{formatEurIt(mrr)}</div>
+            <div className="admin-home-card__label">Ricavi mensili ricorrenti</div>
+          </div>
+          <span className="admin-home-card__icon" aria-hidden="true"><IconCreditCard size={16} /></span>
+          <div className="admin-home-card__footer">
+            <button type="button" className="admin-home-card__cta" onClick={() => onNavigate('abbonamenti')}>
+              Abbonamenti →
+            </button>
+          </div>
+        </article>
+
+        <article className="admin-home-card admin-home-card--span-4">
+          <div>
+            <div className="admin-home-card__kicker">Premium</div>
+            <div className="admin-home-card__value">{formatIntIt(premium)}</div>
+            <div className="admin-home-card__label">Abbonamenti attivi</div>
+          </div>
+          <span className="admin-home-card__icon" aria-hidden="true"><IconTrendUp size={16} /></span>
+        </article>
+
+        <article className="admin-home-card admin-home-card--span-4">
+          <div>
+            <div className="admin-home-card__kicker">Code operative</div>
+            <div className="admin-home-card__value">{formatIntIt(pendingKyc + pendingJobs)}</div>
+            <div className="admin-home-card__label">KYC + annunci in attesa</div>
+          </div>
+          <span className="admin-home-card__icon" aria-hidden="true"><IconAlert size={16} /></span>
+          <div className="admin-home-card__footer">
+            <button type="button" className="admin-home-card__cta" onClick={() => onNavigate(pendingKyc > 0 ? 'verifica' : 'moderazione')}>
+              Apri code →
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <div className="admin-home__split">
+        <section className="admin-home-panel admin-home-panel__chart">
+          <div className="admin-home-panel__head">
+            <div>
+              <h2 className="admin-home-panel__title">Andamento revenue</h2>
+              <p className="admin-home-panel__sub">Stima ultimi mesi da piani × abbonamenti</p>
+            </div>
+          </div>
+          {chartData.length > 0 ? (
+            <>
+              <RevenueChart data={chartData} labels={chartLabels} />
+              <p className="admin-home-panel__footnote">
+                <IconTrendUp size={12} />
+                MRR da catalogo piani × abbonamenti attivi/trial
+              </p>
+            </>
+          ) : (
+            <p className="admin-home-panel__sub">Nessun dato revenue disponibile.</p>
+          )}
+        </section>
+
+        <section className="admin-home-panel">
+          <div className="admin-home-panel__head">
+            <div>
+              <h2 className="admin-home-panel__title">Sicurezza e code</h2>
+              <p className="admin-home-panel__sub">Azioni prioritarie</p>
+            </div>
+          </div>
+          <div className="admin-home-sec-list">
+            <button type="button" className="admin-home-sec-item" onClick={() => onNavigate('verifica')}>
+              <span className={`admin-home-sec-item__icon ${pendingKyc > 0 ? 'admin-home-sec-item__icon--warn' : 'admin-home-sec-item__icon--ok'}`}>
+                <IconShield size={15} />
+              </span>
+              <span className="admin-home-sec-item__body">
+                <span className="admin-home-sec-item__title">Verifica KYC</span>
+                <span className="admin-home-sec-item__meta">Documenti in revisione</span>
+              </span>
+              <span className={`admin-home-sec-item__badge ${pendingKyc > 0 ? 'admin-home-sec-item__badge--warn' : 'admin-home-sec-item__badge--ok'}`}>
+                {formatIntIt(pendingKyc)}
+              </span>
+            </button>
+            <button type="button" className="admin-home-sec-item" onClick={() => onNavigate('moderazione')}>
+              <span className={`admin-home-sec-item__icon ${pendingJobs > 0 ? 'admin-home-sec-item__icon--warn' : 'admin-home-sec-item__icon--ok'}`}>
+                <IconBriefcase size={15} />
+              </span>
+              <span className="admin-home-sec-item__body">
+                <span className="admin-home-sec-item__title">Moderazione annunci</span>
+                <span className="admin-home-sec-item__meta">In attesa di approvazione</span>
+              </span>
+              <span className={`admin-home-sec-item__badge ${pendingJobs > 0 ? 'admin-home-sec-item__badge--warn' : 'admin-home-sec-item__badge--ok'}`}>
+                {formatIntIt(pendingJobs)}
+              </span>
+            </button>
+            <button type="button" className="admin-home-sec-item" onClick={() => onNavigate('account')}>
+              <span className="admin-home-sec-item__icon admin-home-sec-item__icon--ok">
+                <IconCheck size={15} />
+              </span>
+              <span className="admin-home-sec-item__body">
+                <span className="admin-home-sec-item__title">Sicurezza account</span>
+                <span className="admin-home-sec-item__meta">Step-up e passkey</span>
+              </span>
+              <span className="admin-home-sec-item__badge admin-home-sec-item__badge--ok">OK</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div className="admin-home__modules">
+        <button type="button" className="admin-home-module" onClick={() => onNavigate('utenti')}>
+          <span className="admin-home-module__icon admin-home-module__icon--users"><IconUsers size={16} /></span>
+          <span className="admin-home-module__title">Utenti</span>
+          <p className="admin-home-module__desc">Ruoli, status e dettaglio profilo</p>
+          <span className="admin-home-module__cta">Apri</span>
+        </button>
+        <button type="button" className="admin-home-module" onClick={() => onNavigate('abbonamenti')}>
+          <span className="admin-home-module__icon admin-home-module__icon--billing"><IconCreditCard size={16} /></span>
+          <span className="admin-home-module__title">Abbonamenti</span>
+          <p className="admin-home-module__desc">Piani, trial e refund</p>
+          <span className="admin-home-module__cta">Apri</span>
+        </button>
+        <button type="button" className="admin-home-module" onClick={() => onNavigate('verifica')}>
+          <span className="admin-home-module__icon admin-home-module__icon--kyc"><IconShield size={16} /></span>
+          <span className="admin-home-module__title">Verifica</span>
+          <p className="admin-home-module__desc">Coda KYC documenti</p>
+          <span className="admin-home-module__cta">Apri</span>
+        </button>
+        <button type="button" className="admin-home-module" onClick={() => onNavigate('impostazioni')}>
+          <span className="admin-home-module__icon admin-home-module__icon--jobs"><IconSettings size={16} /></span>
+          <span className="admin-home-module__title">Impostazioni</span>
+          <p className="admin-home-module__desc">Piattaforma e notifiche</p>
+          <span className="admin-home-module__cta">Apri</span>
+        </button>
+      </div>
     </div>
   )
 }
@@ -1494,13 +1693,14 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
 
   if (settingsHook.loading) {
     return (
-      <div>
-        <div className="dash-section-header">
+      <div className="admin-settings">
+        <header className="admin-settings__hero">
           <div>
-            <h2 className="dash-section__title">Impostazioni piattaforma</h2>
-            <p className="dash-section__subtitle">Caricamento…</p>
+            <div className="admin-settings__eyebrow"><IconSettings size={12} /> Piattaforma</div>
+            <h1 className="admin-settings__title">Impostazioni</h1>
+            <p className="admin-settings__sub">Caricamento…</p>
           </div>
-        </div>
+        </header>
         <VerifyLoadSkeleton />
       </div>
     )
@@ -1508,12 +1708,13 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
 
   if (settingsHook.error || !s) {
     return (
-      <div>
-        <div className="dash-section-header">
+      <div className="admin-settings">
+        <header className="admin-settings__hero">
           <div>
-            <h2 className="dash-section__title">Impostazioni piattaforma</h2>
+            <div className="admin-settings__eyebrow"><IconSettings size={12} /> Piattaforma</div>
+            <h1 className="admin-settings__title">Impostazioni</h1>
           </div>
-        </div>
+        </header>
         <VerifyErrorState
           message={settingsHook.error ?? 'Impostazioni non disponibili.'}
           onRetry={settingsHook.reload}
@@ -1523,36 +1724,44 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
   }
 
   return (
-    <div className="dash-admin-settings">
+    <div className="admin-settings">
       <VerifyToast message={settingsHook.toast ?? ''} visible={Boolean(settingsHook.toast)} />
 
-      <div className="dash-section-header">
+      <header className="admin-settings__hero">
         <div>
-          <h2 className="dash-section__title">Impostazioni piattaforma</h2>
-          <p className="dash-section__subtitle">Configurazioni globali della piattaforma</p>
+          <div className="admin-settings__eyebrow"><IconSettings size={12} /> Piattaforma</div>
+          <h1 className="admin-settings__title">Impostazioni</h1>
+          <p className="admin-settings__sub">Configurazioni globali · salvataggio per sezione</p>
         </div>
-      </div>
+      </header>
 
       {settingsHook.saveError ? (
-        <div className="dash-profile-preview dash-profile-preview--alert" role="alert">
+        <div className="admin-settings__error" role="alert">
           {settingsHook.saveError}
         </div>
       ) : null}
 
-      <div className="dash-settings-grid dash-admin-settings-grid">
-        <div className="dash-settings-card">
-          <div className="dash-settings-card__title">Piani e prezzi</div>
-          <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.45 }}>
-            Il catalogo piani (nomi, importi, feature, Stripe Price ID) si gestisce in{' '}
-            <strong>Abbonamenti → Catalogo piani</strong>, allineato a ciò che vedono i clienti.
+      <div className="admin-settings__grid">
+        <section className="admin-settings-card admin-settings-card--span-4">
+          <div className="admin-settings-card__head">
+            <h2 className="admin-settings-card__title">Piani e prezzi</h2>
+            <span className="admin-settings-card__icon" aria-hidden="true"><IconCreditCard size={15} /></span>
+          </div>
+          <p className="admin-settings-card__desc">
+            Catalogo piani (nomi, importi, feature, Stripe Price ID) in Abbonamenti → Catalogo piani.
           </p>
-          <button type="button" className="dash-btn dash-btn--ghost" onClick={onGoToPlans}>
-            Vai al catalogo piani
-          </button>
-        </div>
+          <div className="admin-settings-card__actions">
+            <button type="button" className="dash-btn dash-btn--ghost" onClick={onGoToPlans}>
+              Vai al catalogo
+            </button>
+          </div>
+        </section>
 
-        <div className="dash-settings-card">
-          <div className="dash-settings-card__title">Email notifiche</div>
+        <section className="admin-settings-card admin-settings-card--span-8">
+          <div className="admin-settings-card__head">
+            <h2 className="admin-settings-card__title">Email notifiche</h2>
+            <span className="admin-settings-card__icon" aria-hidden="true"><IconBell size={15} /></span>
+          </div>
           {EMAIL_NOTIFICATION_KEYS.map((key) => (
             <div key={key} className="dash-settings-row">
               <span className="dash-settings-row__label">
@@ -1571,7 +1780,7 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               />
             </div>
           ))}
-          <div className="dash-form-field" style={{ marginTop: 'var(--space-4)' }}>
+          <div className="dash-form-field">
             <label className="dash-form-label" htmlFor="adm-email-welcome">
               Oggetto email benvenuto (stub)
             </label>
@@ -1587,27 +1796,33 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               }
             />
           </div>
-          <button
-            type="button"
-            className="dash-btn dash-btn--primary"
-            style={{ marginTop: 'var(--space-3)' }}
-            disabled={settingsHook.saving}
-            onClick={() =>
-              void settingsHook.save(
-                {
-                  emailNotifications: s.emailNotifications,
-                  emailTemplates: s.emailTemplates,
-                },
-                'Notifiche email salvate.',
-              )
-            }
-          >
-            {settingsHook.saving ? 'Salvataggio…' : 'Salva notifiche'}
-          </button>
-        </div>
+          <div className="admin-settings-card__actions">
+            <button
+              type="button"
+              className="dash-btn dash-btn--primary"
+              disabled={settingsHook.saving}
+              onClick={() =>
+                void settingsHook.save(
+                  {
+                    emailNotifications: s.emailNotifications,
+                    emailTemplates: s.emailTemplates,
+                  },
+                  'Notifiche email salvate.',
+                )
+              }
+            >
+              {settingsHook.saving ? 'Salvataggio…' : 'Salva notifiche'}
+            </button>
+          </div>
+        </section>
 
-        <div className="dash-settings-card">
-          <div className="dash-settings-card__title">Manutenzione</div>
+        <section className="admin-settings-card">
+          <div className="admin-settings-card__head">
+            <h2 className="admin-settings-card__title">Manutenzione</h2>
+            <span className="admin-settings-card__icon admin-settings-card__icon--warn" aria-hidden="true">
+              <IconAlert size={15} />
+            </span>
+          </div>
           <div className="dash-settings-row dash-settings-row--stack">
             <div className="dash-settings-row__main">
               <span className="dash-settings-row__label">Modalità manutenzione</span>
@@ -1618,14 +1833,12 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               </span>
             </div>
             <p className="dash-settings-row__hint">
-              Blocca le azioni di scrittura principali sull’API (richieste, candidature, annunci,
-              messaggi famiglia, checkout). Per mostrare anche il banner in alto, attiva il flag
-              «Banner manutenzione» nella card Funzionalità.
+              Blocca scritture API (richieste, candidature, annunci, messaggi, checkout). Banner
+              separato nella card Funzionalità.
             </p>
             <button
               type="button"
               className="dash-btn dash-btn--ghost"
-              style={{ width: '100%' }}
               disabled={settingsHook.saving}
               onClick={() =>
                 settingsHook.updateLocal({
@@ -1633,7 +1846,7 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
                 })
               }
             >
-              {s.maintenance.enabled ? 'Disattiva manutenzione' : 'Attiva manutenzione'}
+              {s.maintenance.enabled ? 'Disattiva' : 'Attiva'}
             </button>
           </div>
           <div className="dash-form-field">
@@ -1643,7 +1856,6 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
             <textarea
               id="adm-maintenance-msg"
               className="dash-form-input dash-form-textarea"
-              style={{ minHeight: 64 }}
               value={s.maintenance.message}
               onChange={(e) =>
                 settingsHook.updateLocal({
@@ -1652,33 +1864,33 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               }
             />
           </div>
-          <button
-            type="button"
-            className="dash-btn dash-btn--primary"
-            style={{ marginTop: 'var(--space-3)' }}
-            disabled={settingsHook.saving}
-            onClick={() =>
-              void settingsHook.save({ maintenance: s.maintenance }, 'Impostazioni manutenzione salvate.')
-            }
-          >
-            {settingsHook.saving ? 'Salvataggio…' : 'Salva manutenzione'}
-          </button>
-        </div>
+          <div className="admin-settings-card__actions">
+            <button
+              type="button"
+              className="dash-btn dash-btn--primary"
+              disabled={settingsHook.saving}
+              onClick={() =>
+                void settingsHook.save({ maintenance: s.maintenance }, 'Impostazioni manutenzione salvate.')
+              }
+            >
+              {settingsHook.saving ? 'Salvataggio…' : 'Salva manutenzione'}
+            </button>
+          </div>
+        </section>
 
-        <div className="dash-settings-card">
-          <div className="dash-settings-card__title">Limiti piano FREE</div>
-          <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.45 }}>
-            Applicati agli account senza abbonamento Premium. I valori sono applicati subito dall’API
-            (creazione richieste e candidature).
+        <section className="admin-settings-card">
+          <div className="admin-settings-card__head">
+            <h2 className="admin-settings-card__title">Limiti piano FREE</h2>
+            <span className="admin-settings-card__icon" aria-hidden="true"><IconUsers size={15} /></span>
+          </div>
+          <p className="admin-settings-card__desc">
+            Account senza Premium. Applicati subito dall’API su richieste e candidature.
           </p>
-          <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
+          <div className="dash-form-field">
             <label className="dash-form-label" htmlFor="adm-free-requests">
               Max richieste/mese (FREE)
             </label>
-            <p className="dash-settings-row__hint" style={{ marginBottom: 8 }}>
-              Quante richieste di assistenza una famiglia può pubblicare nel mese corrente (le bozze non
-              contano).
-            </p>
+            <p className="dash-settings-row__hint">Famiglia: pubblicazioni nel mese (bozze escluse).</p>
             <input
               id="adm-free-requests"
               className="dash-form-input"
@@ -1695,14 +1907,11 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               }
             />
           </div>
-          <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
+          <div className="dash-form-field">
             <label className="dash-form-label" htmlFor="adm-free-applications">
               Max candidature attive (FREE)
             </label>
-            <p className="dash-settings-row__hint" style={{ marginBottom: 8 }}>
-              Quante candidature contemporanee può avere un professionista non Premium (inviate / in
-              valutazione). Premium non è soggetto a questo tetto.
-            </p>
+            <p className="dash-settings-row__hint">Professionista non Premium: inviate / in valutazione.</p>
             <input
               id="adm-free-applications"
               className="dash-form-input"
@@ -1719,35 +1928,36 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               }
             />
           </div>
-          <button
-            type="button"
-            className="dash-btn dash-btn--primary"
-            style={{ marginTop: 'var(--space-2)' }}
-            disabled={settingsHook.saving}
-            onClick={() =>
-              void settingsHook.save({ freeLimits: s.freeLimits }, 'Limiti piano FREE salvati.')
-            }
-          >
-            {settingsHook.saving ? 'Salvataggio…' : 'Salva limiti'}
-          </button>
-        </div>
-
-        <div className="dash-settings-card">
-          <div className="dash-settings-card__title">Commissioni marketplace</div>
-          <div
-            className="dash-badge dash-badge--ongoing"
-            style={{ marginBottom: 'var(--space-3)', display: 'inline-block' }}
-          >
-            Pianificato — non attivo
+          <div className="admin-settings-card__actions">
+            <button
+              type="button"
+              className="dash-btn dash-btn--primary"
+              disabled={settingsHook.saving}
+              onClick={() =>
+                void settingsHook.save({ freeLimits: s.freeLimits }, 'Limiti piano FREE salvati.')
+              }
+            >
+              {settingsHook.saving ? 'Salvataggio…' : 'Salva limiti'}
+            </button>
           </div>
-          <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.45 }}>
-            Percentuali di commissione Curaxe su professionisti e agenzie. <strong>Non ancora in
-            sviluppo operativo</strong>: non influenzano pagamenti Stripe né i flussi attuali. Valori
-            solo di riferimento per una futura fee marketplace.
+        </section>
+
+        <section className="admin-settings-card">
+          <div className="admin-settings-card__head">
+            <h2 className="admin-settings-card__title">Commissioni marketplace</h2>
+            <span className="admin-settings-card__icon admin-settings-card__icon--ok" aria-hidden="true">
+              <IconTrendUp size={15} />
+            </span>
+          </div>
+          <span className="dash-badge dash-badge--ongoing" style={{ alignSelf: 'flex-start' }}>
+            Pianificato — non attivo
+          </span>
+          <p className="admin-settings-card__desc">
+            Riferimento futuro: non influenzano Stripe né i flussi attuali.
           </p>
-          <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
+          <div className="dash-form-field">
             <label className="dash-form-label" htmlFor="adm-comm-pro">
-              Commissione professionisti (%) — riferimento
+              Professionisti (%) — riferimento
             </label>
             <input
               id="adm-comm-pro"
@@ -1761,9 +1971,9 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               aria-readonly="true"
             />
           </div>
-          <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
+          <div className="dash-form-field">
             <label className="dash-form-label" htmlFor="adm-comm-agency">
-              Commissione agenzie (%) — riferimento
+              Agenzie (%) — riferimento
             </label>
             <input
               id="adm-comm-agency"
@@ -1777,34 +1987,37 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               aria-readonly="true"
             />
           </div>
-        </div>
+        </section>
 
-        <div className="dash-settings-card">
-          <div className="dash-settings-card__title">Funzionalità (flag)</div>
-          <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.45 }}>
-            Interruttori operativi: disattivando un flag l’API blocca subito la relativa azione.
+        <section className="admin-settings-card">
+          <div className="admin-settings-card__head">
+            <h2 className="admin-settings-card__title">Funzionalità</h2>
+            <span className="admin-settings-card__icon" aria-hidden="true"><IconGrid size={15} /></span>
+          </div>
+          <p className="admin-settings-card__desc">
+            Flag operativi: disattivando, l’API blocca subito l’azione.
           </p>
           {(
             [
               [
                 'b2bJobPostings',
                 'Annunci B2B',
-                'Permette ad agenzie e strutture di creare o ripubblicare annunci di lavoro.',
+                'Agenzie e strutture: creare o ripubblicare annunci.',
               ],
               [
                 'familyMessaging',
                 'Messaggistica famiglia',
-                'Permette alle famiglie di contattare i professionisti e scrivere nei thread di contatto diretto.',
+                'Famiglie: contatti e thread diretti.',
               ],
               [
                 'stripeCheckout',
                 'Checkout Stripe',
-                'Permette di avviare il checkout abbonamenti Premium (professionisti, agenzie, strutture).',
+                'Avvio checkout Premium.',
               ],
               [
                 'maintenanceBanner',
                 'Banner manutenzione',
-                'Se attivo insieme a «Modalità manutenzione», mostra il messaggio in alto su tutto il sito.',
+                'Con modalità manutenzione: messaggio in alto sul sito.',
               ],
             ] as const
           ).map(([key, label, hint]) => (
@@ -1826,18 +2039,19 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               <p className="dash-settings-row__hint">{hint}</p>
             </div>
           ))}
-          <button
-            type="button"
-            className="dash-btn dash-btn--primary"
-            style={{ marginTop: 'var(--space-3)' }}
-            disabled={settingsHook.saving}
-            onClick={() =>
-              void settingsHook.save({ featureFlags: s.featureFlags }, 'Funzionalità salvate.')
-            }
-          >
-            {settingsHook.saving ? 'Salvataggio…' : 'Salva funzionalità'}
-          </button>
-        </div>
+          <div className="admin-settings-card__actions">
+            <button
+              type="button"
+              className="dash-btn dash-btn--primary"
+              disabled={settingsHook.saving}
+              onClick={() =>
+                void settingsHook.save({ featureFlags: s.featureFlags }, 'Funzionalità salvate.')
+              }
+            >
+              {settingsHook.saving ? 'Salvataggio…' : 'Salva funzionalità'}
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   )
@@ -1845,13 +2059,13 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
 
 /* ── Nav items ──────────────────────────────────────────────── */
 const NAV_ITEMS = [
-  { id: 'overview', label: 'Overview', icon: <IconGrid size={18} /> },
-  { id: 'utenti', label: 'Gestione utenti', tabLabel: 'Utenti', icon: <IconUsers size={18} /> },
-  { id: 'abbonamenti', label: 'Abbonamenti', icon: <IconCreditCard size={18} /> },
-  { id: 'verifica', label: 'Verifica profili', tabLabel: 'Verifica', icon: <IconShield size={18} /> },
-  { id: 'moderazione', label: 'Moderazione annunci', tabLabel: 'Annunci', icon: <IconBriefcase size={18} /> },
-  { id: 'impostazioni', label: 'Impostazioni piattaforma', tabLabel: 'Piattaforma', icon: <IconSettings size={18} /> },
-  { id: 'account', label: 'Il mio account', tabLabel: 'Account', icon: <IconProfile size={18} /> },
+  { id: 'overview', label: 'Overview', tabLabel: 'Home', icon: <IconGrid size={18} /> },
+  { id: 'utenti', label: 'Utenti', tabLabel: 'Utenti', icon: <IconUsers size={18} /> },
+  { id: 'abbonamenti', label: 'Abbonamenti', tabLabel: 'Piani', icon: <IconCreditCard size={18} /> },
+  { id: 'verifica', label: 'Verifica', tabLabel: 'KYC', icon: <IconShield size={18} /> },
+  { id: 'moderazione', label: 'Moderazione', tabLabel: 'Annunci', icon: <IconBriefcase size={18} /> },
+  { id: 'impostazioni', label: 'Impostazioni', tabLabel: 'Settings', icon: <IconSettings size={18} /> },
+  { id: 'account', label: 'Account', tabLabel: 'Account', icon: <IconProfile size={18} /> },
 ]
 
 /* ── Main component ─────────────────────────────────────────── */
@@ -1861,7 +2075,7 @@ export function AdminDashboard() {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'overview':      return <SectionOverview />
+      case 'overview':      return <SectionOverview onNavigate={setActiveSection} />
       case 'utenti':        return <SectionUsers />
       case 'abbonamenti':   return <SectionSubscriptions />
       case 'verifica':      return <SectionVerify />

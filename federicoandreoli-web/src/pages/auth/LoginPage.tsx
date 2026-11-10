@@ -498,7 +498,7 @@ export function LoginPage() {
           <nav className="auth-legal-row" aria-label="Legale">
             <Link to="/termini">Termini di servizio</Link>
             <Link to="/privacy">Privacy</Link>
-            <a href="#">Supporto</a>
+            <Link to="/cookie">Cookie</Link>
           </nav>
         </div>
       </main>

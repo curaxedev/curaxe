@@ -489,8 +489,7 @@ textarea:focus-visible,
   margin-bottom: var(--space-3);
 }
 
-.dash-stat-card__value,
-.dash-admin-kpi__value {
+.dash-stat-card__value {
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: 'tnum' 1, 'lnum' 1;
   letter-spacing: var(--tracking-title);
@@ -509,8 +508,7 @@ textarea:focus-visible,
   border: 1px solid rgba(42, 92, 130, 0.1);
 }
 
-.dash-shell--glass .dash-stat-card__value,
-.dash-shell--glass .dash-admin-kpi__value {
+.dash-shell--glass .dash-stat-card__value {
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: 'tnum' 1, 'lnum' 1;
 }
@@ -1814,14 +1812,6 @@ textarea:focus-visible,
   opacity: 1;
 }
 
-.dash-shell--glass .dash-admin-kpi {
-  transition: var(--transition-card);
-}
-
-.dash-shell--glass .dash-admin-kpi:hover {
-  transform: translateY(-2px);
-}
-
 /* ── Form field error shake + styling ───────────────────────────── */
 @keyframes polish-field-shake {
   0%,
@@ -1965,8 +1955,7 @@ textarea:focus-visible,
 /* ── Table / list row interactions — unified ──────────────────────── */
 .dash-shell--glass .dash-table tbody tr,
 .dash-shell--glass .dash-revenue-row,
-.dash-shell--glass .dash-candidate-row,
-.dash-shell--glass .dash-ticket {
+.dash-shell--glass .dash-candidate-row {
   transition:
     background var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out),
@@ -1975,8 +1964,7 @@ textarea:focus-visible,
 
 .dash-shell--glass .dash-table tbody tr:hover,
 .dash-shell--glass .dash-revenue-row:hover,
-.dash-shell--glass .dash-candidate-row:hover,
-.dash-shell--glass .dash-ticket:hover {
+.dash-shell--glass .dash-candidate-row:hover {
   transform: translateX(2px);
 }
 
@@ -1996,13 +1984,11 @@ textarea:focus-visible,
 
   .dash-shell--glass .polish-chart-bar:hover .polish-chart-bar__fill,
   .dash-shell--glass .polish-chart-bar:focus-visible .polish-chart-bar__fill,
-  .dash-shell--glass .dash-admin-kpi:hover,
   .dash-shell--glass .polish-export-btn:hover:not(:disabled),
   .dash-shell--glass .polish-export-btn:hover:not(:disabled) svg,
   .dash-shell--glass .dash-table tbody tr:hover,
   .dash-shell--glass .dash-revenue-row:hover,
-  .dash-shell--glass .dash-candidate-row:hover,
-  .dash-shell--glass .dash-ticket:hover {
+  .dash-shell--glass .dash-candidate-row:hover {
     transform: none;
   }
 
@@ -2020,7 +2006,7 @@ textarea:focus-visible,
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   S. POLISH-06 — Auth funnel + legal/contatti + QA finale
+   S. POLISH-06 — Auth funnel + legal + QA finale
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Login demo panel — spacing & hierarchy ───────────────────── */
@@ -2265,36 +2251,6 @@ textarea:focus-visible,
   border-left-color: var(--color-primary);
 }
 
-/* ── Contatti — form success & focus ────────────────────────────── */
-@keyframes polish-alert-enter {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.contatti-alert--success {
-  animation: polish-alert-enter var(--duration-normal) var(--ease-out) both;
-}
-
-.contatti-field input:focus-visible,
-.contatti-field textarea:focus-visible {
-  border-color: var(--color-primary);
-  box-shadow: var(--focus-ring);
-}
-
-.contatti-submit:focus-visible {
-  box-shadow: var(--focus-ring);
-}
-
-.contatti-field__label {
-  letter-spacing: 0.01em;
-}
-
 /* ── Print — legal pages ────────────────────────────────────────── */
 @media print {
   .skip-link,
@@ -2352,8 +2308,7 @@ textarea:focus-visible,
   }
 
   .wz-success-ring--pop,
-  .auth-success-icon,
-  .contatti-alert--success {
+  .auth-success-icon {
     animation: none !important;
   }
 

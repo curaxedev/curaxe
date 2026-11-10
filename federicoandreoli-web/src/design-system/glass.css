@@ -174,8 +174,7 @@
   border: 1.5px solid rgba(255, 255, 255, 0.45);
 }
 
-.dash-shell--glass .dash-sidebar__logout,
-.dash-shell--glass .dash-sidebar__support {
+.dash-shell--glass .dash-sidebar__logout {
   border-radius: var(--glass-radius-md);
   border-color: var(--glass-border-muted);
   background: rgba(255, 255, 255, 0.35);
@@ -1772,30 +1771,6 @@
   gap: 6px;
 }
 
-.dash-shell--glass .dash-admin-kpi {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-muted);
-  border-radius: var(--glass-radius-lg);
-  box-shadow: var(--glass-shadow);
-  transition:
-    box-shadow var(--glass-duration) var(--glass-ease),
-    transform var(--glass-duration) var(--glass-ease);
-}
-
-.dash-shell--glass .dash-admin-kpi:hover {
-  box-shadow: var(--glass-shadow-lg);
-  transform: translateY(-1px);
-}
-
-.dash-shell--glass .dash-admin-kpi__value {
-  font-family: var(--font-glass-heading);
-  letter-spacing: var(--tracking-title);
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: 'tnum' 1, 'lnum' 1;
-}
-
 .dash-shell--glass .dash-chart-wrap--admin .dash-chart-footnote {
   display: inline-flex;
   align-items: center;
@@ -1828,28 +1803,10 @@
   background: linear-gradient(145deg, var(--color-primary-soft), var(--color-primary-softer));
 }
 
-.dash-shell--glass .dash-ticket-list,
 .dash-shell--glass .dash-verify-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.dash-shell--glass .dash-ticket {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border-muted);
-  border-radius: var(--glass-radius-lg);
-  box-shadow: var(--glass-shadow);
-  transition:
-    box-shadow var(--glass-duration) var(--glass-ease),
-    border-color var(--glass-duration) var(--glass-ease);
-}
-
-.dash-shell--glass .dash-ticket:hover {
-  box-shadow: var(--glass-shadow-lg);
-  border-color: rgba(42, 92, 130, 0.12);
 }
 
 .dash-shell--glass .dash-verify-card {
@@ -1879,39 +1836,6 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   margin-top: 4px;
-}
-
-.dash-shell--glass .dash-ticket-msg {
-  padding: var(--space-3);
-  margin-bottom: var(--space-2);
-  border-radius: var(--glass-radius-md);
-  border: 1px solid var(--glass-border-muted);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.dash-shell--glass .dash-ticket-msg--system {
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.dash-shell--glass .dash-ticket-msg--admin {
-  background: var(--glass-primary-tint);
-  border-color: rgba(42, 92, 130, 0.12);
-}
-
-.dash-shell--glass .dash-ticket-msg--user {
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.dash-shell--glass .dash-ticket-msg__meta {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  margin-bottom: 4px;
-}
-
-.dash-shell--glass .dash-ticket-msg__body {
-  font-size: var(--text-small);
-  white-space: pre-wrap;
 }
 
 .dash-shell--glass .dash-kyc-preview__image {
@@ -2602,18 +2526,6 @@
   -webkit-backdrop-filter: none;
 }
 
-.site-shell--glass .contatti-hero {
-  background:
-    radial-gradient(120% 70% at 10% -5%, rgba(42, 92, 130, 0.08) 0%, transparent 55%),
-    color-mix(in srgb, var(--color-surface) 94%, #fff);
-  border-bottom: 1px solid var(--glass-border-muted);
-}
-
-.site-shell--glass .contatti-hero__label {
-  background: var(--glass-primary-tint);
-  border-color: rgba(42, 92, 130, 0.12);
-}
-
 /* ── Profile cards (carousel + directory) ───────────────────── */
 .site-shell--glass .home-profile-carousel__card--sitly.pro-card {
   background: color-mix(in srgb, var(--color-surface) 96%, #fff);
@@ -2717,9 +2629,7 @@
 .site-shell--glass .home-faq__item,
 .site-shell--glass .home-trust-card,
 .site-shell--glass .cf-trust-card,
-.site-shell--glass .cf-step-card,
-.site-shell--glass .contatti-panel,
-.site-shell--glass .contatti-info-card {
+.site-shell--glass .cf-step-card {
   background: color-mix(in srgb, var(--color-surface) 96%, #fff);
   border: 1px solid var(--glass-border-muted);
   box-shadow: var(--glass-shadow);
@@ -2742,15 +2652,3 @@
   border-color: rgba(42, 92, 130, 0.2);
 }
 
-.site-shell--glass .contatti-form input,
-.site-shell--glass .contatti-form textarea {
-  background: color-mix(in srgb, var(--color-surface) 94%, #fff);
-  border: 1px solid var(--glass-border-muted);
-}
-
-.site-shell--glass .contatti-form input:focus-visible,
-.site-shell--glass .contatti-form textarea:focus-visible {
-  outline: none;
-  border-color: rgba(42, 92, 130, 0.35);
-  box-shadow: 0 0 0 3px rgba(42, 92, 130, 0.1);
-}
