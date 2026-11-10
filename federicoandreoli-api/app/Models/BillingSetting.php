@@ -387,6 +387,7 @@ class BillingSetting extends Model
             'trialDaysStructure' => $this->trial_days_structure,
             'plans' => $this->resolvedPlansCatalog(),
             'planLocks' => app(\App\Services\Stripe\PlanCatalogLockService::class)->locksFor($this),
+            'planPriceChanges' => app(\App\Services\Stripe\PlanCatalogLockService::class)->recentPriceChanges(25),
             'portalConfigurationId' => $this->portal_configuration_id,
             'webhookEndpointId' => $this->webhook_endpoint_id,
             'webhookUrl' => rtrim((string) config('app.url'), '/').'/api/v1/webhooks/stripe',
