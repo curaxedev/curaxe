@@ -28,6 +28,7 @@ class AdminPasskeyController
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'password' => ['nullable', 'string', 'max:255'],
         ]);
 
         try {

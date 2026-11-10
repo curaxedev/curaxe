@@ -156,8 +156,9 @@ final class AdminStepUpService
     }
 
     /**
-     * Per gestione passkey: step-up obbligatorio se Sicurezza totale ON,
-     * oppure se l'utente ha già almeno una passkey (anti bind silenzioso).
+     * Per gestione passkey:
+     * - prima passkey: richiede conferma password (anti session hijack);
+     * - passkey successive / Sicurezza totale: step-up passkey.
      */
     public function requireForPasskeyManage(Request $request, bool $isFirstRegistration = false): void
     {
@@ -165,9 +166,19 @@ final class AdminStepUpService
         if (! $user instanceof User) {
             throw new HttpException(403, 'Non autorizzato.');
         }
+
         if ($isFirstRegistration && $this->passkeyCount($user) === 0) {
+            $password = $request->input('password');
+            if (! is_string($password) || $password === '' || ! is_string($user->password) || $user->password === '') {
+                throw new HttpException(403, 'Conferma la password per registrare la prima passkey.');
+            }
+            if (! \Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+                throw new HttpException(403, 'Password non corretta.');
+            }
+
             return;
         }
+
         if ($this->securityTotalEnabled($user) || $this->passkeyCount($user) >= 1) {
             $token = $request->headers->get('X-Step-Up-Token');
             if (! $this->consume($user, AdminSensitiveAction::PASSKEY_MANAGE, is_string($token) ? $token : null)) {

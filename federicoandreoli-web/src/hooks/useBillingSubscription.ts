@@ -11,6 +11,7 @@ import {
 } from '../lib/billingApi'
 import type { BillingAudience, CheckoutSession, PlanType, UserSubscription } from '../lib/billingTypes'
 import { BillingError } from '../lib/billingTypes'
+import { fetchPlatformConfig } from '../lib/platformConfigApi'
 import { getSiteOrigin } from '../lib/runtimeConfig'
 
 function billingErrorMessage(err: unknown): string {
@@ -92,6 +93,17 @@ export function useBillingSubscription(
 
     setCheckoutLoading(true)
     setError(null)
+
+    try {
+      const platform = await fetchPlatformConfig()
+      if (!platform.featureFlags.stripeCheckout) {
+        setError('Il checkout abbonamenti è temporaneamente disabilitato.')
+        setCheckoutLoading(false)
+        return null
+      }
+    } catch {
+      /* API enforcement remains the source of truth */
+    }
 
     const productKey = productKeyForAudience(audience)
     const { successUrl, cancelUrl } = checkoutUrls(dashboardPath)

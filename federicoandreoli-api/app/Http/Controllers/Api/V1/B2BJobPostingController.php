@@ -6,6 +6,7 @@ use App\Domains\Auth\Enums\UserRole;
 use App\Models\Application;
 use App\Models\JobPosting;
 use App\Models\Organization;
+use App\Services\Platform\FeatureGate;
 use App\Support\ApiResponse;
 use App\Support\DirectoryCache;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,10 @@ use Illuminate\Http\Request;
 
 class B2BJobPostingController
 {
+    public function __construct(
+        private readonly FeatureGate $gate,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -35,6 +40,16 @@ class B2BJobPostingController
         $user = $request->user();
         if (! in_array($user->role, [UserRole::Agency, UserRole::Structure], true)) {
             return ApiResponse::error('Non autorizzato.', 403, [], 'forbidden');
+        }
+
+        if ($blocked = $this->gate->assertMaintenanceWrites()) {
+            return $blocked;
+        }
+        if ($blocked = $this->gate->assertFeature(
+            'b2bJobPostings',
+            'La pubblicazione di annunci B2B è temporaneamente disabilitata.',
+        )) {
+            return $blocked;
         }
 
         $data = $this->validatedForm($request);
@@ -93,6 +108,17 @@ class B2BJobPostingController
             $status = $request->string('publishAs')->toString();
             if (! in_array($status, ['draft', 'pending_review', 'active', 'paused', 'closed', 'rejected'], true)) {
                 return ApiResponse::error('Stato non valido.', 422, [], 'validation');
+            }
+            if (in_array($status, ['active', 'pending_review'], true)) {
+                if ($blocked = $this->gate->assertMaintenanceWrites()) {
+                    return $blocked;
+                }
+                if ($blocked = $this->gate->assertFeature(
+                    'b2bJobPostings',
+                    'La pubblicazione di annunci B2B è temporaneamente disabilitata.',
+                )) {
+                    return $blocked;
+                }
             }
             $job->status = $status;
             if ($status === 'active' && $job->published_at === null) {

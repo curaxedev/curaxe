@@ -131,6 +131,7 @@ export async function listAdminPasskeys(): Promise<AdminPasskey[]> {
 export async function registerAdminPasskey(
   name: string,
   stepUpToken?: string,
+  password?: string,
 ): Promise<AdminPasskey> {
   if (isMockApiEnabled()) {
     throw new AuthError('network', 'Passkey non disponibili in modalità mock.')
@@ -142,7 +143,7 @@ export async function registerAdminPasskey(
   const begin = await httpPost<{ challengeId: string; options: PublicKeyCredentialJSON }>(
     '/api/v1/admin/passkeys/register/options',
     {
-      body: { name },
+      body: { name, ...(password ? { password } : {}) },
       headers: stepUpToken ? { 'X-Step-Up-Token': stepUpToken } : undefined,
     },
   )

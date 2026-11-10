@@ -33,6 +33,10 @@ export type AdminPlatformSettings = {
   commissionRates: {
     professionalPercent: number
     agencyPercent: number
+    /** Always true until marketplace fee engine ships. */
+    plannedOnly?: boolean
+    /** Always false until marketplace fee engine ships. */
+    active?: boolean
   }
   featureFlags: AdminFeatureFlags
   freeLimits: {

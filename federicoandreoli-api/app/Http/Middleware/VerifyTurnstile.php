@@ -20,10 +20,9 @@ class VerifyTurnstile
     public function handle(Request $request, Closure $next): Response
     {
         $cfg = config('cloudflare.turnstile', []);
-        $enabled = (bool) ($cfg['enabled'] ?? false);
         $secret = $cfg['secret_key'] ?? null;
-
-        if (! $enabled || ! is_string($secret) || $secret === '') {
+        // Fail-closed: se il secret è presente, la verifica è obbligatoria (ignora ENABLED=false).
+        if (! is_string($secret) || $secret === '') {
             return $next($request);
         }
 

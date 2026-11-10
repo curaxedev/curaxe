@@ -52,6 +52,17 @@ class FamilyRequestApplicationTest extends TestCase
 
     public function test_plan_limit_blocks_second_active_request(): void
     {
+        \App\Models\PlatformSetting::query()->updateOrCreate(
+            ['key' => 'platform'],
+            ['value' => [
+                'freeLimits' => [
+                    'maxRequestsPerMonth' => 1,
+                    'maxActiveApplications' => 5,
+                ],
+            ]],
+        );
+        \App\Services\Platform\PlatformSettingsReader::bump();
+
         $family = User::query()->where('email', 'bianchi@email.it')->firstOrFail();
         Sanctum::actingAs($family);
 

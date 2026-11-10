@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\FamilyRequest;
 use App\Models\JobPosting;
 use App\Models\PlatformSetting;
+use App\Services\Platform\PlatformSettingsReader;
 use App\Models\ProfessionalDocument;
 use App\Models\ProfessionalProfile;
 use App\Models\Subscription;
@@ -295,10 +296,12 @@ class AdminOpsController
             'emailNotifications' => ['sometimes', 'array'],
             'emailTemplates' => ['sometimes', 'array'],
             'maintenance' => ['sometimes', 'array'],
-            'commissionRates' => ['sometimes', 'array'],
             'featureFlags' => ['sometimes', 'array'],
             'freeLimits' => ['sometimes', 'array'],
         ]);
+
+        // Commissioni marketplace: bloccate (pianificate / non operative) — non modificabili via API.
+        unset($data['commissionRates']);
 
         $row = PlatformSetting::query()->firstOrCreate(
             ['key' => 'platform'],
@@ -313,8 +316,15 @@ class AdminOpsController
                 $current[$key] = $value;
             }
         }
+        if (! isset($current['commissionRates']) || ! is_array($current['commissionRates'])) {
+            $current['commissionRates'] = PlatformSettingsReader::defaults()['commissionRates'];
+        }
+        $current['commissionRates']['plannedOnly'] = true;
+        $current['commissionRates']['active'] = false;
+
         $row->value = $current;
         $row->save();
+        PlatformSettingsReader::bump();
 
         AuditLog::record($request->user()->id, 'settings.update', 'platform_settings', 'platform');
 
@@ -326,8 +336,9 @@ class AdminOpsController
      */
     private function settingsPayload(): array
     {
+        $reader = app(PlatformSettingsReader::class);
+        $value = $reader->all();
         $row = PlatformSetting::query()->where('key', 'platform')->first();
-        $value = is_array($row?->value) ? $row->value : [];
 
         return array_merge($value, [
             'updatedAt' => $row?->updated_at?->toIso8601String() ?? now()->toIso8601String(),

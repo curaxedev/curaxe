@@ -437,18 +437,6 @@ export function LoginPage() {
                 </>
               )}
 
-              <div className="auth-divider">
-                <span>Oppure continua con</span>
-              </div>
-
-              <div className="auth-social-row">
-                <button type="button" className="auth-btn-social">
-                  Google
-                </button>
-                <button type="button" className="auth-btn-social">
-                  Apple
-                </button>
-              </div>
             </>
           )}
 

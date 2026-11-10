@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useJobPostings } from '../../../hooks/useJobPostings'
+import { usePlatformConfig } from '../../../hooks/usePlatformConfig'
 import type { JobPosting, JobPostingFormInput } from '../../../lib/jobPostingTypes'
 import {
   JOB_POSTING_CONTRACT_LABELS,
@@ -43,6 +44,8 @@ export function B2BPostingsSection({
     setPostingStatus,
     clearSubmitFeedback,
   } = useJobPostings()
+  const { featureFlags } = usePlatformConfig()
+  const postingsEnabled = featureFlags.b2bJobPostings
 
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardMode, setWizardMode] = useState<'create' | 'edit'>('create')
@@ -66,6 +69,7 @@ export function B2BPostingsSection({
         }
 
   const openCreate = () => {
+    if (!postingsEnabled) return
     setWizardMode('create')
     setEditingPosting(null)
     clearSubmitFeedback()
@@ -145,12 +149,29 @@ export function B2BPostingsSection({
           >
             Esporta CSV
           </button>
-          <button type="button" className="dash-btn dash-btn--primary" onClick={openCreate}>
+          <button
+            type="button"
+            className="dash-btn dash-btn--primary"
+            onClick={openCreate}
+            disabled={!postingsEnabled}
+            title={
+              postingsEnabled
+                ? undefined
+                : 'Pubblicazione annunci B2B disabilitata dall’amministratore'
+            }
+          >
             <IconPlus size={16} />
             {copy.newLabel}
           </button>
         </div>
       </div>
+
+      {!postingsEnabled ? (
+        <div className="dash-card" role="status" style={{ marginBottom: 'var(--space-4)' }}>
+          La pubblicazione di nuovi annunci B2B è disabilitata dall’amministratore. Puoi ancora
+          consultare e gestire quelli esistenti.
+        </div>
+      ) : null}
 
       {successMessage ? (
         <div

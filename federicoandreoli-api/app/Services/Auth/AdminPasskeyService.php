@@ -308,6 +308,7 @@ final class AdminPasskeyService
 
         AuditLog::record($user->id, 'passkey.login', WebauthnCredential::class, (string) $passkey->id);
 
+        $user->tokens()->delete();
         $token = $user->createToken('spa-passkey')->plainTextToken;
 
         return ['user' => $user, 'token' => $token];

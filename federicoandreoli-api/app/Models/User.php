@@ -30,6 +30,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'suspended_at' => 'datetime',
             'password' => 'hashed',
+            'totp_secret' => 'encrypted',
             'role' => UserRole::class,
         ];
     }

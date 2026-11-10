@@ -12,6 +12,7 @@ use App\Models\FamilyRequest;
 use App\Models\JobPosting;
 use App\Models\ProfessionalProfile;
 use App\Models\User;
+use App\Services\Platform\FeatureGate;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,10 @@ use Illuminate\Support\Facades\Mail;
 
 class ApplicationController
 {
+    public function __construct(
+        private readonly FeatureGate $gate,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -127,6 +132,14 @@ class ApplicationController
         $data = $request->validate([
             'message' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        if ($blocked = $this->gate->assertMaintenanceWrites()) {
+            return $blocked;
+        }
+
+        if ($blocked = $this->gate->assertFreeApplicationLimit($user)) {
+            return $blocked;
+        }
 
         $exists = Application::query()
             ->where('target_type', $target['target_type'])

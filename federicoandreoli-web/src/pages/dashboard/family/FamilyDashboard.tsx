@@ -22,6 +22,7 @@ import {
 import { useFamilyRequests } from '../../../hooks/useFamilyRequests'
 import { useMessaging } from '../../../hooks/useMessaging'
 import { useNotifications } from '../../../hooks/useNotifications'
+import { usePlatformConfig } from '../../../hooks/usePlatformConfig'
 import { openDirectContactThread } from '../../../lib/messagingApi'
 import { DEFAULT_FAMILY_CONTACT_MESSAGE } from '../../../lib/messageTemplates'
 import {
@@ -550,6 +551,7 @@ function SectionNewRequest({
   fieldErrors: FamilyRequestsContext['fieldErrors']
   onClearSubmitFeedback: () => void
 }) {
+  const { freeLimits } = usePlatformConfig()
   const [assistanceType, setAssistanceType] = useState<FamilyAssistanceType>('badante')
   const [beneficiary, setBeneficiary] = useState<FamilyBeneficiaryType>('non_autosufficient_elderly')
   const [employmentType, setEmploymentType] = useState<FamilyEmploymentType>('live_in')
@@ -599,6 +601,10 @@ function SectionNewRequest({
         <div>
           <h2 className="dash-section__title">Pubblica nuova richiesta</h2>
           <p className="dash-section__subtitle">Descrivete le vostre esigenze per trovare il professionista giusto</p>
+          <p className="dash-section__subtitle" style={{ marginTop: 6 }}>
+            Piano gratuito: fino a {freeLimits.maxRequestsPerMonth} richieste pubblicate al mese
+            (le bozze non contano).
+          </p>
         </div>
       </div>
 

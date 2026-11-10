@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domains\Auth\Enums\UserRole;
 use App\Models\BillingSetting;
 use App\Models\Subscription;
+use App\Services\Platform\FeatureGate;
 use App\Services\Stripe\SubscriptionBillingService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,7 @@ class BillingController
 {
     public function __construct(
         private readonly SubscriptionBillingService $billing,
+        private readonly FeatureGate $gate,
     ) {}
 
     public function subscription(Request $request): JsonResponse
@@ -25,6 +27,16 @@ class BillingController
 
     public function createCheckout(Request $request): JsonResponse
     {
+        if ($blocked = $this->gate->assertMaintenanceWrites()) {
+            return $blocked;
+        }
+        if ($blocked = $this->gate->assertFeature(
+            'stripeCheckout',
+            'Il checkout abbonamenti è temporaneamente disabilitato.',
+        )) {
+            return $blocked;
+        }
+
         $data = $request->validate([
             'audience' => ['nullable', 'in:professional,agency,structure'],
             'successUrl' => ['nullable', 'string', 'max:500'],
@@ -51,6 +63,15 @@ class BillingController
 
     public function completeCheckout(Request $request, string $sessionId): JsonResponse
     {
+        if (! app()->environment(['local', 'testing'])) {
+            if ($blocked = $this->gate->assertFeature(
+                'stripeCheckout',
+                'Il checkout abbonamenti è temporaneamente disabilitato.',
+            )) {
+                return $blocked;
+            }
+        }
+
         try {
             $sub = $this->billing->completeCheckout($request->user(), $sessionId);
         } catch (\InvalidArgumentException $e) {

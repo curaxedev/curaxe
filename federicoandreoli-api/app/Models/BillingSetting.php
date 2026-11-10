@@ -8,9 +8,7 @@ use Illuminate\Support\Facades\Crypt;
 
 #[Fillable([
     'mode',
-    'secret_key_encrypted',
     'publishable_key',
-    'webhook_secret_encrypted',
     'secret_key_hint',
     'webhook_secret_hint',
     'price_professional',
@@ -27,6 +25,12 @@ use Illuminate\Support\Facades\Crypt;
 ])]
 class BillingSetting extends Model
 {
+    /** @var list<string> */
+    protected $hidden = [
+        'secret_key_encrypted',
+        'webhook_secret_encrypted',
+    ];
+
     protected function casts(): array
     {
         return [

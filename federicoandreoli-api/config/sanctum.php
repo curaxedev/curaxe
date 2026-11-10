@@ -47,7 +47,13 @@ return [
     |
     */
 
-    'expiration' => null,
+    /*
+    |--------------------------------------------------------------------------
+    | Token Expiration (minutes)
+    |--------------------------------------------------------------------------
+    | Align with SPA client TTL (default 24h). Set SANCTUM_TOKEN_EXPIRATION in .env.
+    */
+    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION', 1440),
 
     /*
     |--------------------------------------------------------------------------

@@ -6,8 +6,11 @@ use App\Domains\Auth\Enums\UserRole;
 use App\Mail\Registration\AccountDeletedMail;
 use App\Models\AuditLog;
 use App\Models\JobPosting;
+use App\Models\Organization;
+use App\Models\ProfessionalProfile;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\DirectoryCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -109,7 +112,17 @@ class AdminController
             return ApiResponse::error('Non puoi sospendere un admin.', 422, [], 'validation');
         }
 
-        $u->forceFill(['suspended_at' => now()])->save();
+        DB::transaction(function () use ($u): void {
+            $u->forceFill(['suspended_at' => now()])->save();
+            $u->tokens()->delete();
+            ProfessionalProfile::query()->where('user_id', $u->id)->update(['is_published' => false]);
+            Organization::query()->where('user_id', $u->id)->update(['is_published' => false]);
+            JobPosting::query()
+                ->where('user_id', $u->id)
+                ->where('status', 'active')
+                ->update(['status' => 'paused']);
+        });
+        DirectoryCache::bump();
         AuditLog::record($request->user()->id, 'user.suspend', 'user', (string) $u->id);
 
         return $this->showUser($id);
@@ -122,6 +135,8 @@ class AdminController
             return ApiResponse::error('Utente non trovato.', 404, [], 'not_found');
         }
         $u->forceFill(['suspended_at' => null])->save();
+        // Non ripubblica automaticamente: l’utente/admin ripubblica quando pronto.
+        DirectoryCache::bump();
         AuditLog::record($request->user()->id, 'user.reactivate', 'user', (string) $u->id);
 
         return $this->showUser($id);
@@ -150,6 +165,7 @@ class AdminController
             AuditLog::record($actor->id, 'user.delete', 'user', $subjectId);
             $u->delete();
         });
+        DirectoryCache::bump();
 
         Mail::to($email)->send(new AccountDeletedMail($name));
 

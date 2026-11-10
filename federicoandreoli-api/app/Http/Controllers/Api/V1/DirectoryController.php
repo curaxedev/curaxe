@@ -114,10 +114,12 @@ class DirectoryController
         $profiles = ProfessionalProfile::query()
             ->with('user')
             ->where('is_published', true);
+        $this->constrainActiveOwner($profiles);
         $this->applyRegioneExactFilter($profiles, $data);
         $this->applyCategoryAndQ($profiles, $data);
 
         $orgs = Organization::query()->where('is_published', true);
+        $this->constrainActiveOwner($orgs);
         $this->applyOrgRegioneExactFilter($orgs, $data);
 
         $profileItems = $profiles->orderByDesc('rating_avg')->limit(500)->get();
@@ -163,6 +165,7 @@ class DirectoryController
             ->whereNotNull('lng')
             ->whereBetween('lat', [$bbox['minLat'], $bbox['maxLat']])
             ->whereBetween('lng', [$bbox['minLng'], $bbox['maxLng']]);
+        $this->constrainActiveOwner($profiles);
         $this->applyCategoryAndQ($profiles, $data);
 
         $candidates = $profiles->limit(self::COVERAGE_CANDIDATE_LIMIT)->get();
@@ -228,9 +231,9 @@ class DirectoryController
 
         $orgs = Organization::query()
             ->where('is_published', true)
-            ->whereIn('istat', $neighborIstats)
-            ->limit(300)
-            ->get();
+            ->whereIn('istat', $neighborIstats);
+        $this->constrainActiveOwner($orgs);
+        $orgs = $orgs->limit(300)->get();
 
         $out = [];
         foreach ($orgs as $org) {
@@ -314,8 +317,9 @@ class DirectoryController
         $profile = ProfessionalProfile::query()
             ->with('user')
             ->where('is_published', true)
-            ->where('user_id', $id)
-            ->first();
+            ->where('user_id', $id);
+        $this->constrainActiveOwner($profile);
+        $profile = $profile->first();
 
         if ($profile === null) {
             return ApiResponse::error('Profilo non trovato.', 404, [], 'not_found');
@@ -363,8 +367,9 @@ class DirectoryController
             ->where('is_published', true)
             ->where(function ($q) use ($id, $numericId) {
                 $q->where('id', $numericId)->orWhere('slug', $id);
-            })
-            ->first();
+            });
+        $this->constrainActiveOwner($org);
+        $org = $org->first();
 
         if ($org === null) {
             return ApiResponse::error('Struttura non trovata.', 404, [], 'not_found');
@@ -392,6 +397,7 @@ class DirectoryController
             $query = JobPosting::query()
                 ->where('status', 'active')
                 ->whereNotNull('published_at');
+            $this->constrainActiveOwner($query);
 
             if (! empty($data['citta'])) {
                 $place = $this->geo()->byName((string) $data['citta']);
@@ -434,8 +440,9 @@ class DirectoryController
         $job = JobPosting::query()
             ->where('status', 'active')
             ->whereNotNull('published_at')
-            ->where('id', $id)
-            ->first();
+            ->where('id', $id);
+        $this->constrainActiveOwner($job);
+        $job = $job->first();
 
         if ($job === null) {
             return ApiResponse::error('Posizione non trovata.', 404, [], 'not_found');
@@ -444,5 +451,17 @@ class DirectoryController
         return (new DirectoryOpenPositionResource($job))
             ->response()
             ->setStatusCode(200);
+    }
+
+    /**
+     * Esclude contenuti di account sospesi o senza utente (hard-delete).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\Illuminate\Database\Eloquent\Model>  $query
+     */
+    private function constrainActiveOwner($query): void
+    {
+        $query->whereHas('user', static function ($q): void {
+            $q->whereNull('suspended_at');
+        });
     }
 }

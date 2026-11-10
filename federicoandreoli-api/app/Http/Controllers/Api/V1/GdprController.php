@@ -113,6 +113,7 @@ class GdprController
             // consent_records e registrations cadono in cascata (FK cascadeOnDelete).
             $user->delete();
         });
+        \App\Support\DirectoryCache::bump();
 
         Mail::to($email)->send(new AccountDeletedMail($name));
 

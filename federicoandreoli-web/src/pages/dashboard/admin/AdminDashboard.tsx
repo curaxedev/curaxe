@@ -1879,7 +1879,9 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               </span>
             </div>
             <p className="dash-settings-row__hint">
-              Attiva per mostrare una pagina di manutenzione agli utenti.
+              Blocca le azioni di scrittura principali sull’API (richieste, candidature, annunci,
+              messaggi famiglia, checkout). Per mostrare anche il banner in alto, attiva il flag
+              «Banner manutenzione» nella card Funzionalità.
             </p>
             <button
               type="button"
@@ -1926,10 +1928,18 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
 
         <div className="dash-settings-card">
           <div className="dash-settings-card__title">Limiti piano FREE</div>
+          <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.45 }}>
+            Applicati agli account senza abbonamento Premium. I valori sono applicati subito dall’API
+            (creazione richieste e candidature).
+          </p>
           <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
             <label className="dash-form-label" htmlFor="adm-free-requests">
               Max richieste/mese (FREE)
             </label>
+            <p className="dash-settings-row__hint" style={{ marginBottom: 8 }}>
+              Quante richieste di assistenza una famiglia può pubblicare nel mese corrente (le bozze non
+              contano).
+            </p>
             <input
               id="adm-free-requests"
               className="dash-form-input"
@@ -1950,6 +1960,10 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
             <label className="dash-form-label" htmlFor="adm-free-applications">
               Max candidature attive (FREE)
             </label>
+            <p className="dash-settings-row__hint" style={{ marginBottom: 8 }}>
+              Quante candidature contemporanee può avere un professionista non Premium (inviate / in
+              valutazione). Premium non è soggetto a questo tetto.
+            </p>
             <input
               id="adm-free-applications"
               className="dash-form-input"
@@ -1980,10 +1994,21 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
         </div>
 
         <div className="dash-settings-card">
-          <div className="dash-settings-card__title">Commissioni e funzionalità</div>
+          <div className="dash-settings-card__title">Commissioni marketplace</div>
+          <div
+            className="dash-badge dash-badge--ongoing"
+            style={{ marginBottom: 'var(--space-3)', display: 'inline-block' }}
+          >
+            Pianificato — non attivo
+          </div>
+          <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.45 }}>
+            Percentuali di commissione Curaxe su professionisti e agenzie. <strong>Non ancora in
+            sviluppo operativo</strong>: non influenzano pagamenti Stripe né i flussi attuali. Valori
+            solo di riferimento per una futura fee marketplace.
+          </p>
           <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
             <label className="dash-form-label" htmlFor="adm-comm-pro">
-              Commissione professionisti (%)
+              Commissione professionisti (%) — riferimento
             </label>
             <input
               id="adm-comm-pro"
@@ -1992,19 +2017,14 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               min="0"
               max="100"
               value={s.commissionRates.professionalPercent}
-              onChange={(e) =>
-                settingsHook.updateLocal({
-                  commissionRates: {
-                    ...s.commissionRates,
-                    professionalPercent: Number(e.target.value),
-                  },
-                })
-              }
+              disabled
+              readOnly
+              aria-readonly="true"
             />
           </div>
           <div className="dash-form-field" style={{ marginBottom: 'var(--space-3)' }}>
             <label className="dash-form-label" htmlFor="adm-comm-agency">
-              Commissione agenzie (%)
+              Commissione agenzie (%) — riferimento
             </label>
             <input
               id="adm-comm-agency"
@@ -2013,37 +2033,58 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
               min="0"
               max="100"
               value={s.commissionRates.agencyPercent}
-              onChange={(e) =>
-                settingsHook.updateLocal({
-                  commissionRates: {
-                    ...s.commissionRates,
-                    agencyPercent: Number(e.target.value),
-                  },
-                })
-              }
+              disabled
+              readOnly
+              aria-readonly="true"
             />
           </div>
+        </div>
+
+        <div className="dash-settings-card">
+          <div className="dash-settings-card__title">Funzionalità (flag)</div>
+          <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.45 }}>
+            Interruttori operativi: disattivando un flag l’API blocca subito la relativa azione.
+          </p>
           {(
             [
-              ['b2bJobPostings', 'Annunci B2B'],
-              ['familyMessaging', 'Messaggistica famiglia'],
-              ['stripeCheckout', 'Checkout Stripe'],
-              ['maintenanceBanner', 'Banner manutenzione'],
+              [
+                'b2bJobPostings',
+                'Annunci B2B',
+                'Permette ad agenzie e strutture di creare o ripubblicare annunci di lavoro.',
+              ],
+              [
+                'familyMessaging',
+                'Messaggistica famiglia',
+                'Permette alle famiglie di contattare i professionisti e scrivere nei thread di contatto diretto.',
+              ],
+              [
+                'stripeCheckout',
+                'Checkout Stripe',
+                'Permette di avviare il checkout abbonamenti Premium (professionisti, agenzie, strutture).',
+              ],
+              [
+                'maintenanceBanner',
+                'Banner manutenzione',
+                'Se attivo insieme a «Modalità manutenzione», mostra il messaggio in alto su tutto il sito.',
+              ],
             ] as const
-          ).map(([key, label]) => (
-            <div key={key} className="dash-settings-row">
-              <span className="dash-settings-row__label">{label}</span>
-              <input
-                type="checkbox"
-                className="dash-settings-row__checkbox"
-                checked={s.featureFlags[key]}
-                onChange={(e) =>
-                  settingsHook.updateLocal({
-                    featureFlags: { ...s.featureFlags, [key]: e.target.checked },
-                  })
-                }
-                aria-label={label}
-              />
+          ).map(([key, label, hint]) => (
+            <div key={key} className="dash-settings-row dash-settings-row--stack">
+              <div className="dash-settings-row__main">
+                <span className="dash-settings-row__label">{label}</span>
+                <input
+                  type="checkbox"
+                  className="dash-settings-row__checkbox"
+                  checked={s.featureFlags[key]}
+                  onChange={(e) =>
+                    settingsHook.updateLocal({
+                      featureFlags: { ...s.featureFlags, [key]: e.target.checked },
+                    })
+                  }
+                  aria-label={label}
+                />
+              </div>
+              <p className="dash-settings-row__hint">{hint}</p>
             </div>
           ))}
           <button
@@ -2052,16 +2093,10 @@ function SectionSettings({ onGoToPlans }: { onGoToPlans: () => void }) {
             style={{ marginTop: 'var(--space-3)' }}
             disabled={settingsHook.saving}
             onClick={() =>
-              void settingsHook.save(
-                {
-                  commissionRates: s.commissionRates,
-                  featureFlags: s.featureFlags,
-                },
-                'Commissioni e funzionalità salvate.',
-              )
+              void settingsHook.save({ featureFlags: s.featureFlags }, 'Funzionalità salvate.')
             }
           >
-            {settingsHook.saving ? 'Salvataggio…' : 'Salva commissioni'}
+            {settingsHook.saving ? 'Salvataggio…' : 'Salva funzionalità'}
           </button>
         </div>
       </div>

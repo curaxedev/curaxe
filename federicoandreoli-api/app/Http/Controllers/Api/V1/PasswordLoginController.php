@@ -76,6 +76,7 @@ class PasswordLoginController
             }
         }
 
+        $user->tokens()->delete();
         $token = $user->createToken('spa')->plainTextToken;
 
         if ($user->role === UserRole::PlatformAdmin) {

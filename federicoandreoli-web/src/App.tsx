@@ -5,6 +5,7 @@ import { GuestOnlyRoute } from './auth/GuestOnlyRoute'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { CookieConsentBanner } from './components/CookieConsentBanner'
 import { CookieSettingsTrigger } from './components/CookieSettingsTrigger'
+import { PlatformMaintenanceBanner } from './components/PlatformMaintenanceBanner'
 import { ScrollToTop } from './components/ScrollToTop'
 import { CookieConsentProvider, useCookieConsent } from './context/CookieConsentContext'
 import { ItaliaGeoProvider } from './context/ItaliaGeoProvider'
@@ -142,6 +143,7 @@ export default function App() {
         <GoogleFontsLoader />
         <ItaliaGeoProvider>
           <AuthProvider>
+            <PlatformMaintenanceBanner />
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<HomePage />} />

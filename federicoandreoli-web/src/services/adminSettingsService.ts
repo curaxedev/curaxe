@@ -46,6 +46,8 @@ export function createDefaultAdminSettings(): AdminPlatformSettings {
     commissionRates: {
       professionalPercent: 8,
       agencyPercent: 12,
+      plannedOnly: true,
+      active: false,
     },
     featureFlags: {
       b2bJobPostings: true,

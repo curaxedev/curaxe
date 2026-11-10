@@ -12,9 +12,13 @@ export function getSiteOrigin(): string {
   return trimTrailingSlash(import.meta.env.VITE_SITE_ORIGIN)
 }
 
-/** True (default): i facade `*Api.ts` usano i mock in-browser; false: chiamano Laravel. */
+/**
+ * Fail-closed: i mock sono ON solo se `VITE_USE_MOCKS` è esplicitamente true/1.
+ * In produzione (`import.meta.env.PROD`) i mock sono sempre disabilitati.
+ */
 export function isMockApiEnabled(): boolean {
+  if (import.meta.env.PROD) return false
   const raw = import.meta.env.VITE_USE_MOCKS
-  if (raw === undefined || raw === '') return true
+  if (raw === undefined || raw === '') return false
   return raw === 'true' || raw === '1'
 }

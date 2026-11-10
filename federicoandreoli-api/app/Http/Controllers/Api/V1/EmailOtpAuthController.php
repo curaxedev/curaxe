@@ -28,16 +28,8 @@ class EmailOtpAuthController
         $email = strtolower(trim($data['email']));
         $user = User::query()->where('email', $email)->first();
 
-        if ($user !== null && $resolver->channelForRole($user->role) !== AuthChannel::OtpEmail) {
-            return ApiResponse::error(
-                'Questo account richiede accesso con password. Scegli «Inserisci password».',
-                422,
-                ['email' => ['Questo account richiede accesso con password.']],
-                'password_required',
-            );
-        }
-
-        if ($user !== null) {
+        // Anti-enumerazione: stessa risposta anche se il canale è password_totp.
+        if ($user !== null && $resolver->channelForRole($user->role) === AuthChannel::OtpEmail) {
             $code = $otps->issue($email);
             Mail::to($user->email)->send(new LoginOtpMail($code));
         }
@@ -74,11 +66,16 @@ class EmailOtpAuthController
             return ApiResponse::error('Nessun account registrato con questa email.', 422, [], 'email_not_found');
         }
 
+        if ($user->suspended_at !== null) {
+            return ApiResponse::error('Credenziali non valide.', 422, [], 'invalid_credentials');
+        }
+
         // Il codice OTP ricevuto via email prova il possesso dell'indirizzo.
         if ($user->email_verified_at === null) {
             $user->forceFill(['email_verified_at' => now()])->save();
         }
 
+        $user->tokens()->delete();
         $token = $user->createToken('spa')->plainTextToken;
 
         return response()->json([

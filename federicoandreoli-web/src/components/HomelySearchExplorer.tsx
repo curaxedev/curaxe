@@ -458,7 +458,7 @@ export function HomelySearchExplorer({
         onClick={() => pickMode('cerco')}
       >
         <span className="cx-explorer__mode-icon" aria-hidden>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path
               d="M4 20V9.5L12 4l8 5.5V20"
               stroke="currentColor"
@@ -470,15 +470,15 @@ export function HomelySearchExplorer({
         </span>
         <span className="cx-explorer__mode-copy">
           <strong>Cerco assistenza</strong>
-          <small>Famiglie e strutture che cercano professionisti affidabili</small>
+          <small>Famiglie e strutture in cerca di professionisti</small>
         </span>
         <span className="cx-explorer__mode-check" aria-hidden>
           {mode === 'cerco' ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path
                 d="M5 12.5 10 17.5 19 7.5"
                 stroke="currentColor"
-                strokeWidth="2.4"
+                strokeWidth="2.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -494,7 +494,7 @@ export function HomelySearchExplorer({
         onClick={() => pickMode('offro')}
       >
         <span className="cx-explorer__mode-icon" aria-hidden>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path
               d="M8 7V5.8A1.8 1.8 0 0 1 9.8 4h4.4A1.8 1.8 0 0 1 16 5.8V7"
               stroke="currentColor"
@@ -507,15 +507,15 @@ export function HomelySearchExplorer({
         </span>
         <span className="cx-explorer__mode-copy">
           <strong>Offro assistenza</strong>
-          <small>Professionisti che cercano posizioni e nuovi contatti</small>
+          <small>Professionisti in cerca di posizioni e contatti</small>
         </span>
         <span className="cx-explorer__mode-check" aria-hidden>
           {mode === 'offro' ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path
                 d="M5 12.5 10 17.5 19 7.5"
                 stroke="currentColor"
-                strokeWidth="2.4"
+                strokeWidth="2.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -571,7 +571,7 @@ export function HomelySearchExplorer({
                   </button>
                   <div className="cx-explorer-sheet__body">
                     <p className="cx-explorer__pop-title">Come vuoi usare Curaxe?</p>
-                    <p className="cx-explorer__pop-sub">Se non scegli, resta il percorso attuale</p>
+                    <p className="cx-explorer__pop-sub">Scegli un percorso</p>
                     {modeCards}
                   </div>
                   <div className="cx-explorer-sheet__footer">
@@ -662,19 +662,26 @@ export function HomelySearchExplorer({
             <span className="cx-explorer__kicker">{isMobile ? 'Cosa cerchi?' : 'Modalità'}</span>
             <span className="cx-explorer__value">{modeLabel}</span>
           </button>
-
-          {open === 'mode' && showDesktopPop ? (
-            <div className="cx-explorer__pop cx-explorer__pop--mode" onClick={(e) => e.stopPropagation()}>
-              <p className="cx-explorer__pop-title">Come vuoi usare Curaxe?</p>
-              <p className="cx-explorer__pop-sub">Scegli il percorso più adatto a te</p>
-              {modeCards}
-            </div>
-          ) : null}
         </div>
 
         <button type="submit" className="cx-explorer__submit" aria-label="Cerca">
           <IconSearch />
         </button>
+
+        {open === 'mode' && showDesktopPop ? (
+          <div
+            className="cx-explorer__pop cx-explorer__pop--mode"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-label="Scegli modalità"
+          >
+            <header className="cx-explorer__pop-head">
+              <p className="cx-explorer__pop-title">Come vuoi usare Curaxe?</p>
+              <p className="cx-explorer__pop-sub">Scegli un percorso</p>
+            </header>
+            {modeCards}
+          </div>
+        ) : null}
       </form>
       {mobileSheet}
     </div>

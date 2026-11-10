@@ -32,16 +32,8 @@ class PasswordResetController
         $email = strtolower(trim($data['email']));
         $user = User::query()->where('email', $email)->first();
 
-        if ($user !== null && $resolver->channelForRole($user->role) === AuthChannel::OtpEmail) {
-            return ApiResponse::error(
-                'Questo account usa il codice via email. Accedi dalla pagina di login con OTP.',
-                422,
-                [],
-                'otp_only_account',
-            );
-        }
-
-        if ($user !== null) {
+        // Anti-enumerazione: non rivelare se l'account è OTP-only; invia reset solo ai canali password.
+        if ($user !== null && $resolver->channelForRole($user->role) !== AuthChannel::OtpEmail) {
             $token = Str::random(64);
 
             DB::table('password_reset_tokens')->updateOrInsert(

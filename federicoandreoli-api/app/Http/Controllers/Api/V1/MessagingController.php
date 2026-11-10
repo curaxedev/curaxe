@@ -11,6 +11,7 @@ use App\Models\MessageThread;
 use App\Models\ProfessionalProfile;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Platform\FeatureGate;
 use App\Support\ApiResponse;
 use App\Support\MessageTemplates;
 use Illuminate\Database\QueryException;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\Schema;
 
 class MessagingController
 {
+    public function __construct(
+        private readonly FeatureGate $gate,
+    ) {}
+
     public function threads(Request $request): JsonResponse
     {
         if (! Schema::hasTable('message_threads')) {
@@ -100,6 +105,18 @@ class MessagingController
         $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
         $user = $request->user();
         $messagingRole = $this->messagingRole($user->role);
+
+        if ($user->role === UserRole::PublicUser || $thread->link_type === 'direct_contact') {
+            if ($blocked = $this->gate->assertMaintenanceWrites()) {
+                return $blocked;
+            }
+            if ($blocked = $this->gate->assertFeature(
+                'familyMessaging',
+                'La messaggistica famiglia è temporaneamente disabilitata.',
+            )) {
+                return $blocked;
+            }
+        }
 
         if (! MessageTemplates::isAllowed($data['body'], $messagingRole)) {
             return ApiResponse::error(
@@ -207,6 +224,16 @@ class MessagingController
                 [],
                 'messaging_unavailable',
             );
+        }
+
+        if ($blocked = $this->gate->assertMaintenanceWrites()) {
+            return $blocked;
+        }
+        if ($blocked = $this->gate->assertFeature(
+            'familyMessaging',
+            'La messaggistica famiglia è temporaneamente disabilitata.',
+        )) {
+            return $blocked;
         }
 
         $data = $request->validate([

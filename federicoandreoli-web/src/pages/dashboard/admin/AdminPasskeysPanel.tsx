@@ -54,9 +54,20 @@ export function AdminPasskeysPanel({ onChanged }: { onChanged?: () => void }) {
     setBusy(true)
     setError(null)
     try {
-      await withAdminStepUp('passkey.manage', (token) =>
-        registerAdminPasskey(name.trim() || 'Passkey', token),
-      )
+      if (passkeys.length === 0) {
+        const password = window.prompt(
+          'Conferma la password amministratore per registrare la prima passkey.',
+        )
+        if (!password) {
+          setError('Password richiesta per la prima passkey.')
+          return
+        }
+        await registerAdminPasskey(name.trim() || 'Passkey', undefined, password)
+      } else {
+        await withAdminStepUp('passkey.manage', (token) =>
+          registerAdminPasskey(name.trim() || 'Passkey', token),
+        )
+      }
       setName('Questo dispositivo')
       await reload()
       onChanged?.()

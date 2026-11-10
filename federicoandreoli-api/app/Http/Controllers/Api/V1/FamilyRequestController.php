@@ -7,13 +7,16 @@ use App\Http\Resources\ApplicationResource;
 use App\Http\Resources\FamilyRequestResource;
 use App\Models\Application;
 use App\Models\FamilyRequest;
+use App\Services\Platform\FeatureGate;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FamilyRequestController
 {
-    private const FREE_PLAN_MAX_ACTIVE = 1;
+    public function __construct(
+        private readonly FeatureGate $gate,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -64,18 +67,13 @@ class FamilyRequestController
         $asDraft = (bool) ($data['asDraft'] ?? false);
         $status = $asDraft ? 'draft' : 'active';
 
+        if ($blocked = $this->gate->assertMaintenanceWrites()) {
+            return $blocked;
+        }
+
         if ($status === 'active') {
-            $activeCount = FamilyRequest::query()
-                ->where('user_id', $user->id)
-                ->where('status', 'active')
-                ->count();
-            if ($activeCount >= self::FREE_PLAN_MAX_ACTIVE) {
-                return ApiResponse::error(
-                    'Hai già una richiesta attiva. Mettila in pausa o chiudila prima di pubblicarne un’altra.',
-                    422,
-                    [],
-                    'plan_limit',
-                );
+            if ($blocked = $this->gate->assertFamilyRequestMonthLimit($user)) {
+                return $blocked;
             }
         }
 
@@ -117,19 +115,13 @@ class FamilyRequestController
             return ApiResponse::error('Richiesta non trovata.', 404, [], 'not_found');
         }
 
-        if ($data['status'] === 'active' && $familyRequest->status !== 'active') {
-            $activeCount = FamilyRequest::query()
-                ->where('user_id', $user->id)
-                ->where('status', 'active')
-                ->where('id', '!=', $familyRequest->id)
-                ->count();
-            if ($activeCount >= self::FREE_PLAN_MAX_ACTIVE) {
-                return ApiResponse::error(
-                    'Hai già una richiesta attiva.',
-                    422,
-                    [],
-                    'plan_limit',
-                );
+        if ($blocked = $this->gate->assertMaintenanceWrites()) {
+            return $blocked;
+        }
+
+        if ($data['status'] === 'active' && $familyRequest->status === 'draft') {
+            if ($blocked = $this->gate->assertFamilyRequestMonthLimit($user, (int) $familyRequest->id)) {
+                return $blocked;
             }
         }
 

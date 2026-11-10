@@ -14,6 +14,7 @@ import {
 import { ProfileRatingCompact, formatRatingOutOfFiveIt } from '../components/ProfileRatingCompact'
 import { SiteShell } from '../components/SiteShell'
 import { useDirectoryProfile } from '../hooks/useDirectoryProfile'
+import { usePlatformConfig } from '../hooks/usePlatformConfig'
 import { listSimilarProfiles } from '../lib/directoryApi'
 import {
   toCarouselCard,
@@ -320,6 +321,8 @@ export function ProfileDetailPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { isAuthenticated, user } = useAuth()
+  const { featureFlags } = usePlatformConfig()
+  const familyMessagingEnabled = featureFlags.familyMessaging
   const { profile, loading, error, reload } = useDirectoryProfile(id)
   const [bioExpanded, setBioExpanded] = useState(false)
   const [referencesExpanded, setReferencesExpanded] = useState(false)
@@ -521,6 +524,10 @@ export function ProfileDetailPage() {
   async function startContactThread(actor?: AuthUser) {
     const who = actor ?? user
     if (!who?.id || !profile || !id) return
+    if (!familyMessagingEnabled) {
+      setContactError('La messaggistica famiglia è temporaneamente disabilitata.')
+      return
+    }
     if (who.role !== 'public_user') {
       setContactError('Per contattare un professionista accedi con un account famiglia.')
       setShowContactAuth(true)
@@ -551,6 +558,10 @@ export function ProfileDetailPage() {
   }
 
   function handleContact() {
+    if (!familyMessagingEnabled) {
+      setContactError('La messaggistica famiglia è temporaneamente disabilitata.')
+      return
+    }
     if (!isAuthenticated) {
       setShowContactAuth(true)
       return
@@ -967,13 +978,20 @@ export function ProfileDetailPage() {
                           }
                           handleContact()
                         }}
-                        disabled={contactLoading}
+                        disabled={contactLoading || (!contactSent && !familyMessagingEnabled)}
+                        title={
+                          !contactSent && !familyMessagingEnabled
+                            ? 'Messaggistica famiglia disabilitata'
+                            : undefined
+                        }
                       >
                         {contactLoading
                           ? 'Apertura conversazione…'
                           : contactSent
                             ? 'Vai ai messaggi'
-                            : `Contatta ${profile.name.split(' ')[0]}`}
+                            : !familyMessagingEnabled
+                              ? 'Messaggi non disponibili'
+                              : `Contatta ${profile.name.split(' ')[0]}`}
                       </button>
                       {contactSent ? (
                         <Link

@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\MessagingController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PasswordLoginController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\PlatformConfigController;
 use App\Http\Controllers\Api\V1\ProfessionalDocumentController;
 use App\Http\Controllers\Api\V1\ProfessionalProfileController;
 use App\Http\Controllers\Api\V1\RegistrationController;
@@ -34,6 +35,7 @@ Route::prefix('v1')->group(function (): void {
         'version' => 1,
     ]));
     Route::get('/security/meta', SecurityMetaController::class);
+    Route::get('/platform/config', PlatformConfigController::class);
 
     Route::get('/auth/policies', AuthPoliciesController::class);
 
