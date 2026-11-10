@@ -1,0 +1,1 @@
+var e=`Curaxe`;export{e as t};
