@@ -109,16 +109,24 @@ export type AdminSubscriptionRow = {
   amount: string
   renewal: string
   status: AdminSubscriptionStatus
+  rawStatus?: string | null
+  currentPeriodEnd?: string | null
+  trialEndsAt?: string | null
+  cancelAtPeriodEnd?: boolean
   trashedAt?: string | null
   canTrash?: boolean
 }
 
 export type AdminBillingStats = {
   activePremium: number
+  /** Cancel at period end / in pausa. */
+  paused?: number
   renewalsWithin7Days: number
+  renewalsWithin30Days?: number
   failedPayments: number
   mrrCents: number
   trashed?: number
+  trialing?: number
 }
 
 export type BillingInvoice = {

@@ -406,3 +406,20 @@ export function IconRefresh(props: IconProps) {
     </Icon>
   )
 }
+
+export function IconPause(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 6v12" />
+      <path d="M16 6v12" />
+    </Icon>
+  )
+}
+
+export function IconPlay(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 6.8v10.4L18 12 9 6.8Z" />
+    </Icon>
+  )
+}

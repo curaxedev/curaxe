@@ -359,7 +359,9 @@ export async function fetchAdminBillingStats(): Promise<AdminBillingStats> {
 
   return {
     activePremium,
+    paused: renewalsWithin7Days,
     renewalsWithin7Days,
+    renewalsWithin30Days: renewalsWithin7Days,
     failedPayments,
     mrrCents,
   }

@@ -185,12 +185,26 @@ class BillingController
         $trialing = Subscription::query()->notTrashed()->where('status', 'trialing')->count();
         $trashed = Subscription::query()->onlyTrashed()->count();
 
+        $renewalsBase = Subscription::query()
+            ->notTrashed()
+            ->whereIn('status', ['active', 'trialing'])
+            ->whereNotNull('current_period_end')
+            ->where('current_period_end', '>=', now());
+        $renewalsWithin7Days = (clone $renewalsBase)
+            ->where('current_period_end', '<=', now()->addDays(7))
+            ->count();
+        $renewalsWithin30Days = (clone $renewalsBase)
+            ->where('current_period_end', '<=', now()->addDays(30))
+            ->count();
+
         return response()->json([
             'activeSubscriptions' => $active,
             'cancelingAtPeriodEnd' => $canceling,
             'pastDue' => $pastDue,
             'trialing' => $trialing,
             'trashed' => $trashed,
+            'renewalsWithin7Days' => $renewalsWithin7Days,
+            'renewalsWithin30Days' => $renewalsWithin30Days,
             'mrrEstimate' => (int) round($mrrCents / 100),
             'mrrCents' => $mrrCents,
         ]);

@@ -206,28 +206,36 @@ export async function getAdminBillingSubscriptions(
         planType: string
         status: string
         currentPeriodEnd: string | null
+        trialEndsAt?: string | null
         cancelAtPeriodEnd: boolean
         trashedAt?: string | null
         canTrash?: boolean
       }>
     >(`/api/v1/admin/billing/subscriptions${q}`)
-    return rows.map((r, i) => ({
-      id: r.id ?? (r.userId ? `sub-${r.userId}` : `sub-${i}`),
-      userId: r.userId,
-      userName: r.userName,
-      userEmail: r.userEmail,
-      audience: r.audience,
-      plan: r.planType,
-      amount: '—',
-      renewal: r.currentPeriodEnd ?? '—',
-      status: r.cancelAtPeriodEnd
-        ? 'expiring'
-        : r.status === 'active' || r.status === 'trialing'
-          ? 'active'
-          : 'failed',
-      trashedAt: r.trashedAt ?? null,
-      canTrash: Boolean(r.canTrash),
-    }))
+    return rows.map((r, i) => {
+      const periodEnd = r.currentPeriodEnd ?? null
+      return {
+        id: r.id ?? (r.userId ? `sub-${r.userId}` : `sub-${i}`),
+        userId: r.userId,
+        userName: r.userName,
+        userEmail: r.userEmail,
+        audience: r.audience,
+        plan: r.planType,
+        amount: '—',
+        renewal: periodEnd ?? '—',
+        status: r.cancelAtPeriodEnd
+          ? 'expiring'
+          : r.status === 'active' || r.status === 'trialing'
+            ? 'active'
+            : 'failed',
+        rawStatus: r.status,
+        currentPeriodEnd: periodEnd,
+        trialEndsAt: r.trialEndsAt ?? null,
+        cancelAtPeriodEnd: Boolean(r.cancelAtPeriodEnd),
+        trashedAt: r.trashedAt ?? null,
+        canTrash: Boolean(r.canTrash),
+      }
+    })
   } catch (err) {
     throw toBillingError(err, 'Impossibile caricare gli abbonamenti admin.')
   }
@@ -241,14 +249,21 @@ export async function getAdminBillingStats(): Promise<AdminBillingStats> {
       cancelingAtPeriodEnd: number
       pastDue?: number
       trialing?: number
+      trashed?: number
+      renewalsWithin7Days?: number
+      renewalsWithin30Days?: number
       mrrEstimate: number
+      mrrCents?: number
     }>('/api/v1/admin/billing/stats')
     return {
       activePremium: raw.activeSubscriptions,
-      renewalsWithin7Days: raw.cancelingAtPeriodEnd,
+      paused: raw.cancelingAtPeriodEnd,
+      renewalsWithin7Days: raw.renewalsWithin7Days ?? raw.cancelingAtPeriodEnd,
+      renewalsWithin30Days: raw.renewalsWithin30Days ?? raw.renewalsWithin7Days ?? 0,
       failedPayments: raw.pastDue ?? 0,
-      mrrCents: raw.mrrEstimate * 100,
-      trashed: (raw as { trashed?: number }).trashed ?? 0,
+      mrrCents: typeof raw.mrrCents === 'number' ? raw.mrrCents : raw.mrrEstimate * 100,
+      trashed: raw.trashed ?? 0,
+      trialing: raw.trialing ?? 0,
     }
   } catch (err) {
     throw toBillingError(err, 'Impossibile caricare le stats billing.')

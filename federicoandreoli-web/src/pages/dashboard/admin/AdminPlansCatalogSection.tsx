@@ -14,7 +14,17 @@ import {
   formatPlanEuro,
   formatPlanPriceLabel,
 } from '../../../lib/planCatalog'
-import { IconCheck, IconClose, IconCreditCard } from '../../../components/icons/DashboardIcons'
+import {
+  IconCheck,
+  IconClose,
+  IconCreditCard,
+  IconEye,
+  IconEyeOff,
+  IconGrid,
+  IconList,
+  IconRefresh,
+  IconTrash,
+} from '../../../components/icons/DashboardIcons'
 
 function slugifyKey(label: string, audience: BillingAudience): string {
   const base = label
@@ -308,7 +318,7 @@ function PlanEditModal({
   )
 }
 
-export function AdminPlansCatalogSection() {
+export function AdminPlansCatalogSection({ wineos = false }: { wineos?: boolean }) {
   const [plans, setPlans] = useState<PlanCatalogEntry[]>(() =>
     DEFAULT_PLAN_CATALOG.map((p) => ({ ...p, features: [...p.features] })),
   )
@@ -320,6 +330,7 @@ export function AdminPlansCatalogSection() {
   const [draft, setDraft] = useState<PlanCatalogEntry | null>(null)
   const [isNewDraft, setIsNewDraft] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
+  const [layout, setLayout] = useState<'box' | 'lista'>('box')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -468,12 +479,52 @@ export function AdminPlansCatalogSection() {
     }
   }
 
+  async function toggleActive(plan: PlanCatalogEntry) {
+    const lock = locks[plan.key]
+    if (lock?.locked && plan.active) {
+      setError(
+        `«${plan.label}» ha ${lock.activeSubscribers} iscritti attivi: non puoi nasconderlo ora.`,
+      )
+      return
+    }
+    const next = plans.map((p) => (p.key === plan.key ? { ...p, active: !p.active } : p))
+    try {
+      await persistCatalog(
+        next,
+        plan.active ? `«${plan.label}» impostato come bozza.` : `«${plan.label}» pubblicato.`,
+      )
+    } catch {
+      // errore già in state
+    }
+  }
+
+  async function deletePlan(plan: PlanCatalogEntry) {
+    const lock = locks[plan.key]
+    if (lock?.locked) {
+      setError(`Non puoi eliminare «${plan.label}»: ha ${lock.activeSubscribers} iscritti attivi.`)
+      return
+    }
+    if (plans.length <= 1) {
+      setError('Serve almeno un piano nel catalogo.')
+      return
+    }
+    if (!confirm(`Eliminare definitivamente «${plan.label}» dal catalogo?`)) return
+    const next = plans.filter((p) => p.key !== plan.key).map((p, i) => ({ ...p, sortOrder: i + 1 }))
+    try {
+      await persistCatalog(next, `«${plan.label}» eliminato.`)
+    } catch {
+      // errore già in state
+    }
+  }
+
+  const publishedCount = plans.filter((p) => p.active).length
+
   if (loading) {
     return (
-      <div className="dash-admin-plans">
+      <div className={`dash-admin-plans${wineos ? ' dash-admin-plans--wineos' : ''}`}>
         <div className="dash-section-header">
           <div>
-            <h2 className="dash-section__title">Catalogo piani</h2>
+            <h2 className="dash-section__title">Piani</h2>
             <p className="dash-section__subtitle">Caricamento…</p>
           </div>
         </div>
@@ -482,7 +533,7 @@ export function AdminPlansCatalogSection() {
   }
 
   return (
-    <div className="dash-admin-plans">
+    <div className={`dash-admin-plans${wineos ? ' dash-admin-plans--wineos' : ''}`}>
       {toast ? (
         <div className="dash-admin-plans__toast" role="status">
           {toast}
@@ -491,17 +542,50 @@ export function AdminPlansCatalogSection() {
 
       <div className="dash-section-header">
         <div>
-          <h2 className="dash-section__title">Catalogo piani</h2>
+          <h2 className="dash-section__title">{wineos ? 'Piani' : 'Catalogo piani'}</h2>
           <p className="dash-section__subtitle">
-            Card dei piani come le vedono i clienti. Modifica o elimina da popup — Stripe Price creato
-            in automatico al salvataggio.
+            {wineos
+              ? `${plans.length} piani · ${publishedCount} pubblicati`
+              : 'Card dei piani come le vedono i clienti. Modifica o elimina da popup — Stripe Price creato in automatico al salvataggio.'}
           </p>
         </div>
         <div className="dash-admin-plans__actions">
-          <button type="button" className="dash-btn dash-btn--ghost" onClick={() => void load()} disabled={saving}>
-            Ricarica
+          {wineos ? (
+            <div className="admin-billing__view-toggle" role="group" aria-label="Vista piani">
+              <button
+                type="button"
+                className={layout === 'box' ? 'is-active' : undefined}
+                onClick={() => setLayout('box')}
+              >
+                <IconGrid size={14} />
+                Box
+              </button>
+              <button
+                type="button"
+                className={layout === 'lista' ? 'is-active' : undefined}
+                onClick={() => setLayout('lista')}
+              >
+                <IconList size={14} />
+                Lista
+              </button>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className={wineos ? 'admin-billing__icon-btn' : 'dash-btn dash-btn--ghost'}
+            onClick={() => void load()}
+            disabled={saving}
+            aria-label="Ricarica"
+            title="Ricarica"
+          >
+            {wineos ? <IconRefresh size={15} /> : 'Ricarica'}
           </button>
-          <button type="button" className="dash-btn dash-btn--primary" onClick={openNew} disabled={saving}>
+          <button
+            type="button"
+            className={wineos ? 'admin-billing__ghost-cta is-active' : 'dash-btn dash-btn--primary'}
+            onClick={openNew}
+            disabled={saving}
+          >
             + Nuovo piano
           </button>
         </div>
@@ -513,9 +597,86 @@ export function AdminPlansCatalogSection() {
         </div>
       ) : null}
 
-      <div className="dash-admin-plans__cards" role="list">
+      <div
+        className={`dash-admin-plans__cards${wineos ? ' dash-admin-plans__cards--wineos' : ''}${
+          wineos && layout === 'lista' ? ' is-list' : ''
+        }`}
+        role="list"
+      >
         {plans.map((p) => {
           const lock = locks[p.key]
+          if (wineos) {
+            return (
+              <article
+                key={p.key}
+                className={`admin-plan-box${!p.active ? ' is-draft' : ''}`}
+                role="listitem"
+              >
+                <div className="admin-plan-box__top">
+                  <span className="admin-plan-box__icon" aria-hidden>
+                    <IconCreditCard size={16} />
+                  </span>
+                  <span
+                    className={`admin-plan-box__status${p.active ? ' is-pub' : ' is-draft'}`}
+                  >
+                    {p.active ? 'Pubblicato' : 'Bozza'}
+                  </span>
+                </div>
+                <h3 className="admin-plan-box__name">{p.label}</h3>
+                <p className="admin-plan-box__key">{p.key}</p>
+                <div className="admin-plan-box__price">{formatPlanEuro(p.amountCents)}</div>
+                <div className="admin-plan-box__meta">
+                  <div>
+                    <span>Intervallo</span>
+                    <strong>{p.interval === 'year' ? 'annuale' : 'mensile'}</strong>
+                  </div>
+                  <div>
+                    <span>Rinnovo</span>
+                    <strong>Automatico</strong>
+                  </div>
+                  <div>
+                    <span>Stripe</span>
+                    <strong className={p.stripePriceId ? 'is-ok' : 'is-warn'}>
+                      {p.stripePriceId ? 'Sync OK' : 'Da sincronizzare'}
+                    </strong>
+                  </div>
+                </div>
+                <div className="admin-plan-box__foot">
+                  <span className="admin-plan-box__audience">{AUDIENCE_LABELS[p.audience]}</span>
+                  <div className="admin-plan-box__actions">
+                    <button
+                      type="button"
+                      className="admin-billing__icon-btn"
+                      title={p.active ? 'Nascondi (bozza)' : 'Pubblica'}
+                      disabled={saving}
+                      onClick={() => void toggleActive(p)}
+                    >
+                      {p.active ? <IconEyeOff size={14} /> : <IconEye size={14} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-billing__icon-btn"
+                      title="Modifica / sync Stripe"
+                      disabled={saving}
+                      onClick={() => openEdit(p)}
+                    >
+                      <IconRefresh size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-billing__icon-btn admin-billing__icon-btn--danger"
+                      title="Elimina"
+                      disabled={saving || Boolean(lock?.locked)}
+                      onClick={() => void deletePlan(p)}
+                    >
+                      <IconTrash size={14} />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            )
+          }
+
           return (
             <article
               key={p.key}
