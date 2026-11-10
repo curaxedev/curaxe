@@ -14223,6 +14223,16 @@ button.candidacy-auth-dialog__btn {
   font-size: 0.78rem;
   word-break: break-all;
 }
+.dash-admin-plans__stripe-hint {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+.dash-admin-plans__stripe-hint code {
+  font-size: 0.74rem;
+  word-break: break-all;
+}
 .dash-admin-plans__features {
   margin-top: var(--space-4);
 }

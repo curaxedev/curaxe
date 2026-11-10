@@ -17,6 +17,8 @@ export type PlanCatalogEntry = {
   trialDays: number
   stripePriceId?: string | null
   stripeProductId?: string | null
+  /** Ultimo Price Stripe archiviato dopo un cambio importo/intervallo. */
+  stripePreviousPriceId?: string | null
   features: string[]
   active: boolean
   sortOrder: number

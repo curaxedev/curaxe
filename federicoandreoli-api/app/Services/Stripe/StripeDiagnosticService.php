@@ -94,8 +94,8 @@ class StripeDiagnosticService
             'Price ID piani (catalogo)',
             $pricesOk,
             $pricesOk
-                ? 'Ogni audience attiva ha un Price ID (creato automaticamente al salvataggio piano)'
-                : 'Salva i piani nel Catalogo: Stripe Product/Price vengono creati automaticamente se le chiavi sono configurate',
+                ? 'Ogni audience attiva ha un Price ID (sync catalogo: nuovo Price solo se cambia importo/intervallo; i vecchi vengono archiviati)'
+                : 'Salva i piani nel Catalogo: Stripe Product/Price si creano in automatico; i Price sono immutabili (best practice Stripe)',
         );
 
         $webhookUrl = rtrim((string) config('app.url'), '/').'/api/v1/webhooks/stripe';

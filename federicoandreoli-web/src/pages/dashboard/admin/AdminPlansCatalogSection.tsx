@@ -53,6 +53,7 @@ function normalizePlans(raw: PlanCatalogEntry[] | undefined): PlanCatalogEntry[]
       trialDays: Number(p.trialDays) || 0,
       stripePriceId: p.stripePriceId ? String(p.stripePriceId) : null,
       stripeProductId: p.stripeProductId ? String(p.stripeProductId) : null,
+      stripePreviousPriceId: p.stripePreviousPriceId ? String(p.stripePreviousPriceId) : null,
       features: Array.isArray(p.features) ? p.features.map(String) : [],
       active: p.active !== false,
       sortOrder: Number(p.sortOrder) || i + 1,
@@ -114,13 +115,15 @@ function PlanEditModal({
         <div className="dash-modal__body">
           {isLocked ? (
             <p className="dash-modal__lead" style={{ color: 'var(--color-text-muted)' }}>
-              Piano con {lock?.activeSubscribers ?? 0} iscritti attivi: prezzo, intervallo e collegamento
-              Stripe non modificabili. Puoi aggiornare nome, feature e visibilità.
+              Piano con {lock?.activeSubscribers ?? 0} iscritti attivi/in prova: prezzo, intervallo e
+              Price ID Stripe sono bloccati (gli abbonati restano sul prezzo storico). Puoi aggiornare
+              nome, feature, prova e visibilità catalogo.
             </p>
           ) : (
             <p className="dash-modal__lead">
-              Al salvataggio Stripe crea (o aggiorna) automaticamente Product e Price — non serve
-              copiare a mano il Price ID.
+              Su Stripe i Price sono immutabili: se cambi importo o intervallo creiamo un nuovo Price,
+              archiviamo il precedente e aggiorniamo il Product. Nome/feature non creano prezzi nuovi.
+              Non serve copiare a mano il Price ID.
             </p>
           )}
 
@@ -248,13 +251,24 @@ function PlanEditModal({
                   <>
                     <IconCheck size={14} />
                     <span>
-                      Collegato · <code>{draft.stripePriceId}</code>
+                      Price corrente · <code>{draft.stripePriceId}</code>
+                      {draft.stripeProductId ? (
+                        <>
+                          {' '}
+                          · Product <code>{draft.stripeProductId}</code>
+                        </>
+                      ) : null}
                     </span>
                   </>
                 ) : (
-                  <span>Al salvataggio verrà creato automaticamente su Stripe</span>
+                  <span>Al salvataggio verrà creato automaticamente Product + Price su Stripe</span>
                 )}
               </div>
+              {draft.stripePreviousPriceId ? (
+                <p className="dash-admin-plans__stripe-hint">
+                  Price precedente archiviato: <code>{draft.stripePreviousPriceId}</code>
+                </p>
+              ) : null}
             </div>
           </div>
 

@@ -7,7 +7,11 @@ use App\Models\Subscription;
 
 /**
  * Blocca modifiche commerciali / eliminazione piani con abbonati active|trialing.
- * (Release successiva: migrazione prezzo / change-plan controllato.)
+ *
+ * Motivo business: gli iscritti restano sul Price Stripe originale (grandfathering).
+ * Cambiare amount/interval creerebbe un nuovo Price: i nuovi checkout userebbero
+ * il prezzo nuovo, gli esistenti no — senza migrazione esplicita è incoerente.
+ * Per ora: lock duro. Migrazione Subscription Schedule = release dedicata.
  */
 final class PlanCatalogLockService
 {
@@ -90,7 +94,8 @@ final class PlanCatalogLockService
                 if ($before !== $after) {
                     $label = (string) ($prev['label'] ?? $key);
 
-                    return "Il piano «{$label}» ha {$count} iscritti attivi: non puoi modificare {$field} (né prezzo, audience o Price ID). Elimina o migra gli abbonamenti prima.";
+                    return "Il piano «{$label}» ha {$count} iscritti attivi/in prova sul Price Stripe corrente: non puoi cambiare {$field}. "
+                        .'Gli abbonati restano sul prezzo storico (regola Stripe). Per un nuovo listino senza iscritti, crea un piano nuovo oppure chiudi/migra prima gli abbonamenti.';
                 }
             }
         }

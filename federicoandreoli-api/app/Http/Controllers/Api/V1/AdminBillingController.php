@@ -210,6 +210,9 @@ class AdminBillingController
                         'validation',
                     );
                 }
+                $previousPriceId = isset($plan['stripePreviousPriceId'])
+                    ? trim((string) $plan['stripePreviousPriceId'])
+                    : '';
                 $normalized[] = [
                     'key' => (string) $plan['key'],
                     'audience' => (string) $plan['audience'],
@@ -221,6 +224,9 @@ class AdminBillingController
                     'trialDays' => (int) ($plan['trialDays'] ?? 14),
                     'stripePriceId' => $priceId !== '' ? $priceId : null,
                     'stripeProductId' => $productId !== '' ? $productId : null,
+                    'stripePreviousPriceId' => $previousPriceId !== '' && str_starts_with($previousPriceId, 'price_')
+                        ? $previousPriceId
+                        : null,
                     'features' => array_values(array_filter(
                         array_map('strval', $plan['features'] ?? []),
                         static fn ($f) => trim($f) !== '',
@@ -235,8 +241,12 @@ class AdminBillingController
                 return ApiResponse::error($lockError, 422, [], 'plan_locked');
             }
 
-            // Crea automaticamente Product/Price su Stripe se manca o se è cambiato l’importo.
+            $previousPlans = $settings->resolvedPlansCatalog();
+
+            // Sync Stripe: Prices immutabili → nuovo Price solo se importo/intervallo/valuta cambiano;
+            // il Price precedente viene archiviato; Product.default_price aggiornato.
             try {
+                $this->planSync->archiveRemovedPlanPrices($settings, $previousPlans, $normalized);
                 $normalized = $this->planSync->ensurePrices($settings, $normalized);
             } catch (\RuntimeException $e) {
                 return ApiResponse::error($e->getMessage(), 502, [], 'stripe_price_sync_failed');
