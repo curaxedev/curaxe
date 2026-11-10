@@ -48,6 +48,7 @@ function writeStore(store: AdminUserStore): void {
 }
 
 function createSeedStore(): AdminUserStore {
+  const trialEnd = new Date(Date.now() + 5 * 86_400_000).toISOString()
   const users: AdminUserRecord[] = [
     {
       id: 'usr-1',
@@ -60,7 +61,10 @@ function createSeedStore(): AdminUserStore {
       professionalId: 'prof-1',
       phone: '+39 333 1234567',
       city: 'Milano',
-      subscriptionPlan: 'Premium',
+      profileVisible: true,
+      subscriptionActive: true,
+      subscriptionStatus: 'active',
+      subscriptionPlan: 'premium',
     },
     {
       id: 'usr-2',
@@ -71,6 +75,10 @@ function createSeedStore(): AdminUserStore {
       status: 'active',
       registeredAt: '2026-03-20T14:30:00.000Z',
       city: 'Milano',
+      profileVisible: null,
+      subscriptionActive: false,
+      subscriptionStatus: null,
+      subscriptionPlan: null,
     },
     {
       id: 'usr-3',
@@ -81,7 +89,10 @@ function createSeedStore(): AdminUserStore {
       status: 'active',
       registeredAt: '2026-02-10T11:00:00.000Z',
       city: 'Monza',
-      subscriptionPlan: 'B2B Premium',
+      profileVisible: true,
+      subscriptionActive: true,
+      subscriptionStatus: 'active',
+      subscriptionPlan: 'premium',
     },
     {
       id: 'usr-4',
@@ -94,6 +105,11 @@ function createSeedStore(): AdminUserStore {
       professionalId: 'prof-6',
       phone: '+39 340 9876543',
       city: 'Sesto San Giovanni',
+      profileVisible: false,
+      subscriptionActive: true,
+      subscriptionStatus: 'trialing',
+      subscriptionPlan: 'premium',
+      trialEndsAt: trialEnd,
     },
     {
       id: 'usr-5',
@@ -104,6 +120,8 @@ function createSeedStore(): AdminUserStore {
       status: 'active',
       registeredAt: '2026-04-05T16:00:00.000Z',
       city: 'Legnano',
+      profileVisible: null,
+      subscriptionActive: false,
     },
     {
       id: 'usr-6',
@@ -116,6 +134,10 @@ function createSeedStore(): AdminUserStore {
       professionalId: 'prof-5',
       phone: '+39 347 5551234',
       city: 'Rho',
+      profileVisible: false,
+      subscriptionActive: false,
+      subscriptionStatus: 'canceled',
+      subscriptionPlan: 'free',
     },
     {
       id: 'usr-7',
@@ -126,7 +148,10 @@ function createSeedStore(): AdminUserStore {
       status: 'active',
       registeredAt: '2026-03-01T10:00:00.000Z',
       city: 'Sesto San Giovanni',
-      subscriptionPlan: 'B2B Premium',
+      profileVisible: true,
+      subscriptionActive: true,
+      subscriptionStatus: 'active',
+      subscriptionPlan: 'premium',
     },
     {
       id: 'usr-8',
@@ -139,6 +164,10 @@ function createSeedStore(): AdminUserStore {
       professionalId: 'prof-8',
       phone: '+39 338 2223344',
       city: 'Monza',
+      profileVisible: false,
+      subscriptionActive: false,
+      subscriptionStatus: null,
+      subscriptionPlan: 'free',
     },
     {
       id: 'usr-9',
@@ -149,6 +178,8 @@ function createSeedStore(): AdminUserStore {
       status: 'active',
       registeredAt: '2026-04-25T12:00:00.000Z',
       city: 'Milano',
+      profileVisible: null,
+      subscriptionActive: false,
     },
     {
       id: 'usr-10',
@@ -161,7 +192,11 @@ function createSeedStore(): AdminUserStore {
       professionalId: 'prof-10',
       phone: '+39 320 7788990',
       city: 'Milano',
-      subscriptionPlan: 'Premium',
+      profileVisible: true,
+      subscriptionActive: true,
+      subscriptionStatus: 'trialing',
+      subscriptionPlan: 'premium',
+      trialEndsAt: trialEnd,
     },
   ]
 
@@ -190,6 +225,13 @@ function toListItem(user: AdminUserRecord): AdminUserListItem {
     status: user.status,
     registeredAt: user.registeredAt,
     professionalId: user.professionalId,
+    profileVisible: user.profileVisible ?? null,
+    subscriptionActive: Boolean(user.subscriptionActive),
+    subscriptionStatus: user.subscriptionStatus ?? null,
+    subscriptionPlan: user.subscriptionPlan ?? null,
+    trialEndsAt: user.trialEndsAt ?? null,
+    subscriptionPeriodEnd: user.subscriptionPeriodEnd ?? null,
+    cancelAtPeriodEnd: Boolean(user.cancelAtPeriodEnd),
   }
 }
 
@@ -386,6 +428,7 @@ export async function suspendAdminUser(
   }
 
   user.status = 'suspended'
+  user.profileVisible = user.profileVisible === null ? null : false
   writeStore(store)
   return toListItem(user)
 }

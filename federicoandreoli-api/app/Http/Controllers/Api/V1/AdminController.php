@@ -9,6 +9,7 @@ use App\Models\JobPosting;
 use App\Models\LoginOtp;
 use App\Models\Organization;
 use App\Models\ProfessionalProfile;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\DirectoryCache;
@@ -30,28 +31,16 @@ class AdminController
             });
         }
 
-        $users = $query->with(['professionalProfile', 'professionalDocuments'])->limit(100)->get()->map(function (User $u) {
-            $status = 'active';
-            if ($u->suspended_at) {
-                $status = 'suspended';
-            } elseif (
-                $u->professionalProfile !== null
-                && ! $u->professionalProfile->is_verified
-                && $u->professionalDocuments->isNotEmpty()
-            ) {
-                $status = 'verify';
-            }
-
-            return [
-                'id' => (string) $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'role' => $u->role->value,
-                'status' => $status,
-                'createdAt' => $u->created_at?->toIso8601String(),
-                'emailVerifiedAt' => $u->email_verified_at?->toIso8601String(),
-            ];
-        });
+        $users = $query
+            ->with([
+                'professionalProfile',
+                'professionalDocuments',
+                'organization',
+                'subscriptions' => fn ($builder) => $builder->notTrashed()->orderByDesc('id'),
+            ])
+            ->limit(100)
+            ->get()
+            ->map(fn (User $u) => $this->serializeAdminUser($u));
 
         return response()->json($users);
     }
@@ -63,21 +52,64 @@ class AdminController
             return ApiResponse::error('Utente non trovato.', 404, [], 'not_found');
         }
 
-        $u->loadMissing(['professionalProfile', 'professionalDocuments']);
-        $profile = $u->professionalProfile;
-        $status = $u->suspended_at ? 'suspended' : 'active';
-        if ($profile !== null && ! $profile->is_verified && $u->professionalDocuments->isNotEmpty()) {
-            $status = 'verify';
-        }
+        $u->loadMissing([
+            'professionalProfile',
+            'professionalDocuments',
+            'organization',
+            'subscriptions' => fn ($builder) => $builder->notTrashed()->orderByDesc('id'),
+        ]);
 
-        $kycDocuments = $u->professionalDocuments->map(fn ($d) => [
+        $payload = $this->serializeAdminUser($u);
+        $payload['suspendedAt'] = $u->suspended_at?->toIso8601String();
+        $payload['kycDocuments'] = $u->professionalDocuments->map(fn ($d) => [
             'id' => (string) $d->id,
             'type' => $d->slot,
             'label' => $d->original_name,
             'status' => $d->review_status ?? 'pending',
         ])->values()->all();
+        $payload['activity'] = AuditLog::query()
+            ->where('subject_type', 'user')
+            ->where('subject_id', (string) $u->id)
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get()
+            ->map(fn (AuditLog $log) => [
+                'id' => (string) $log->id,
+                'action' => $log->action,
+                'at' => $log->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
 
-        return response()->json([
+        return response()->json($payload);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeAdminUser(User $u): array
+    {
+        $status = 'active';
+        if ($u->suspended_at) {
+            $status = 'suspended';
+        } elseif (
+            $u->professionalProfile !== null
+            && ! $u->professionalProfile->is_verified
+            && $u->professionalDocuments->isNotEmpty()
+        ) {
+            $status = 'verify';
+        }
+
+        /** @var Subscription|null $sub */
+        $sub = $u->relationLoaded('subscriptions')
+            ? $u->subscriptions->first()
+            : $u->subscriptions()->notTrashed()->orderByDesc('id')->first();
+
+        $subscriptionActive = $sub !== null && in_array($sub->status, ['active', 'trialing'], true);
+        $profileVisible = $this->resolveProfileVisible($u);
+        $professionalId = $u->professionalProfile?->id;
+
+        return [
             'id' => (string) $u->id,
             'name' => $u->name,
             'email' => $u->email,
@@ -85,22 +117,28 @@ class AdminController
             'status' => $status,
             'createdAt' => $u->created_at?->toIso8601String(),
             'emailVerifiedAt' => $u->email_verified_at?->toIso8601String(),
-            'suspendedAt' => $u->suspended_at?->toIso8601String(),
-            'kycDocuments' => $kycDocuments,
-            'activity' => AuditLog::query()
-                ->where('subject_type', 'user')
-                ->where('subject_id', (string) $u->id)
-                ->orderByDesc('id')
-                ->limit(20)
-                ->get()
-                ->map(fn (AuditLog $log) => [
-                    'id' => (string) $log->id,
-                    'action' => $log->action,
-                    'at' => $log->created_at?->toIso8601String(),
-                ])
-                ->values()
-                ->all(),
-        ]);
+            'professionalId' => $professionalId !== null ? (string) $professionalId : null,
+            'profileVisible' => $profileVisible,
+            'subscriptionActive' => $subscriptionActive,
+            'subscriptionStatus' => $sub?->status,
+            'subscriptionPlan' => $sub?->plan_type,
+            'trialEndsAt' => $sub?->trial_ends_at?->toIso8601String(),
+            'subscriptionPeriodEnd' => $sub?->current_period_end?->toIso8601String(),
+            'cancelAtPeriodEnd' => $sub?->cancel_at_period_end ?? false,
+        ];
+    }
+
+    private function resolveProfileVisible(User $u): ?bool
+    {
+        if ($u->professionalProfile !== null) {
+            return (bool) $u->professionalProfile->is_published;
+        }
+
+        if ($u->organization !== null) {
+            return (bool) $u->organization->is_published;
+        }
+
+        return null;
     }
 
     public function suspendUser(Request $request, int $id): JsonResponse

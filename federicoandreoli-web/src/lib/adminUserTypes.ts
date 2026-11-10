@@ -36,12 +36,33 @@ export type AdminUserRecord = {
   professionalId?: string
   phone?: string
   city?: string
-  subscriptionPlan?: string
+  /** Directory / public profile visibility; null when the account has no publishable profile. */
+  profileVisible: boolean | null
+  subscriptionActive: boolean
+  subscriptionStatus?: string | null
+  subscriptionPlan?: string | null
+  trialEndsAt?: string | null
+  subscriptionPeriodEnd?: string | null
+  cancelAtPeriodEnd?: boolean
 }
 
 export type AdminUserListItem = Pick<
   AdminUserRecord,
-  'id' | 'name' | 'email' | 'initials' | 'role' | 'status' | 'registeredAt' | 'professionalId'
+  | 'id'
+  | 'name'
+  | 'email'
+  | 'initials'
+  | 'role'
+  | 'status'
+  | 'registeredAt'
+  | 'professionalId'
+  | 'profileVisible'
+  | 'subscriptionActive'
+  | 'subscriptionStatus'
+  | 'subscriptionPlan'
+  | 'trialEndsAt'
+  | 'subscriptionPeriodEnd'
+  | 'cancelAtPeriodEnd'
 >
 
 export type AdminUserDetail = AdminUserRecord & {

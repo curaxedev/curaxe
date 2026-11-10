@@ -40,6 +40,16 @@ class User extends Authenticatable
         return $this->hasOne(ProfessionalProfile::class);
     }
 
+    public function organization(): HasOne
+    {
+        return $this->hasOne(Organization::class);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
     public function professionalDocuments(): HasMany
     {
         return $this->hasMany(ProfessionalDocument::class);

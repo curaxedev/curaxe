@@ -5,6 +5,8 @@ import {
   ADMIN_USER_STATUS_LABELS,
   formatAdminUserDate,
   formatAdminUserDateTime,
+  formatSubscriptionPlanLabel,
+  trialDaysRemaining,
 } from '../../../lib/adminUserApi'
 import type { AdminUserDetail, AdminUserListItem, AdminUserRole, AdminUserStatus } from '../../../lib/adminUserTypes'
 import { KYC_DOCUMENT_TYPE_LABELS } from '../../../lib/adminKycApi'
@@ -14,9 +16,12 @@ import { buildCsv, dateStampForFilename, downloadCsv } from '../../../lib/export
 import {
   IconAlert,
   IconCheck,
+  IconCreditCard,
+  IconEye,
   IconMail,
   IconRefresh,
   IconSearch,
+  IconSettings,
   IconTrash,
 } from '../../../components/icons/DashboardIcons'
 
@@ -56,16 +61,67 @@ function statusClass(status: AdminUserStatus): string {
   return 'admin-users__status admin-users__status--verify'
 }
 
+function visibilityLabel(visible: boolean | null): string {
+  if (visible === null) return 'N/D'
+  return visible ? 'Visibile' : 'Nascosto'
+}
+
+function visibilityClass(visible: boolean | null): string {
+  if (visible === true) return 'admin-users__status admin-users__status--active'
+  if (visible === false) return 'admin-users__status admin-users__status--neutral'
+  return 'admin-users__status admin-users__status--neutral'
+}
+
+function subscriptionPill(user: Pick<
+  AdminUserListItem,
+  'subscriptionActive' | 'subscriptionStatus' | 'trialEndsAt'
+>): { label: string; className: string; trialHint: string | null } {
+  const days = trialDaysRemaining(user.trialEndsAt)
+  const inTrial =
+    user.subscriptionStatus === 'trialing' || (Boolean(user.trialEndsAt) && days !== null)
+
+  if (user.subscriptionActive) {
+    return {
+      label: 'Attivo',
+      className: 'admin-users__status admin-users__status--active',
+      trialHint: inTrial && days !== null ? `Prova · ${days}g` : null,
+    }
+  }
+
+  return {
+    label: 'Non attivo',
+    className: 'admin-users__status admin-users__status--neutral',
+    trialHint: null,
+  }
+}
+
 function exportUsersCsv(users: AdminUserListItem[]): void {
-  const headers = ['id', 'nome', 'email', 'ruolo', 'status', 'iscritto'] as const
-  const rows = users.map((u) => [
-    u.id,
-    u.name,
-    u.email,
-    ADMIN_USER_ROLE_LABELS[u.role],
-    ADMIN_USER_STATUS_LABELS[u.status],
-    formatAdminUserDate(u.registeredAt),
-  ])
+  const headers = [
+    'id',
+    'nome',
+    'email',
+    'ruolo',
+    'status',
+    'abbonamento',
+    'prova_giorni',
+    'visibilita',
+    'iscritto',
+  ] as const
+  const rows = users.map((u) => {
+    const sub = subscriptionPill(u)
+    const days = trialDaysRemaining(u.trialEndsAt)
+    return [
+      u.id,
+      u.name,
+      u.email,
+      ADMIN_USER_ROLE_LABELS[u.role],
+      ADMIN_USER_STATUS_LABELS[u.status],
+      sub.label,
+      days !== null ? String(days) : '',
+      visibilityLabel(u.profileVisible),
+      formatAdminUserDate(u.registeredAt),
+    ]
+  })
   downloadCsv(`curaxe-utenti-${dateStampForFilename()}.csv`, buildCsv(headers, rows))
 }
 
@@ -99,6 +155,7 @@ function UserDetailView({
   loading,
   error,
   actionLoading,
+  initialTab,
   onBack,
   onRetry,
   onRefresh,
@@ -109,19 +166,24 @@ function UserDetailView({
   loading: boolean
   error: string | null
   actionLoading: boolean
+  initialTab: DetailTab
   onBack: () => void
   onRetry: () => void
   onRefresh: () => void
   onToggleStatus: () => void
   onDelete: () => void
 }) {
-  const [tab, setTab] = useState<DetailTab>('profilo')
+  const [tab, setTab] = useState<DetailTab>(initialTab)
 
   const nameParts = splitName(detail?.name ?? '')
   const lastActivity = detail?.activity[0]
   const kycDocs = detail?.kycDocuments ?? []
   const kycApproved = kycDocs.filter((d) => d.status === 'approved').length
   const kycPending = kycDocs.filter((d) => d.status !== 'approved' && d.status !== 'rejected').length
+  const subPill = detail
+    ? subscriptionPill(detail)
+    : { label: '—', className: 'admin-users__status admin-users__status--neutral', trialHint: null }
+  const trialDays = detail ? trialDaysRemaining(detail.trialEndsAt) : null
 
   const kycLabel =
     kycDocs.length === 0
@@ -162,19 +224,12 @@ function UserDetailView({
                   <span className="admin-users__status admin-users__status--neutral">
                     {ADMIN_USER_ROLE_LABELS[detail.role]}
                   </span>
-                  {kycDocs.length > 0 ? (
-                    <span
-                      className={
-                        kycPending > 0
-                          ? 'admin-users__status admin-users__status--verify'
-                          : 'admin-users__status admin-users__status--active'
-                      }
-                    >
-                      KYC {kycPending > 0 ? 'in revisione' : 'ok'}
+                  <span className={subPill.className}>{subPill.label}</span>
+                  {detail.profileVisible !== null ? (
+                    <span className={visibilityClass(detail.profileVisible)}>
+                      {visibilityLabel(detail.profileVisible)}
                     </span>
-                  ) : (
-                    <span className="admin-users__status admin-users__status--neutral">KYC n/d</span>
-                  )}
+                  ) : null}
                 </div>
                 <div className="admin-users-detail__sub">
                   <span>{detail.email}</span>
@@ -192,14 +247,14 @@ function UserDetailView({
                 aria-label="Aggiorna"
                 title="Aggiorna"
               >
-                <IconRefresh size={16} />
+                <IconRefresh size={15} />
               </button>
               <a
                 className="admin-users-detail__action-label"
                 href={`mailto:${detail.email}`}
                 title="Scrivi email"
               >
-                <IconMail size={15} />
+                <IconMail size={14} />
                 Email
               </a>
               {detail.role !== 'admin' ? (
@@ -211,7 +266,7 @@ function UserDetailView({
                   aria-label="Elimina account"
                   onClick={onDelete}
                 >
-                  <IconTrash size={16} />
+                  <IconTrash size={15} />
                 </button>
               ) : null}
             </div>
@@ -232,9 +287,11 @@ function UserDetailView({
             </div>
             <div className="admin-users-metric" role="listitem">
               <span className="admin-users-metric__label">Abbonamento</span>
-              <strong className="admin-users-metric__value">{detail.subscriptionPlan ?? '—'}</strong>
+              <strong className="admin-users-metric__value">
+                {formatSubscriptionPlanLabel(detail.subscriptionPlan)}
+              </strong>
               <span className="admin-users-metric__meta">
-                {detail.subscriptionPlan ? 'Piano registrato' : 'Nessun piano in anagrafica'}
+                {subPill.trialHint ?? (detail.subscriptionActive ? 'Attivo' : 'Non attivo')}
               </span>
             </div>
             <div className="admin-users-metric" role="listitem">
@@ -320,6 +377,13 @@ function UserDetailView({
                       Profilo pubblico
                     </Link>
                   ) : null}
+                  <button
+                    type="button"
+                    className="admin-users-panel__cta admin-users-panel__cta--ghost"
+                    onClick={() => setTab('abbonamento')}
+                  >
+                    Apri Abbonamento
+                  </button>
                 </div>
 
                 {detail.activity.length > 0 ? (
@@ -364,9 +428,13 @@ function UserDetailView({
                     <label htmlFor="admin-user-city">Città</label>
                     <input id="admin-user-city" readOnly value={detail.city || '—'} />
                   </div>
-                  <div className="admin-users-field admin-users-field--full">
+                  <div className="admin-users-field">
                     <label htmlFor="admin-user-role">Ruolo</label>
                     <input id="admin-user-role" readOnly value={ADMIN_USER_ROLE_LABELS[detail.role]} />
+                  </div>
+                  <div className="admin-users-field">
+                    <label htmlFor="admin-user-vis">Visibilità</label>
+                    <input id="admin-user-vis" readOnly value={visibilityLabel(detail.profileVisible)} />
                   </div>
                   <div className="admin-users-field admin-users-field--full">
                     <label htmlFor="admin-user-joined">Iscritto</label>
@@ -430,16 +498,55 @@ function UserDetailView({
               <div className="admin-users-panel__head">
                 <div>
                   <h2 className="admin-users-panel__title">Abbonamento</h2>
-                  <p className="admin-users-panel__sub">Piano collegato all&apos;anagrafica utente</p>
+                  <p className="admin-users-panel__sub">Stato piano e periodo di prova</p>
+                </div>
+                <span className={subPill.className}>{subPill.label}</span>
+              </div>
+              <div className="admin-users-form">
+                <div className="admin-users-field">
+                  <label>Stato</label>
+                  <input readOnly value={subPill.label} />
+                </div>
+                <div className="admin-users-field">
+                  <label>Piano</label>
+                  <input readOnly value={formatSubscriptionPlanLabel(detail.subscriptionPlan)} />
+                </div>
+                <div className="admin-users-field">
+                  <label>Status billing</label>
+                  <input readOnly value={detail.subscriptionStatus ?? '—'} />
+                </div>
+                <div className="admin-users-field">
+                  <label>Prova</label>
+                  <input
+                    readOnly
+                    value={
+                      trialDays !== null
+                        ? `${trialDays} giorni rimanenti`
+                        : detail.trialEndsAt
+                          ? `Scaduta (${formatAdminUserDate(detail.trialEndsAt)})`
+                          : 'Nessuna prova attiva'
+                    }
+                  />
+                </div>
+                <div className="admin-users-field">
+                  <label>Fine periodo</label>
+                  <input
+                    readOnly
+                    value={
+                      detail.subscriptionPeriodEnd
+                        ? formatAdminUserDate(detail.subscriptionPeriodEnd)
+                        : '—'
+                    }
+                  />
+                </div>
+                <div className="admin-users-field">
+                  <label>Cancella a fine periodo</label>
+                  <input readOnly value={detail.cancelAtPeriodEnd ? 'Sì' : 'No'} />
                 </div>
               </div>
-              <div className="admin-users-metric">
-                <span className="admin-users-metric__label">Piano</span>
-                <strong className="admin-users-metric__value">{detail.subscriptionPlan ?? 'Nessun piano'}</strong>
-                <span className="admin-users-metric__meta">
-                  Per gestione abbonamenti completa usa la sezione Abbonamenti.
-                </span>
-              </div>
+              <p className="admin-users-panel__sub">
+                Per operazioni Stripe avanzate usa la sezione Abbonamenti dell&apos;admin.
+              </p>
             </section>
           ) : null}
 
@@ -552,7 +659,7 @@ export function AdminUsersSection() {
 
   if (adminUsers.detailTargetId) {
     return (
-      <div className="admin-users">
+      <div className="admin-users admin-users--compact">
         <UsersToast message={adminUsers.toast ?? ''} visible={Boolean(adminUsers.toast)} />
         {adminUsers.actionError ? (
           <div className="admin-users__alert" role="alert">
@@ -563,16 +670,22 @@ export function AdminUsersSection() {
           </div>
         ) : null}
         <UserDetailView
+          key={`${adminUsers.detailTargetId}-${adminUsers.detailInitialTab}`}
           detail={adminUsers.detail}
           loading={adminUsers.detailLoading}
           error={adminUsers.detailError}
           actionLoading={adminUsers.actionLoadingId === adminUsers.detailTargetId}
+          initialTab={adminUsers.detailInitialTab}
           onBack={adminUsers.closeDetail}
           onRetry={() => {
-            if (adminUsers.detailTargetId) adminUsers.openDetail(adminUsers.detailTargetId)
+            if (adminUsers.detailTargetId) {
+              adminUsers.openDetail(adminUsers.detailTargetId, { tab: adminUsers.detailInitialTab })
+            }
           }}
           onRefresh={() => {
-            if (adminUsers.detailTargetId) adminUsers.openDetail(adminUsers.detailTargetId)
+            if (adminUsers.detailTargetId) {
+              adminUsers.openDetail(adminUsers.detailTargetId, { tab: adminUsers.detailInitialTab })
+            }
           }}
           onToggleStatus={() => {
             if (!adminUsers.detail) return
@@ -590,7 +703,7 @@ export function AdminUsersSection() {
 
   if (adminUsers.loading) {
     return (
-      <div className="admin-users">
+      <div className="admin-users admin-users--compact">
         <div className="admin-users__crumb">
           <span>Admin</span>
           <span className="admin-users__crumb-sep">›</span>
@@ -603,7 +716,7 @@ export function AdminUsersSection() {
 
   if (adminUsers.error) {
     return (
-      <div className="admin-users">
+      <div className="admin-users admin-users--compact">
         <div className="admin-users__crumb">
           <span>Admin</span>
           <span className="admin-users__crumb-sep">›</span>
@@ -624,7 +737,7 @@ export function AdminUsersSection() {
   ]
 
   return (
-    <div className="admin-users">
+    <div className="admin-users admin-users--compact">
       <UsersToast message={adminUsers.toast ?? ''} visible={Boolean(adminUsers.toast)} />
 
       <div className="admin-users__crumb">
@@ -653,7 +766,7 @@ export function AdminUsersSection() {
             aria-label="Aggiorna elenco"
             title="Aggiorna"
           >
-            <IconRefresh size={16} />
+            <IconRefresh size={15} />
           </button>
         </div>
       </div>
@@ -696,7 +809,7 @@ export function AdminUsersSection() {
       <div className="admin-users__toolbar">
         <div className="admin-users__search">
           <span className="admin-users__search-icon" aria-hidden="true">
-            <IconSearch size={15} />
+            <IconSearch size={14} />
           </span>
           <input
             type="search"
@@ -756,6 +869,8 @@ export function AdminUsersSection() {
               <th>Email</th>
               <th>Ruolo</th>
               <th>Status</th>
+              <th>Abbonamento</th>
+              <th>Visibilità</th>
               <th>Iscritto</th>
               <th aria-label="Azioni" />
             </tr>
@@ -763,13 +878,14 @@ export function AdminUsersSection() {
           <tbody>
             {visibleUsers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="admin-users__empty">
+                <td colSpan={8} className="admin-users__empty">
                   Nessun utente corrisponde ai filtri selezionati.
                 </td>
               </tr>
             ) : (
               visibleUsers.map((u) => {
                 const busy = adminUsers.actionLoadingId === u.id
+                const sub = subscriptionPill(u)
                 return (
                   <tr
                     key={u.id}
@@ -803,16 +919,64 @@ export function AdminUsersSection() {
                     <td>
                       <span className={statusClass(u.status)}>{ADMIN_USER_STATUS_LABELS[u.status]}</span>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatAdminUserDate(u.registeredAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="admin-users__sub-cell"
+                        title="Apri dettaglio Abbonamento"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          adminUsers.openDetail(u.id, { tab: 'abbonamento' })
+                        }}
+                      >
+                        <span className={sub.className}>{sub.label}</span>
+                        {sub.trialHint ? (
+                          <span className="admin-users__trial-hint">{sub.trialHint}</span>
+                        ) : null}
+                      </button>
+                    </td>
+                    <td>
+                      <span className={visibilityClass(u.profileVisible)}>
+                        {visibilityLabel(u.profileVisible)}
+                      </span>
+                    </td>
+                    <td className="admin-users__date">{formatAdminUserDate(u.registeredAt)}</td>
                     <td>
                       <div className="admin-users__row-actions" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="admin-users__icon-btn"
+                          title="Apri dettaglio"
+                          aria-label={`Apri dettaglio di ${u.name}`}
+                          onClick={() => adminUsers.openDetail(u.id)}
+                        >
+                          <IconEye size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-users__icon-btn"
+                          title="Gestisci"
+                          aria-label={`Gestisci ${u.name}`}
+                          onClick={() => adminUsers.openDetail(u.id, { tab: 'sicurezza' })}
+                        >
+                          <IconSettings size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-users__icon-btn"
+                          title="Abbonamento"
+                          aria-label={`Abbonamento di ${u.name}`}
+                          onClick={() => adminUsers.openDetail(u.id, { tab: 'abbonamento' })}
+                        >
+                          <IconCreditCard size={14} />
+                        </button>
                         <a
                           className="admin-users__icon-btn"
                           href={`mailto:${u.email}`}
                           aria-label={`Email a ${u.name}`}
                           title="Email"
                         >
-                          <IconMail size={15} />
+                          <IconMail size={14} />
                         </a>
                         <button
                           type="button"
@@ -825,7 +989,7 @@ export function AdminUsersSection() {
                             void adminUsers.remove(u.id)
                           }}
                         >
-                          <IconTrash size={15} />
+                          <IconTrash size={14} />
                         </button>
                       </div>
                     </td>

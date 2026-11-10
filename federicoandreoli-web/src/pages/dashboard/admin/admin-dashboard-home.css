@@ -932,6 +932,113 @@
   max-width: 1280px;
 }
 
+.admin-users--compact {
+  gap: 10px;
+}
+
+.admin-users--compact .admin-users__title {
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+}
+
+.admin-users--compact .admin-users__count {
+  font-size: 0.8rem;
+}
+
+.admin-users--compact .admin-users__ghost-cta {
+  padding: 5px 11px;
+  font-size: 0.74rem;
+}
+
+.admin-users--compact .admin-users__icon-btn {
+  width: 30px;
+  height: 30px;
+}
+
+.admin-users--compact .admin-users__pill {
+  padding: 4px 9px;
+  font-size: 0.7rem;
+  gap: 0;
+}
+
+.admin-users--compact .admin-users__pills {
+  gap: 6px;
+}
+
+.admin-users--compact .admin-users__search-input,
+.admin-users--compact .admin-users__select {
+  height: 34px;
+  font-size: 0.78rem;
+}
+
+.admin-users--compact .admin-users__table {
+  min-width: 980px;
+}
+
+.admin-users--compact .admin-users__table th {
+  padding: 7px 10px;
+  font-size: 0.62rem;
+}
+
+.admin-users--compact .admin-users__table td {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.admin-users--compact .admin-users__avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 0.64rem;
+}
+
+.admin-users--compact .admin-users__guest-name {
+  font-size: 0.82rem;
+}
+
+.admin-users--compact .admin-users__guest-id {
+  font-size: 0.66rem;
+}
+
+.admin-users--compact .admin-users__status {
+  padding: 2px 7px;
+  font-size: 0.66rem;
+}
+
+.admin-users--compact .admin-users__table-wrap {
+  border-radius: 12px;
+}
+
+.admin-users__sub-cell {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-users__sub-cell:hover .admin-users__status {
+  filter: brightness(0.97);
+}
+
+.admin-users__trial-hint {
+  font-size: 0.66rem;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--color-accent, #b45309) 92%, #000);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.admin-users__date {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
 .admin-users__crumb {
   display: flex;
   align-items: center;

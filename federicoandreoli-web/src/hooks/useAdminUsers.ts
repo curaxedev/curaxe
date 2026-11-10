@@ -37,6 +37,9 @@ export function useAdminUsers() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const [detailTargetId, setDetailTargetId] = useState<string | null>(null)
+  const [detailInitialTab, setDetailInitialTab] = useState<
+    'profilo' | 'sicurezza' | 'abbonamento' | 'kyc' | 'attivita'
+  >('profilo')
   const [detail, setDetail] = useState<AdminUserDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
@@ -93,7 +96,11 @@ export function useAdminUsers() {
   )
 
   const openDetail = useCallback(
-    (userId: string) => {
+    (
+      userId: string,
+      opts?: { tab?: 'profilo' | 'sicurezza' | 'abbonamento' | 'kyc' | 'attivita' },
+    ) => {
+      setDetailInitialTab(opts?.tab ?? 'profilo')
       setDetailTargetId(userId)
       void loadDetail(userId)
     },
@@ -104,6 +111,7 @@ export function useAdminUsers() {
     setDetailTargetId(null)
     setDetail(null)
     setDetailError(null)
+    setDetailInitialTab('profilo')
   }, [])
 
   const updateUserInList = useCallback((updated: AdminUserListItem) => {
@@ -117,7 +125,11 @@ export function useAdminUsers() {
       setActionError(null)
       const previous = users.find((u) => u.id === userId)
       if (previous) {
-        updateUserInList({ ...previous, status: 'suspended' })
+        updateUserInList({
+          ...previous,
+          status: 'suspended',
+          profileVisible: previous.profileVisible === null ? null : false,
+        })
       }
 
       try {
@@ -220,6 +232,7 @@ export function useAdminUsers() {
     searchQuery,
     setSearchQuery,
     detailTargetId,
+    detailInitialTab,
     detail,
     detailLoading,
     detailError,

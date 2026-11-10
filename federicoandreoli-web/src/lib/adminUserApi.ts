@@ -36,6 +36,25 @@ export {
   formatAdminUserDateTime,
 }
 
+type AdminUserApiRow = {
+  id: string
+  name: string
+  email: string
+  role: string
+  status: string
+  createdAt?: string
+  professionalId?: string | null
+  profileVisible?: boolean | null
+  subscriptionActive?: boolean
+  subscriptionStatus?: string | null
+  subscriptionPlan?: string | null
+  trialEndsAt?: string | null
+  subscriptionPeriodEnd?: string | null
+  cancelAtPeriodEnd?: boolean
+  activity?: Array<{ id: string; action: string; at?: string }>
+  kycDocuments?: Array<{ id: string; type: string; label: string; status: string }>
+}
+
 function toAdminError(err: unknown, fallback: string): AdminUserError {
   if (err instanceof HttpError && err.code === 'step_up_required') {
     throw err
@@ -70,14 +89,7 @@ function initialsFrom(name: string): string {
   return (parts[0] ?? 'U').slice(0, 2).toUpperCase()
 }
 
-function mapListItem(row: {
-  id: string
-  name: string
-  email: string
-  role: string
-  status: string
-  createdAt?: string
-}): AdminUserListItem {
+function mapListItem(row: AdminUserApiRow): AdminUserListItem {
   return {
     id: row.id,
     name: row.name,
@@ -91,22 +103,21 @@ function mapListItem(row: {
           ? 'verify'
           : 'active',
     registeredAt: row.createdAt ?? new Date().toISOString(),
+    professionalId: row.professionalId ?? undefined,
+    profileVisible: row.profileVisible ?? null,
+    subscriptionActive: Boolean(row.subscriptionActive),
+    subscriptionStatus: row.subscriptionStatus ?? null,
+    subscriptionPlan: row.subscriptionPlan ?? null,
+    trialEndsAt: row.trialEndsAt ?? null,
+    subscriptionPeriodEnd: row.subscriptionPeriodEnd ?? null,
+    cancelAtPeriodEnd: Boolean(row.cancelAtPeriodEnd),
   }
 }
 
 export async function getAdminUsers(actorEmail?: string): Promise<AdminUserListItem[]> {
   if (isMockApiEnabled()) return fetchAdminUsers(actorEmail)
   try {
-    const rows = await httpGet<
-      Array<{
-        id: string
-        name: string
-        email: string
-        role: string
-        status: string
-        createdAt?: string
-      }>
-    >('/api/v1/admin/users')
+    const rows = await httpGet<AdminUserApiRow[]>('/api/v1/admin/users')
     return rows.map(mapListItem)
   } catch (err) {
     throw toAdminError(err, 'Impossibile caricare gli utenti.')
@@ -119,16 +130,7 @@ export async function getAdminUserDetail(
 ): Promise<AdminUserDetail> {
   if (isMockApiEnabled()) return fetchAdminUserDetail(userId, actorEmail)
   try {
-    const row = await httpGet<{
-      id: string
-      name: string
-      email: string
-      role: string
-      status: string
-      createdAt?: string
-      activity?: Array<{ id: string; action: string; at?: string }>
-      kycDocuments?: Array<{ id: string; type: string; label: string; status: string }>
-    }>(`/api/v1/admin/users/${userId}`)
+    const row = await httpGet<AdminUserApiRow>(`/api/v1/admin/users/${userId}`)
     return {
       ...mapListItem(row),
       activity: (row.activity ?? []).map((a) => ({
@@ -161,14 +163,7 @@ export async function postAdminUserSuspend(
   if (isMockApiEnabled()) return suspendAdminUser(userId, actorEmail)
   try {
     const row = await withAdminStepUp('users.mutate', (token) =>
-      httpPost<{
-        id: string
-        name: string
-        email: string
-        role: string
-        status: string
-        createdAt?: string
-      }>(`/api/v1/admin/users/${userId}/suspend`, {
+      httpPost<AdminUserApiRow>(`/api/v1/admin/users/${userId}/suspend`, {
         headers: token ? { 'X-Step-Up-Token': token } : undefined,
       }),
     )
@@ -185,14 +180,7 @@ export async function postAdminUserReactivate(
   if (isMockApiEnabled()) return reactivateAdminUser(userId, actorEmail)
   try {
     const row = await withAdminStepUp('users.mutate', (token) =>
-      httpPost<{
-        id: string
-        name: string
-        email: string
-        role: string
-        status: string
-        createdAt?: string
-      }>(`/api/v1/admin/users/${userId}/reactivate`, {
+      httpPost<AdminUserApiRow>(`/api/v1/admin/users/${userId}/reactivate`, {
         headers: token ? { 'X-Step-Up-Token': token } : undefined,
       }),
     )
@@ -218,4 +206,22 @@ export async function deleteAdminUser(
   } catch (err) {
     throw toAdminError(err, 'Eliminazione utente non riuscita.')
   }
+}
+
+/** Giorni di prova rimanenti; null se non in trial o scaduta. */
+export function trialDaysRemaining(trialEndsAt?: string | null): number | null {
+  if (!trialEndsAt) return null
+  const end = new Date(trialEndsAt).getTime()
+  if (Number.isNaN(end)) return null
+  const diff = end - Date.now()
+  if (diff <= 0) return null
+  return Math.max(1, Math.ceil(diff / 86_400_000))
+}
+
+export function formatSubscriptionPlanLabel(plan?: string | null): string {
+  if (!plan) return '—'
+  const key = plan.toLowerCase()
+  if (key === 'free') return 'Free'
+  if (key === 'premium') return 'Premium'
+  return plan
 }
