@@ -82,7 +82,7 @@ export function RegisterFinePage() {
     setBusy(true)
     try {
       await requestOtp(email, turnstileToken)
-      setResendHint('Nuovo codice inviato. Controlla la posta.')
+      setResendHint('Se l’email è registrata, riceverai un nuovo codice a breve (controlla anche spam).')
       setOtpCode('')
     } catch (err) {
       setError(authErrorMessage(err))

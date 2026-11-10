@@ -48,7 +48,9 @@ class AdminTest extends TestCase
         $pro = User::query()->where('email', 'maria.rossi@email.it')->firstOrFail();
         Sanctum::actingAs($admin);
 
-        $this->deleteJson('/api/v1/admin/users/'.$pro->id)->assertNoContent();
+        $this->deleteJson('/api/v1/admin/users/'.$pro->id, [
+            'confirm_email' => $pro->email,
+        ])->assertNoContent();
 
         $this->assertDatabaseMissing('users', ['id' => $pro->id]);
         $this->assertDatabaseHas('audit_logs', [
@@ -62,7 +64,9 @@ class AdminTest extends TestCase
         $admin = User::query()->where('email', 'admin@assistenzafacile.it')->firstOrFail();
         Sanctum::actingAs($admin);
 
-        $this->deleteJson('/api/v1/admin/users/'.$admin->id)
+        $this->deleteJson('/api/v1/admin/users/'.$admin->id, [
+            'confirm_email' => $admin->email,
+        ])
             ->assertUnprocessable();
 
         $this->assertDatabaseHas('users', ['id' => $admin->id]);

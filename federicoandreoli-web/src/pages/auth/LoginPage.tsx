@@ -304,7 +304,11 @@ export function LoginPage() {
           {step === 2 && method === 'otp' && (
             <>
               <h1 className="auth-title">Codice via email</h1>
-              <p className="auth-subtitle">Invieremo un codice monouso a {email}</p>
+              <p className="auth-subtitle">
+                {otpSent
+                  ? `Se ${email} è registrato, riceverai un codice a breve (controlla anche spam).`
+                  : `Se ${email} è registrato, invieremo un codice monouso.`}
+              </p>
               <button type="button" className="auth-change-email" onClick={() => setMethod(null)}>
                 <IconChevronLeft size={14} aria-hidden />
                 Torna alla scelta

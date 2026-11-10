@@ -176,4 +176,32 @@ class AuthOtpTest extends TestCase
 
         $this->assertSame(1, LoginOtp::query()->whereNull('consumed_at')->count());
     }
+
+    public function test_request_for_suspended_user_returns_202_without_mail(): void
+    {
+        Mail::fake();
+        $user = $this->otpUser();
+        $user->forceFill(['suspended_at' => now()])->save();
+
+        $this->postJson('/api/v1/auth/email-otp/request', ['email' => $user->email])
+            ->assertStatus(202);
+
+        Mail::assertNothingOutgoing();
+        $this->assertDatabaseCount('login_otps', 0);
+    }
+
+    public function test_verify_for_missing_user_after_valid_otp_returns_opaque_invalid(): void
+    {
+        $user = $this->otpUser();
+        $code = $this->requestOtpAndCaptureCode($user->email);
+        $email = $user->email;
+        $user->delete();
+
+        $this->postJson('/api/v1/auth/email-otp/verify', [
+            'email' => $email,
+            'code' => $code,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('error_code', 'otp_invalid');
+    }
 }

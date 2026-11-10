@@ -28,8 +28,13 @@ class EmailOtpAuthController
         $email = strtolower(trim($data['email']));
         $user = User::query()->where('email', $email)->first();
 
-        // Anti-enumerazione: stessa risposta anche se il canale è password_totp.
-        if ($user !== null && $resolver->channelForRole($user->role) === AuthChannel::OtpEmail) {
+        // Anti-enumerazione: stessa risposta per sconosciuti, canale password, sospesi.
+        // Non inviare OTP a account sospesi (verify li rifiuterebbe comunque).
+        if (
+            $user !== null
+            && $user->suspended_at === null
+            && $resolver->channelForRole($user->role) === AuthChannel::OtpEmail
+        ) {
             $code = $otps->issue($email);
             Mail::to($user->email)->send(new LoginOtpMail($code));
         }
@@ -62,12 +67,9 @@ class EmailOtpAuthController
         }
 
         $user = User::query()->where('email', $email)->first();
-        if ($user === null) {
-            return ApiResponse::error('Nessun account registrato con questa email.', 422, [], 'email_not_found');
-        }
-
-        if ($user->suspended_at !== null) {
-            return ApiResponse::error('Credenziali non valide.', 422, [], 'invalid_credentials');
+        // Non rivelare se l'email esiste: stesso esito di codice non valido / account non idoneo.
+        if ($user === null || $user->suspended_at !== null) {
+            return ApiResponse::error('Codice non valido. Controlla e riprova.', 422, [], 'otp_invalid');
         }
 
         // Il codice OTP ricevuto via email prova il possesso dell'indirizzo.

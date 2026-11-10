@@ -202,11 +202,16 @@ export async function postAdminUserReactivate(
   }
 }
 
-export async function deleteAdminUser(userId: string, actorEmail?: string): Promise<void> {
+export async function deleteAdminUser(
+  userId: string,
+  confirmEmail: string,
+  actorEmail?: string,
+): Promise<void> {
   if (isMockApiEnabled()) return deleteAdminUserMock(userId, actorEmail)
   try {
     await withAdminStepUp('users.mutate', (token) =>
       httpDelete(`/api/v1/admin/users/${userId}`, {
+        body: { confirm_email: confirmEmail },
         headers: token ? { 'X-Step-Up-Token': token } : undefined,
       }),
     )

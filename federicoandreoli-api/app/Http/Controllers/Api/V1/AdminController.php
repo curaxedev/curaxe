@@ -6,6 +6,7 @@ use App\Domains\Auth\Enums\UserRole;
 use App\Mail\Registration\AccountDeletedMail;
 use App\Models\AuditLog;
 use App\Models\JobPosting;
+use App\Models\LoginOtp;
 use App\Models\Organization;
 use App\Models\ProfessionalProfile;
 use App\Models\User;
@@ -145,6 +146,15 @@ class AdminController
     public function destroyUser(Request $request, int $id): JsonResponse
     {
         $actor = $request->user();
+        // Defense-in-depth: middleware already enforces platform_admin.
+        if ($actor === null || $actor->role !== UserRole::PlatformAdmin) {
+            return ApiResponse::error('Non hai i permessi per questa operazione.', 403, [], 'forbidden');
+        }
+
+        $data = $request->validate([
+            'confirm_email' => ['required', 'email:rfc'],
+        ]);
+
         $u = User::query()->find($id);
         if ($u === null) {
             return ApiResponse::error('Utente non trovato.', 404, [], 'not_found');
@@ -157,11 +167,24 @@ class AdminController
         }
 
         $email = $u->email;
+        $confirm = strtolower(trim($data['confirm_email']));
+        if ($confirm !== strtolower($email)) {
+            return ApiResponse::error(
+                'L’email di conferma non corrisponde all’account selezionato.',
+                422,
+                ['confirm_email' => ['L’email di conferma non corrisponde all’account selezionato.']],
+                'validation',
+            );
+        }
+
         $name = $u->name;
         $subjectId = (string) $u->id;
+        $emailKey = strtolower($email);
 
-        DB::transaction(function () use ($u, $actor, $subjectId) {
+        DB::transaction(function () use ($u, $actor, $subjectId, $emailKey) {
             $u->tokens()->delete();
+            LoginOtp::query()->where('email', $emailKey)->delete();
+            DB::table('password_reset_tokens')->where('email', $emailKey)->delete();
             AuditLog::record($actor->id, 'user.delete', 'user', $subjectId);
             $u->delete();
         });

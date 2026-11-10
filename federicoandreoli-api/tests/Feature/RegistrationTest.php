@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -234,5 +235,65 @@ class RegistrationTest extends TestCase
 
         $user = User::query()->where('email', 'nuova.badante@example.com')->firstOrFail();
         $this->assertNotNull($user->email_verified_at);
+    }
+
+    public function test_seeker_can_reregister_after_admin_hard_delete_and_receive_otp(): void
+    {
+        Mail::fake();
+
+        $admin = User::factory()->create([
+            'email' => 'admin-delete@example.com',
+            'role' => UserRole::PlatformAdmin,
+            'password' => 'password',
+        ]);
+        $email = 'famiglia.riuso@example.com';
+
+        $this->postJson('/api/v1/registrations/seeker', [
+            ...$this->seekerPayload(),
+            'email' => $email,
+        ])->assertCreated();
+
+        Mail::assertSent(WelcomeSeekerMail::class);
+
+        $seeker = User::query()->where('email', $email)->firstOrFail();
+
+        Sanctum::actingAs($admin);
+        $this->deleteJson('/api/v1/admin/users/'.$seeker->id, [
+            'confirm_email' => $email,
+        ])->assertNoContent();
+
+        $this->assertDatabaseMissing('users', ['email' => $email]);
+
+        // Login OTP after delete: opaque 202, no mail (account gone).
+        $this->postJson('/api/v1/auth/email-otp/request', ['email' => $email])
+            ->assertStatus(202);
+        Mail::assertNotSent(LoginOtpMail::class);
+
+        // Re-registration with same email must succeed and deliver a fresh OTP.
+        Mail::fake();
+        $this->postJson('/api/v1/registrations/seeker', [
+            ...$this->seekerPayload(),
+            'email' => $email,
+            'fullName' => 'Famiglia Riuso',
+        ])->assertCreated();
+
+        $code = null;
+        Mail::assertSent(WelcomeSeekerMail::class, function (WelcomeSeekerMail $mail) use (&$code) {
+            $code = $mail->code;
+
+            return strlen($mail->code) === 6 && ctype_digit($mail->code);
+        });
+        $this->assertNotNull($code);
+
+        $this->postJson('/api/v1/auth/email-otp/verify', [
+            'email' => $email,
+            'code' => $code,
+        ])->assertOk()->assertJsonPath('user.role', 'public_user');
+
+        // Subsequent login OTP also works for the new account.
+        Mail::fake();
+        $this->postJson('/api/v1/auth/email-otp/request', ['email' => $email])
+            ->assertStatus(202);
+        Mail::assertSent(LoginOtpMail::class);
     }
 }

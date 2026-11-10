@@ -414,7 +414,7 @@ export function ProfileDetailPage() {
       return
     }
     if (user.role !== 'public_user') {
-      setShowContactAuth(true)
+      setContactError('Per contattare un professionista accedi con un account famiglia.')
       return
     }
     if (contactSent) {
@@ -530,7 +530,6 @@ export function ProfileDetailPage() {
     }
     if (who.role !== 'public_user') {
       setContactError('Per contattare un professionista accedi con un account famiglia.')
-      setShowContactAuth(true)
       return
     }
     setContactLoading(true)
@@ -568,15 +567,18 @@ export function ProfileDetailPage() {
     }
     if (user?.role !== 'public_user') {
       setContactError('Per contattare un professionista accedi con un account famiglia.')
-      setShowContactAuth(true)
       return
     }
     void startContactThread()
   }
 
   async function handleSave() {
-    if (!isAuthenticated || user?.role !== 'public_user' || !user.id || !profile || !id) {
+    if (!isAuthenticated) {
       setShowContactAuth(true)
+      return
+    }
+    if (user?.role !== 'public_user' || !user.id || !profile || !id) {
+      setContactError('Per salvare un profilo accedi con un account famiglia.')
       return
     }
     setSaveBusy(true)
@@ -978,11 +980,17 @@ export function ProfileDetailPage() {
                           }
                           handleContact()
                         }}
-                        disabled={contactLoading || (!contactSent && !familyMessagingEnabled)}
+                        disabled={
+                          contactLoading ||
+                          (!contactSent &&
+                            (!familyMessagingEnabled || user?.role !== 'public_user'))
+                        }
                         title={
                           !contactSent && !familyMessagingEnabled
                             ? 'Messaggistica famiglia disabilitata'
-                            : undefined
+                            : !contactSent && user?.role !== 'public_user'
+                              ? 'Disponibile solo con account famiglia'
+                              : undefined
                         }
                       >
                         {contactLoading
@@ -991,7 +999,9 @@ export function ProfileDetailPage() {
                             ? 'Vai ai messaggi'
                             : !familyMessagingEnabled
                               ? 'Messaggi non disponibili'
-                              : `Contatta ${profile.name.split(' ')[0]}`}
+                              : user?.role !== 'public_user'
+                                ? 'Solo account famiglia'
+                                : `Contatta ${profile.name.split(' ')[0]}`}
                       </button>
                       {contactSent ? (
                         <Link

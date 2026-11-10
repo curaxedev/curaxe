@@ -178,14 +178,18 @@ export function useAdminUsers() {
       const previous = users.find((u) => u.id === userId)
 
       try {
-        await deleteAdminUser(userId, actorEmail)
+        if (!previous?.email) {
+          setActionError('Email utente non disponibile per la conferma.')
+          return false
+        }
+        await deleteAdminUser(userId, previous.email, actorEmail)
         setUsers((prev) => prev.filter((u) => u.id !== userId))
         if (detailTargetId === userId) {
           setDetailTargetId(null)
           setDetail(null)
           setDetailError(null)
         }
-        showToast(previous ? `Account di ${previous.name} eliminato.` : 'Account eliminato.')
+        showToast(`Account di ${previous.name} eliminato.`)
         return true
       } catch (err) {
         setActionError(userErrorMessage(err, "Impossibile eliminare l'account."))

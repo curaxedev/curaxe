@@ -175,7 +175,8 @@ export function ContactAuthDialog({
           ) : (
             <>
               <p className="candidacy-auth-dialog__otp-hint">
-                Codice inviato a <strong>{email.trim()}</strong>
+                Se <strong>{email.trim()}</strong> è registrato come famiglia, riceverai un codice a breve.
+                Controlla anche spam. Se non hai un account, registrati qui sotto.
               </p>
               <OtpCodeInput
                 value={otpCode}

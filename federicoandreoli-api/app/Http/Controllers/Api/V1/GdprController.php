@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Mail\Registration\AccountDeletedMail;
 use App\Models\ConsentRecord;
+use App\Models\LoginOtp;
 use App\Models\Registration;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -108,8 +109,11 @@ class GdprController
         $email = $user->email;
         $name = $user->name;
 
-        DB::transaction(function () use ($user) {
+        $emailKey = strtolower($email);
+        DB::transaction(function () use ($user, $emailKey) {
             $user->tokens()->delete();
+            LoginOtp::query()->where('email', $emailKey)->delete();
+            DB::table('password_reset_tokens')->where('email', $emailKey)->delete();
             // consent_records e registrations cadono in cascata (FK cascadeOnDelete).
             $user->delete();
         });
