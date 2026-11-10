@@ -183,23 +183,28 @@ function SectionOverview({ onNavigate }: { onNavigate: (id: string) => void }) {
   const updatedLabel = overview?.generatedAt
     ? new Date(overview.generatedAt).toLocaleString('it-IT')
     : '…'
+  const hour = now.getHours()
+  const greet = hour < 12 ? 'Buongiorno' : hour < 18 ? 'Buon pomeriggio' : 'Buonasera'
+  const firstName = (user?.name ?? 'Admin').trim().split(/\s+/)[0] || 'Admin'
   const clockTime = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
   const clockDate = now.toLocaleDateString('it-IT', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   })
+  const queueTotal = pendingKyc + pendingJobs
 
   return (
     <div className="admin-home">
       <header className="admin-home__hero">
         <div>
-          <div className="admin-home__eyebrow">
-            <IconShield size={12} />
-            Console amministrazione
-          </div>
-          <h1 className="admin-home__title">{user?.name ?? 'Admin'}</h1>
-          <p className="admin-home__sub">Panoramica piattaforma · aggiornato {updatedLabel}</p>
+          <p className="admin-home__brandline">Curaxe Admin</p>
+          <h1 className="admin-home__greet">
+            {greet}, <em>{firstName}</em>
+          </h1>
+          <p className="admin-home__sub">
+            {platformOk ? 'Piattaforma operativa' : 'Attenzione piattaforma'} · aggiornato {updatedLabel}
+          </p>
         </div>
         <div className="admin-home__hero-actions">
           <button
@@ -233,121 +238,73 @@ function SectionOverview({ onNavigate }: { onNavigate: (id: string) => void }) {
         </div>
       ) : null}
 
-      <div className="admin-home__status-strip" role="list">
-        <div className="admin-home__status" role="listitem">
-          <span
-            className={`admin-home__status-dot ${platformOk ? 'admin-home__status-dot--ok' : 'admin-home__status-dot--warn'}`}
-          />
-          <div className="admin-home__status-meta">
-            <span className="admin-home__status-label">Piattaforma</span>
-            <span className="admin-home__status-value">{platformOk ? 'Operativa' : 'Attenzione'}</span>
-          </div>
+      <div className="admin-home__pulse" role="list">
+        <div className="admin-home__pulse-item" role="listitem">
+          <span className="admin-home__pulse-label">Utenti</span>
+          <strong className="admin-home__pulse-value">{formatIntIt(kpis?.totalUsers ?? 0)}</strong>
+          <span className="admin-home__pulse-meta">
+            {formatIntIt(kpis?.professionals ?? 0)} pro · {formatIntIt(kpis?.families ?? 0)} famiglie
+          </span>
         </div>
-        <div className="admin-home__status" role="listitem">
-          <span
-            className={`admin-home__status-dot ${pendingKyc > 0 ? 'admin-home__status-dot--warn' : 'admin-home__status-dot--ok'}`}
-          />
-          <div className="admin-home__status-meta">
-            <span className="admin-home__status-label">KYC in coda</span>
-            <span className="admin-home__status-value">{formatIntIt(pendingKyc)}</span>
-          </div>
+        <div className="admin-home__pulse-item" role="listitem">
+          <span className="admin-home__pulse-label">MRR</span>
+          <strong className="admin-home__pulse-value">{formatEurIt(mrr)}</strong>
+          <span className="admin-home__pulse-meta">{formatIntIt(premium)} premium attivi</span>
         </div>
-        <div className="admin-home__status" role="listitem">
-          <span
-            className={`admin-home__status-dot ${pendingJobs > 0 ? 'admin-home__status-dot--warn' : 'admin-home__status-dot--ok'}`}
-          />
-          <div className="admin-home__status-meta">
-            <span className="admin-home__status-label">Annunci</span>
-            <span className="admin-home__status-value">{formatIntIt(pendingJobs)} da moderare</span>
-          </div>
+        <div className="admin-home__pulse-item" role="listitem">
+          <span className="admin-home__pulse-label">Code</span>
+          <strong className="admin-home__pulse-value">{formatIntIt(queueTotal)}</strong>
+          <span className="admin-home__pulse-meta">
+            KYC {formatIntIt(pendingKyc)} · annunci {formatIntIt(pendingJobs)}
+          </span>
         </div>
-        <div className="admin-home__status" role="listitem">
-          <span className="admin-home__status-dot admin-home__status-dot--info" />
-          <div className="admin-home__status-meta">
-            <span className="admin-home__status-label">Premium attivi</span>
-            <span className="admin-home__status-value">{formatIntIt(premium)}</span>
-          </div>
+        <div className="admin-home__pulse-item" role="listitem">
+          <span className="admin-home__pulse-label">Stato</span>
+          <strong className="admin-home__pulse-value">{platformOk ? 'OK' : 'Check'}</strong>
+          <span className="admin-home__pulse-meta">{platformOk ? 'Servizi raggiungibili' : 'Verifica overview'}</span>
         </div>
       </div>
 
-      <div className="admin-home__bento">
-        <article className="admin-home-card admin-home-card--span-3 admin-home-card--users">
-          <div>
-            <div className="admin-home-card__kicker">Utenti</div>
-            <div className="admin-home-card__value">{formatIntIt(kpis?.totalUsers ?? 0)}</div>
-            <div className="admin-home-card__label">Totale registrati</div>
-          </div>
-          <span className="admin-home-card__icon" aria-hidden="true"><IconUsers size={16} /></span>
-          <div className="admin-home-card__footer">
-            <button type="button" className="admin-home-card__cta" onClick={() => onNavigate('utenti')}>
-              Gestisci →
-            </button>
-          </div>
-        </article>
+      <div className="admin-home__rooms">
+        <button type="button" className="admin-home-room admin-home-room--users" onClick={() => onNavigate('utenti')}>
+          <span className="admin-home-room__kicker">Anagrafica</span>
+          <span className="admin-home-room__visual" aria-hidden="true"><IconUsers size={28} /></span>
+          <span className="admin-home-room__title">Utenti</span>
+          <p className="admin-home-room__desc">
+            Ruoli, sospensioni e dettagli account — {formatIntIt(kpis?.totalUsers ?? 0)} registrati.
+          </p>
+          <span className="admin-home-room__cta">Entra</span>
+        </button>
 
-        <article className="admin-home-card admin-home-card--span-3 admin-home-card--pro">
-          <div>
-            <div className="admin-home-card__kicker">Professionisti</div>
-            <div className="admin-home-card__value">{formatIntIt(kpis?.professionals ?? 0)}</div>
-            <div className="admin-home-card__label">Account attivi</div>
-          </div>
-          <span className="admin-home-card__icon" aria-hidden="true"><IconProfile size={16} /></span>
-        </article>
+        <button type="button" className="admin-home-room admin-home-room--billing" onClick={() => onNavigate('abbonamenti')}>
+          <span className="admin-home-room__kicker">Ricavi</span>
+          <span className="admin-home-room__visual" aria-hidden="true"><IconCreditCard size={28} /></span>
+          <span className="admin-home-room__title">Abbonamenti</span>
+          <p className="admin-home-room__desc">
+            Piani, trial, refund e catalogo — MRR {formatEurIt(mrr)}.
+          </p>
+          <span className="admin-home-room__cta">Entra</span>
+        </button>
 
-        <article className="admin-home-card admin-home-card--span-3 admin-home-card--family">
-          <div>
-            <div className="admin-home-card__kicker">Famiglie</div>
-            <div className="admin-home-card__value">{formatIntIt(kpis?.families ?? 0)}</div>
-            <div className="admin-home-card__label">Account attivi</div>
-          </div>
-          <span className="admin-home-card__icon" aria-hidden="true"><IconUsers size={16} /></span>
-        </article>
+        <button type="button" className="admin-home-room admin-home-room--kyc" onClick={() => onNavigate('verifica')}>
+          <span className="admin-home-room__kicker">Compliance</span>
+          <span className="admin-home-room__visual" aria-hidden="true"><IconShield size={28} /></span>
+          <span className="admin-home-room__title">Verifica KYC</span>
+          <p className="admin-home-room__desc">
+            Documenti in revisione — coda {formatIntIt(pendingKyc)}.
+          </p>
+          <span className="admin-home-room__cta">Entra</span>
+        </button>
 
-        <article className="admin-home-card admin-home-card--span-3 admin-home-card--org">
-          <div>
-            <div className="admin-home-card__kicker">Org</div>
-            <div className="admin-home-card__value">{formatIntIt(kpis?.agenciesStructures ?? 0)}</div>
-            <div className="admin-home-card__label">Agenzie / strutture</div>
-          </div>
-          <span className="admin-home-card__icon" aria-hidden="true"><IconBriefcase size={16} /></span>
-        </article>
-
-        <article className="admin-home-card admin-home-card--span-4 admin-home-card--revenue">
-          <div>
-            <div className="admin-home-card__kicker">MRR stimato</div>
-            <div className="admin-home-card__value">{formatEurIt(mrr)}</div>
-            <div className="admin-home-card__label">Ricavi mensili ricorrenti</div>
-          </div>
-          <span className="admin-home-card__icon" aria-hidden="true"><IconCreditCard size={16} /></span>
-          <div className="admin-home-card__footer">
-            <button type="button" className="admin-home-card__cta" onClick={() => onNavigate('abbonamenti')}>
-              Abbonamenti →
-            </button>
-          </div>
-        </article>
-
-        <article className="admin-home-card admin-home-card--span-4">
-          <div>
-            <div className="admin-home-card__kicker">Premium</div>
-            <div className="admin-home-card__value">{formatIntIt(premium)}</div>
-            <div className="admin-home-card__label">Abbonamenti attivi</div>
-          </div>
-          <span className="admin-home-card__icon" aria-hidden="true"><IconTrendUp size={16} /></span>
-        </article>
-
-        <article className="admin-home-card admin-home-card--span-4">
-          <div>
-            <div className="admin-home-card__kicker">Code operative</div>
-            <div className="admin-home-card__value">{formatIntIt(pendingKyc + pendingJobs)}</div>
-            <div className="admin-home-card__label">KYC + annunci in attesa</div>
-          </div>
-          <span className="admin-home-card__icon" aria-hidden="true"><IconAlert size={16} /></span>
-          <div className="admin-home-card__footer">
-            <button type="button" className="admin-home-card__cta" onClick={() => onNavigate(pendingKyc > 0 ? 'verifica' : 'moderazione')}>
-              Apri code →
-            </button>
-          </div>
-        </article>
+        <button type="button" className="admin-home-room admin-home-room--jobs" onClick={() => onNavigate('moderazione')}>
+          <span className="admin-home-room__kicker">Contenuti</span>
+          <span className="admin-home-room__visual" aria-hidden="true"><IconBriefcase size={28} /></span>
+          <span className="admin-home-room__title">Moderazione</span>
+          <p className="admin-home-room__desc">
+            Annunci da approvare — in attesa {formatIntIt(pendingJobs)}.
+          </p>
+          <span className="admin-home-room__cta">Entra</span>
+        </button>
       </div>
 
       <div className="admin-home__split">
@@ -357,6 +314,9 @@ function SectionOverview({ onNavigate }: { onNavigate: (id: string) => void }) {
               <h2 className="admin-home-panel__title">Andamento revenue</h2>
               <p className="admin-home-panel__sub">Stima ultimi mesi da piani × abbonamenti</p>
             </div>
+            <button type="button" className="admin-home__link" onClick={() => onNavigate('abbonamenti')}>
+              Apri →
+            </button>
           </div>
           {chartData.length > 0 ? (
             <>
@@ -374,9 +334,12 @@ function SectionOverview({ onNavigate }: { onNavigate: (id: string) => void }) {
         <section className="admin-home-panel">
           <div className="admin-home-panel__head">
             <div>
-              <h2 className="admin-home-panel__title">Sicurezza e code</h2>
-              <p className="admin-home-panel__sub">Azioni prioritarie</p>
+              <h2 className="admin-home-panel__title">Priorità operative</h2>
+              <p className="admin-home-panel__sub">Code e sicurezza</p>
             </div>
+            <button type="button" className="admin-home__link" onClick={() => onNavigate('impostazioni')}>
+              Impostazioni →
+            </button>
           </div>
           <div className="admin-home-sec-list">
             <button type="button" className="admin-home-sec-item" onClick={() => onNavigate('verifica')}>
@@ -415,33 +378,6 @@ function SectionOverview({ onNavigate }: { onNavigate: (id: string) => void }) {
             </button>
           </div>
         </section>
-      </div>
-
-      <div className="admin-home__modules">
-        <button type="button" className="admin-home-module" onClick={() => onNavigate('utenti')}>
-          <span className="admin-home-module__icon admin-home-module__icon--users"><IconUsers size={16} /></span>
-          <span className="admin-home-module__title">Utenti</span>
-          <p className="admin-home-module__desc">Ruoli, status e dettaglio profilo</p>
-          <span className="admin-home-module__cta">Apri</span>
-        </button>
-        <button type="button" className="admin-home-module" onClick={() => onNavigate('abbonamenti')}>
-          <span className="admin-home-module__icon admin-home-module__icon--billing"><IconCreditCard size={16} /></span>
-          <span className="admin-home-module__title">Abbonamenti</span>
-          <p className="admin-home-module__desc">Piani, trial e refund</p>
-          <span className="admin-home-module__cta">Apri</span>
-        </button>
-        <button type="button" className="admin-home-module" onClick={() => onNavigate('verifica')}>
-          <span className="admin-home-module__icon admin-home-module__icon--kyc"><IconShield size={16} /></span>
-          <span className="admin-home-module__title">Verifica</span>
-          <p className="admin-home-module__desc">Coda KYC documenti</p>
-          <span className="admin-home-module__cta">Apri</span>
-        </button>
-        <button type="button" className="admin-home-module" onClick={() => onNavigate('impostazioni')}>
-          <span className="admin-home-module__icon admin-home-module__icon--jobs"><IconSettings size={16} /></span>
-          <span className="admin-home-module__title">Impostazioni</span>
-          <p className="admin-home-module__desc">Piattaforma e notifiche</p>
-          <span className="admin-home-module__cta">Apri</span>
-        </button>
       </div>
     </div>
   )

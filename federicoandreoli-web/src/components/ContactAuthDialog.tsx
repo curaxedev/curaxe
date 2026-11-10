@@ -91,6 +91,15 @@ export function ContactAuthDialog({
     setBusy(true)
     try {
       const user = await verifyOtp(email.trim(), otpCode)
+      // Contatto/salvataggio profilo: solo account famiglia. Evita di chiudere
+      // il modal e lasciare admin/pro/org in un flusso “contatta” confuso.
+      if (user.role !== 'public_user') {
+        setError(
+          'Questo account non è una famiglia. Accedi con un account famiglia oppure registrati qui sotto.',
+        )
+        setOtpCode('')
+        return
+      }
       onAuthenticated?.(user)
       onClose()
       setEmail('')
