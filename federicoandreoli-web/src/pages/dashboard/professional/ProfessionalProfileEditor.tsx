@@ -11,6 +11,8 @@ import {
 import { Link } from 'react-router-dom'
 import { ItaliaGeoSearchCombobox } from '../../../components/ItaliaGeoSearchCombobox'
 import { MultiSelectSearchPicker } from '../../../components/MultiSelectSearchPicker'
+import { PersonAvatar } from '../../../components/PersonAvatar'
+import { ProfilePhotoPicker } from '../../../components/ProfilePhotoPicker'
 import {
   IconCheckMark,
   IconChevronRight,
@@ -18,7 +20,6 @@ import {
   IconEye,
   IconLock,
   IconStar,
-  IconUpload,
 } from '../../../components/icons/DashboardIcons'
 import type { ItaliaGeoRow } from '../../../lib/italiaGeo/italiaComuniTypes'
 import {
@@ -108,10 +109,6 @@ function formatProvinceLabel(place: ItaliaGeoRow): string {
 }
 function formatRegionLabel(place: ItaliaGeoRow): string {
   return place.regione
-}
-
-function initialsFromName(firstName: string, lastName: string): string {
-  return `${(firstName.charAt(0) || '?').toUpperCase()}${(lastName.charAt(0) || '').toUpperCase()}`
 }
 
 function sectionToStep(id?: ProfileCompletionSectionId): ProfileStepId {
@@ -207,6 +204,8 @@ type Props = {
   onReload: () => void
   onSave: (patch: ProfessionalProfilePatch) => Promise<boolean>
   onUploadPhoto: (file: File) => Promise<boolean>
+  onSelectAvatarPreset: (presetId: string) => Promise<boolean>
+  onClearPhoto: () => Promise<boolean>
   onDirtyChange?: (dirty: boolean) => void
 }
 
@@ -223,11 +222,12 @@ export const ProfessionalProfileEditor = forwardRef<ProfileEditorHandle, Props>(
   onReload,
   onSave,
   onUploadPhoto,
+  onSelectAvatarPreset,
+  onClearPhoto,
   onDirtyChange,
 },
 ref,
 ) {
-  const photoInputRef = useRef<HTMLInputElement | null>(null)
   const editorTopRef = useRef<HTMLDivElement | null>(null)
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const patchJsonRef = useRef('')
@@ -678,19 +678,12 @@ ref,
         <div className="dash-prof-aside__kicker">Anteprima scheda famiglie</div>
         <div className="dash-prof-preview">
           <div className="dash-prof-preview__top">
-            {profile.identity.photoUrl ? (
-              <img
-                className="dash-prof-preview__avatar"
-                src={profile.identity.photoUrl}
-                alt=""
-                width={56}
-                height={56}
-              />
-            ) : (
-              <div className="dash-prof-preview__avatar dash-prof-preview__avatar--fallback">
-                {initialsFromName(firstName, lastName)}
-              </div>
-            )}
+            <PersonAvatar
+              className="dash-prof-preview__avatar"
+              src={profile.identity.photoUrl}
+              alt=""
+              size={56}
+            />
             <div className="dash-prof-preview__meta">
               <strong>{displayName}</strong>
               <span className="dash-prof-preview__role">
@@ -848,45 +841,14 @@ ref,
                 <p>Foto, identità e presentazione: la prima cosa che vedono le famiglie.</p>
               </div>
 
-              <div className="dash-prof-photo">
-                {profile.identity.photoUrl ? (
-                  <img
-                    className="dash-prof-photo__img"
-                    src={profile.identity.photoUrl}
-                    alt={`Foto di ${firstName} ${lastName}`}
-                    width={88}
-                    height={88}
-                  />
-                ) : (
-                  <div className="dash-prof-photo__img dash-prof-photo__img--fallback">
-                    {initialsFromName(firstName, lastName)}
-                  </div>
-                )}
-                <div className="dash-prof-photo__body">
-                  <input
-                    ref={photoInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    hidden
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      e.target.value = ''
-                      if (file) void onUploadPhoto(file)
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="dash-btn dash-btn--ghost"
-                    disabled={uploadBusy}
-                    onClick={() => photoInputRef.current?.click()}
-                  >
-                    <IconUpload size={16} /> {uploadBusy ? 'Caricamento…' : 'Cambia foto'}
-                  </button>
-                  <p className="dash-form-hint">
-                    JPG o PNG, max 2 MB. Una foto chiara aumenta i contatti.
-                  </p>
-                </div>
-              </div>
+              <ProfilePhotoPicker
+                photoUrl={profile.identity.photoUrl}
+                displayName={`${firstName} ${lastName}`.trim()}
+                busy={uploadBusy}
+                onUploadPhoto={onUploadPhoto}
+                onSelectPreset={onSelectAvatarPreset}
+                onClear={onClearPhoto}
+              />
 
               <div className="dash-form-grid">
                 <div className="dash-form-field">

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import {
+  clearProfessionalPhoto,
   deleteProfessionalDocument,
   getProfessionalProfile,
   listProfessionalDocuments,
+  setProfessionalAvatarPreset,
   updateProfessionalProfile,
   uploadProfessionalDocument,
   uploadProfessionalPhoto,
@@ -125,6 +127,47 @@ export function useProfessionalProfile() {
     [user?.id],
   )
 
+  const selectAvatarPreset = useCallback(
+    async (presetId: string): Promise<boolean> => {
+      if (!user?.id) {
+        setSaveError('Sessione non valida.')
+        return false
+      }
+      setUploadBusy(true)
+      setSaveError(null)
+      try {
+        const updated = await setProfessionalAvatarPreset(user.id, presetId)
+        setProfile(updated)
+        return true
+      } catch (err) {
+        setSaveError(profileErrorMessage(err))
+        return false
+      } finally {
+        setUploadBusy(false)
+      }
+    },
+    [user?.id],
+  )
+
+  const clearPhoto = useCallback(async (): Promise<boolean> => {
+    if (!user?.id) {
+      setSaveError('Sessione non valida.')
+      return false
+    }
+    setUploadBusy(true)
+    setSaveError(null)
+    try {
+      const updated = await clearProfessionalPhoto(user.id)
+      setProfile(updated)
+      return true
+    } catch (err) {
+      setSaveError(profileErrorMessage(err))
+      return false
+    } finally {
+      setUploadBusy(false)
+    }
+  }, [user?.id])
+
   const uploadDocument = useCallback(
     async (slot: ProfessionalDocumentSlot, file: File): Promise<boolean> => {
       setUploadBusy(true)
@@ -169,6 +212,8 @@ export function useProfessionalProfile() {
     reload,
     save,
     uploadPhoto,
+    selectAvatarPreset,
+    clearPhoto,
     uploadDocument,
     removeDocument,
     completionPercent: profile?.completionPercent ?? 0,

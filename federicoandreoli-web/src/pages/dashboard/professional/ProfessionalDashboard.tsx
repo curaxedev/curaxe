@@ -451,6 +451,8 @@ function SectionProfile(props: {
   onReload: () => void
   onSave: (patch: ProfessionalProfilePatch) => Promise<boolean>
   onUploadPhoto: (file: File) => Promise<boolean>
+  onSelectAvatarPreset: (presetId: string) => Promise<boolean>
+  onClearPhoto: () => Promise<boolean>
   onDirtyChange?: (dirty: boolean) => void
   editorRef?: Ref<ProfileEditorHandle>
 }) {
@@ -811,6 +813,8 @@ export function ProfessionalDashboard() {
     reload: reloadProfile,
     save: saveProfile,
     uploadPhoto: uploadProfilePhoto,
+    selectAvatarPreset: selectProfileAvatar,
+    clearPhoto: clearProfilePhoto,
     completionPercent,
   } = useProfessionalProfile()
   const [activeSection, setActiveSection] = useState('home')
@@ -1043,6 +1047,8 @@ export function ProfessionalDashboard() {
             onReload={() => void reloadProfile()}
             onSave={saveProfile}
             onUploadPhoto={uploadProfilePhoto}
+            onSelectAvatarPreset={selectProfileAvatar}
+            onClearPhoto={clearProfilePhoto}
             onDirtyChange={setProfileDirty}
           />
         )

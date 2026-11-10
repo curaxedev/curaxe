@@ -4,9 +4,9 @@ namespace App\Http\Resources;
 
 use App\Models\Organization;
 use App\Models\ProfessionalProfile;
+use App\Support\ProfilePhoto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Shape allineata a `DirectoryProfileSummary` del frontend.
@@ -60,9 +60,8 @@ class DirectoryProfileSummaryResource extends JsonResource
             'location' => true,
             'online' => $profile->is_online,
             'shift' => is_array($profile->shifts) && $profile->shifts !== [] ? (string) $profile->shifts[0] : null,
-            'imageUrl' => $profile->photo_path !== null
-                ? Storage::disk('public')->url($profile->photo_path)
-                : '/images/profiles/profile-placeholder.svg',
+            'imageUrl' => ProfilePhoto::publicUrl($profile->photo_path)
+                ?? ProfilePhoto::defaultPublicUrl(),
             'match' => [
                 'istat' => $profile->istat,
                 'comune' => $profile->comune,

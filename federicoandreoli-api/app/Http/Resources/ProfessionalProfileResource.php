@@ -4,10 +4,10 @@ namespace App\Http\Resources;
 
 use App\Domains\Professionals\ProfileCompletion;
 use App\Models\ProfessionalProfile;
+use App\Support\ProfilePhoto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Shape allineata a `ProfessionalProfile` del frontend
@@ -36,7 +36,8 @@ class ProfessionalProfileResource extends JsonResource
                 'nationality' => $this->nationality !== '' ? $this->nationality : null,
                 'phone' => Schema::hasColumn('professional_profiles', 'phone') ? $this->phone : null,
                 'bio' => (string) $this->bio,
-                'photoUrl' => $this->photo_path !== null ? Storage::disk('public')->url($this->photo_path) : null,
+                'photoUrl' => ProfilePhoto::publicUrl($this->photo_path),
+                'avatarPresetId' => ProfilePhoto::presetIdFromPath($this->photo_path),
             ],
             'professional' => [
                 'category' => $this->category,

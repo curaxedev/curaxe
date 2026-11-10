@@ -49,9 +49,7 @@ function buildPublicProfileFromProfessional(profile: ProfessionalProfile): MockP
     experienceLabel: profile.professional.experienceYears,
     weekAvailable,
     match: { istat: '015146', comune: 'Milano', cap: '201xx', regione: 'Lombardia' },
-    imageUrl:
-      profile.identity.photoUrl ??
-      '/images/profile-mock/Screenshot%202026-05-11%20alle%2023.37.47.png',
+    imageUrl: profile.identity.photoUrl ?? '/images/profiles/profile-01.svg',
     bio: profile.identity.bio,
     bioMore:
       'Profilo aggiornato dalla dashboard professionista. In anteprima i dati sono dimostrativi.',

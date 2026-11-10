@@ -12,6 +12,8 @@ export type ProfessionalProfileIdentity = {
   phone: string | null
   bio: string
   photoUrl: string | null
+  /** Presente se l’utente ha scelto un avatar dalla libreria. */
+  avatarPresetId?: string | null
 }
 
 export type ProfessionalProfileProfessional = {

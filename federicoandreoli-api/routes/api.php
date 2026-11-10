@@ -94,6 +94,8 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/professionals/me/stats', [ProfessionalProfileController::class, 'stats']);
             Route::patch('/professionals/me/profile', [ProfessionalProfileController::class, 'update']);
             Route::post('/professionals/me/photo', [ProfessionalProfileController::class, 'uploadPhoto']);
+            Route::put('/professionals/me/avatar', [ProfessionalProfileController::class, 'setAvatarPreset']);
+            Route::delete('/professionals/me/photo', [ProfessionalProfileController::class, 'clearPhoto']);
             Route::get('/professionals/me/documents', [ProfessionalDocumentController::class, 'index']);
             Route::post('/professionals/me/documents', [ProfessionalDocumentController::class, 'store']);
             Route::delete('/professionals/me/documents/{id}', [ProfessionalDocumentController::class, 'destroy']);

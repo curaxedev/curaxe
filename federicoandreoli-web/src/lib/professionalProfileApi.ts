@@ -15,7 +15,7 @@ import {
   fetchProfessionalProfile,
   patchProfessionalProfile,
 } from '../services/professionalProfileService'
-import { HttpError, httpDelete, httpGet, httpPatch, httpPost } from './http'
+import { HttpError, httpDelete, httpGet, httpPatch, httpPost, httpPut } from './http'
 import { isMockApiEnabled } from './runtimeConfig'
 
 export type { ProfessionalProfile, ProfessionalProfilePatch } from './professionalProfileTypes'
@@ -84,7 +84,7 @@ export async function uploadProfessionalPhoto(
       reader.readAsDataURL(file)
     })
     return patchProfessionalProfile(userId, {
-      identity: { photoUrl: dataUrl },
+      identity: { photoUrl: dataUrl, avatarPresetId: null },
     })
   }
   try {
@@ -93,6 +93,43 @@ export async function uploadProfessionalPhoto(
     return await httpPost<ProfessionalProfile>('/api/v1/professionals/me/photo', { formData })
   } catch (err) {
     throw toProfileError(err, 'Caricamento foto non riuscito.')
+  }
+}
+
+export async function setProfessionalAvatarPreset(
+  userId: string,
+  presetId: string,
+): Promise<ProfessionalProfile> {
+  if (isMockApiEnabled()) {
+    return patchProfessionalProfile(userId, {
+      identity: {
+        photoUrl: `/images/profiles/${presetId}.svg`,
+        avatarPresetId: presetId,
+      },
+    })
+  }
+  try {
+    return await httpPut<ProfessionalProfile>('/api/v1/professionals/me/avatar', {
+      body: { presetId },
+    })
+  } catch (err) {
+    throw toProfileError(err, 'Selezione avatar non riuscita.')
+  }
+}
+
+export async function clearProfessionalPhoto(userId: string): Promise<ProfessionalProfile> {
+  if (isMockApiEnabled()) {
+    return patchProfessionalProfile(userId, {
+      identity: {
+        photoUrl: '/images/profiles/profile-01.svg',
+        avatarPresetId: 'profile-01',
+      },
+    })
+  }
+  try {
+    return await httpDelete<ProfessionalProfile>('/api/v1/professionals/me/photo')
+  } catch (err) {
+    throw toProfileError(err, 'Ripristino avatar non riuscito.')
   }
 }
 

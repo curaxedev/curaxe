@@ -11,10 +11,11 @@ use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\DirectoryCache;
 use App\Support\ProfileGeoSync;
+use App\Support\ProfilePhoto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProfessionalProfileController
 {
@@ -219,21 +220,54 @@ class ProfessionalProfileController
     public function uploadPhoto(Request $request): JsonResponse
     {
         $request->validate([
-            'photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:'.ProfilePhoto::MAX_UPLOAD_KB],
         ], [
             'photo.mimes' => 'Formato non supportato: usa JPG, PNG o WebP.',
-            'photo.max' => 'La foto supera i 2 MB consentiti.',
+            'photo.max' => 'La foto supera i 10 MB consentiti. Comprimila o scegli un file più leggero.',
         ]);
 
         $profile = $this->profileFor($request->user());
 
-        if ($profile->photo_path !== null) {
-            Storage::disk('public')->delete($profile->photo_path);
-        }
+        ProfilePhoto::deleteStoredFile($profile->photo_path);
 
         $path = $request->file('photo')->store('profile-photos/'.$request->user()->id, 'public');
         $profile->photo_path = $path;
         $profile->save();
+        DirectoryCache::bump();
+
+        return (new ProfessionalProfileResource($profile))
+            ->response()
+            ->setStatusCode(200);
+    }
+
+    /** Imposta un avatar SVG dalla libreria (sostituisce eventuale upload). */
+    public function setAvatarPreset(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'presetId' => ['required', 'string', Rule::in(ProfilePhoto::PRESET_IDS)],
+        ], [
+            'presetId.in' => 'Avatar non valido.',
+        ]);
+
+        $profile = $this->profileFor($request->user());
+        ProfilePhoto::deleteStoredFile($profile->photo_path);
+        $profile->photo_path = ProfilePhoto::pathForPreset($data['presetId']);
+        $profile->save();
+        DirectoryCache::bump();
+
+        return (new ProfessionalProfileResource($profile))
+            ->response()
+            ->setStatusCode(200);
+    }
+
+    /** Torna all’avatar persona colorata predefinito (niente upload). */
+    public function clearPhoto(Request $request): JsonResponse
+    {
+        $profile = $this->profileFor($request->user());
+        ProfilePhoto::deleteStoredFile($profile->photo_path);
+        $profile->photo_path = ProfilePhoto::pathForPreset('profile-01');
+        $profile->save();
+        DirectoryCache::bump();
 
         return (new ProfessionalProfileResource($profile))
             ->response()

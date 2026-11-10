@@ -91,6 +91,28 @@ class ProfessionalProfileTest extends TestCase
         Storage::disk('public')->assertExists($profile->photo_path);
     }
 
+    public function test_avatar_preset_and_clear_photo(): void
+    {
+        Storage::fake('public');
+        $user = $this->professional();
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/v1/professionals/me/avatar', ['presetId' => 'profile-03'])
+            ->assertOk()
+            ->assertJsonPath('identity.photoUrl', '/images/profiles/profile-03.svg')
+            ->assertJsonPath('identity.avatarPresetId', 'profile-03');
+
+        $this->post('/api/v1/professionals/me/photo', [
+            'photo' => UploadedFile::fake()->image('avatar.jpg', 400, 400),
+        ], ['Accept' => 'application/json'])
+            ->assertOk();
+
+        $this->deleteJson('/api/v1/professionals/me/photo')
+            ->assertOk()
+            ->assertJsonPath('identity.photoUrl', '/images/profiles/profile-01.svg')
+            ->assertJsonPath('identity.avatarPresetId', 'profile-01');
+    }
+
     public function test_document_upload_list_and_delete(): void
     {
         Storage::fake('local');
