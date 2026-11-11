@@ -21,6 +21,8 @@ export type AuthSession = {
   expiresAt: string
   /** Bearer token Sanctum (assente in modalità mock). */
   token?: string
+  /** Sessione scoped recovery admin (solo passkey / riattiva password). */
+  recoverySession?: boolean
 }
 
 export type AuthPoliciesResponse = {
@@ -33,6 +35,7 @@ export type AuthErrorCode =
   | 'otp_invalid'
   | 'otp_expired'
   | 'password_invalid'
+  | 'password_login_disabled'
   | 'totp_required'
   | 'totp_invalid'
   | 'network'

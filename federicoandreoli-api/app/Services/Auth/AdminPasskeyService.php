@@ -459,13 +459,13 @@ final class AdminPasskeyService
         return $passkey;
     }
 
-    public function delete(User $user, int $id, bool $securityTotalEnabled = false): void
+    public function delete(User $user, int $id, bool $blockLastPasskey = false): void
     {
         $this->assertAdmin($user);
         $count = WebauthnCredential::query()->where('user_id', $user->id)->count();
-        if ($securityTotalEnabled && $count <= 1) {
+        if ($blockLastPasskey && $count <= 1) {
             throw new InvalidArgumentException(
-                'Con Sicurezza totale attiva non puoi rimuovere l’ultima passkey. Disattiva prima Sicurezza totale.',
+                'Non puoi rimuovere l’ultima passkey mentre Sicurezza totale è attiva o l’accesso password è disattivato.',
             );
         }
         $passkey = WebauthnCredential::query()->where('user_id', $user->id)->where('id', $id)->firstOrFail();

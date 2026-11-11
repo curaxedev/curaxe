@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Resources\UserResource;
+use App\Models\AdminSecuritySetting;
+use App\Services\Auth\AdminEnrollOtpService;
 use App\Services\Auth\AdminLoginAlertService;
 use App\Services\Auth\AdminPasskeyService;
 use App\Services\Auth\AdminStepUpService;
@@ -17,11 +19,38 @@ class AdminPasskeyController
         private readonly AdminPasskeyService $passkeys,
         private readonly AdminStepUpService $stepUp,
         private readonly AdminLoginAlertService $loginAlerts,
+        private readonly AdminEnrollOtpService $enrollOtp,
     ) {}
 
     public function index(Request $request): JsonResponse
     {
         return response()->json(['passkeys' => $this->passkeys->list($request->user())]);
+    }
+
+    public function sendEnrollOtp(Request $request): JsonResponse
+    {
+        try {
+            $result = $this->enrollOtp->send($request->user());
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422, [], 'enroll_otp_error');
+        }
+
+        return response()->json($result);
+    }
+
+    public function verifyEnrollOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:32'],
+        ]);
+
+        try {
+            $result = $this->enrollOtp->verify($request->user(), $data['code']);
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422, [], 'enroll_otp_invalid');
+        }
+
+        return response()->json($result);
     }
 
     public function beginRegister(Request $request): JsonResponse
@@ -31,13 +60,23 @@ class AdminPasskeyController
             'password' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $isFirst = $this->stepUp->passkeyCount($request->user()) === 0;
+
         try {
-            $this->stepUp->requireForPasskeyManage($request, isFirstRegistration: true);
+            $this->stepUp->requireForPasskeyManage(
+                $request,
+                isFirstRegistration: $isFirst,
+                allowEnrollOtp: ! $isFirst,
+            );
             $result = $this->passkeys->beginRegistration($request->user(), $data['name']);
         } catch (HttpException $e) {
+            $code = str_contains($e->getMessage(), 'notifica')
+                ? 'enroll_otp_required'
+                : 'step_up_required';
+
             return response()->json([
                 'message' => $e->getMessage(),
-                'error_code' => 'step_up_required',
+                'error_code' => $code,
                 'action' => 'passkey.manage',
             ], $e->getStatusCode());
         } catch (\InvalidArgumentException $e) {
@@ -60,6 +99,10 @@ class AdminPasskeyController
                 $data['challengeId'],
                 $data['credential'],
             );
+            $enroll = $request->headers->get('X-Passkey-Enroll-Token');
+            if (is_string($enroll) && $enroll !== '') {
+                $this->enrollOtp->consumeEnrollToken($request->user(), $enroll);
+            }
         } catch (\InvalidArgumentException $e) {
             return ApiResponse::error($e->getMessage(), 422, [], 'passkey_error');
         }
@@ -103,10 +146,12 @@ class AdminPasskeyController
     {
         try {
             $this->stepUp->requireForPasskeyManage($request);
+            $user = $request->user();
+            $passwordOff = ! AdminSecuritySetting::forUser($user)->password_login_enabled;
             $this->passkeys->delete(
-                $request->user(),
+                $user,
                 (int) $id,
-                $this->stepUp->securityTotalEnabled($request->user()),
+                $this->stepUp->securityTotalEnabled($user) || $passwordOff,
             );
         } catch (HttpException $e) {
             return response()->json([

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
+import { getAuthSessionSnapshot } from './authSessionStore'
 import { getDashboardPathForRole } from './roleDashboard'
 import { useAuth } from './useAuth'
 
@@ -20,6 +21,9 @@ export function GuestOnlyRoute({ children }: GuestOnlyRouteProps) {
   }
 
   if (isAuthenticated && user) {
+    if (getAuthSessionSnapshot()?.recoverySession) {
+      return <Navigate to="/accedi/recupero-admin" replace />
+    }
     return <Navigate to={getDashboardPathForRole(user.role)} replace />
   }
 

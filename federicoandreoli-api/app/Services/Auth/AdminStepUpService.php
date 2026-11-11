@@ -24,6 +24,7 @@ final class AdminStepUpService
 
     public function __construct(
         private readonly AdminPasskeyService $passkeys,
+        private readonly AdminEnrollOtpService $enrollOtp,
     ) {}
 
     public function securityTotalEnabled(User $user): bool
@@ -172,11 +173,15 @@ final class AdminStepUpService
 
     /**
      * Per gestione passkey:
-     * - prima passkey: richiede conferma password (anti session hijack);
-     * - passkey successive / Sicurezza totale: step-up passkey.
+     * - prima passkey: conferma password (anti session hijack);
+     * - registrazione aggiuntiva: token enroll OTP email (X-Passkey-Enroll-Token) oppure step-up passkey;
+     * - rename/delete: step-up passkey (quando Sicurezza totale o ≥1 passkey).
      */
-    public function requireForPasskeyManage(Request $request, bool $isFirstRegistration = false): void
-    {
+    public function requireForPasskeyManage(
+        Request $request,
+        bool $isFirstRegistration = false,
+        bool $allowEnrollOtp = false,
+    ): void {
         $user = $request->user();
         if (! $user instanceof User) {
             throw new HttpException(403, 'Non autorizzato.');
@@ -194,6 +199,23 @@ final class AdminStepUpService
             return;
         }
 
+        if ($allowEnrollOtp) {
+            $enroll = $request->headers->get('X-Passkey-Enroll-Token');
+            // Validate only here (do not burn); consume after successful registration.
+            if ($this->enrollOtp->validateEnrollToken($user, is_string($enroll) ? $enroll : null)) {
+                return;
+            }
+            // Sessione recovery Sanctum: può registrare passkey senza step-up esistente.
+            if ($this->isRecoveryToken($request)) {
+                return;
+            }
+            // Preferisci OTP enroll rispetto allo step-up passkey (altro dispositivo).
+            throw new HttpException(
+                403,
+                'Conferma il codice inviato alle email di notifica per aggiungere una passkey.',
+            );
+        }
+
         if ($this->securityTotalEnabled($user) || $this->passkeyCount($user) >= 1) {
             $token = $request->headers->get('X-Step-Up-Token');
             if (! $this->consume($user, AdminSensitiveAction::PASSKEY_MANAGE, is_string($token) ? $token : null)) {
@@ -202,6 +224,35 @@ final class AdminStepUpService
                     'Conferma con passkey richiesta per gestire le passkey.',
                 );
             }
+        }
+    }
+
+    public function isRecoveryToken(Request $request): bool
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return false;
+        }
+        $token = $user->currentAccessToken();
+        if ($token === null) {
+            return false;
+        }
+        $abilities = $token->abilities ?? [];
+        if (! is_array($abilities)) {
+            return false;
+        }
+
+        return in_array(AdminRecoveryService::ABILITY, $abilities, true)
+            && ! in_array('*', $abilities, true);
+    }
+
+    public function assertFullAdminToken(Request $request): void
+    {
+        if ($this->isRecoveryToken($request)) {
+            throw new HttpException(
+                403,
+                'Sessione di recupero: puoi solo aggiungere una passkey o riattivare la password.',
+            );
         }
     }
 

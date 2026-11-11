@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AdminBillingController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminOpsController;
 use App\Http\Controllers\Api\V1\AdminPasskeyController;
+use App\Http\Controllers\Api\V1\AdminRecoveryController;
 use App\Http\Controllers\Api\V1\AdminSecurityController;
 use App\Http\Controllers\Api\V1\ApplicationController;
 use App\Http\Controllers\Api\V1\AuthPoliciesController;
@@ -51,6 +52,15 @@ Route::prefix('v1')->group(function (): void {
         ->middleware(['throttle:login', 'turnstile']);
     Route::post('/auth/passkey/login/verify', [AdminPasskeyController::class, 'completeLogin'])
         ->middleware('throttle:login');
+
+    Route::post('/auth/admin/login-options', [AdminRecoveryController::class, 'loginOptions'])
+        ->middleware('throttle:login');
+    Route::post('/auth/admin/recovery/code', [AdminRecoveryController::class, 'redeemCode'])
+        ->middleware('throttle:admin-recovery');
+    Route::post('/auth/admin/recovery/email/request', [AdminRecoveryController::class, 'requestEmail'])
+        ->middleware(['throttle:admin-recovery', 'turnstile']);
+    Route::post('/auth/admin/recovery/email/verify', [AdminRecoveryController::class, 'redeemEmail'])
+        ->middleware('throttle:admin-recovery');
 
     Route::post('/auth/password-reset/request', [PasswordResetController::class, 'request'])
         ->middleware(['throttle:password-reset', 'turnstile']);
@@ -163,6 +173,12 @@ Route::prefix('v1')->group(function (): void {
         });
 
         Route::middleware('role:platform_admin')->group(function (): void {
+            // Sessione recovery scoped: solo enroll passkey + riattiva password.
+            Route::post('/admin/recovery/passkeys/register/options', [AdminRecoveryController::class, 'beginRegisterPasskey']);
+            Route::post('/admin/recovery/passkeys/register/verify', [AdminRecoveryController::class, 'completeRegisterPasskey']);
+            Route::post('/admin/recovery/reenable-password', [AdminRecoveryController::class, 'reenablePassword']);
+
+            Route::middleware('full_admin')->group(function (): void {
             Route::get('/admin/billing/subscriptions', [BillingController::class, 'adminSubscriptions']);
             Route::get('/admin/billing/subscriptions/{id}/invoices', [BillingController::class, 'adminSubscriptionInvoices']);
             Route::get('/admin/billing/stats', [BillingController::class, 'adminStats']);
@@ -189,6 +205,7 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('/admin/security/settings', [AdminSecurityController::class, 'settings']);
             Route::put('/admin/security/settings', [AdminSecurityController::class, 'updateSettings']);
+            Route::post('/admin/security/recovery-codes/regenerate', [AdminSecurityController::class, 'regenerateRecoveryCodes']);
             Route::post('/admin/security/step-up/options', [AdminSecurityController::class, 'beginStepUp'])
                 ->middleware('throttle:step-up');
             Route::post('/admin/security/step-up/verify', [AdminSecurityController::class, 'verifyStepUp'])
@@ -196,6 +213,10 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/admin/security/revoke-sessions', [AdminSecurityController::class, 'revokeSessions']);
 
             Route::get('/admin/passkeys', [AdminPasskeyController::class, 'index']);
+            Route::post('/admin/passkeys/enroll/otp/send', [AdminPasskeyController::class, 'sendEnrollOtp'])
+                ->middleware('throttle:admin-enroll-otp');
+            Route::post('/admin/passkeys/enroll/otp/verify', [AdminPasskeyController::class, 'verifyEnrollOtp'])
+                ->middleware('throttle:admin-enroll-otp');
             Route::post('/admin/passkeys/register/options', [AdminPasskeyController::class, 'beginRegister']);
             Route::post('/admin/passkeys/register/verify', [AdminPasskeyController::class, 'completeRegister']);
             Route::patch('/admin/passkeys/{id}', [AdminPasskeyController::class, 'rename']);
@@ -227,6 +248,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/admin/settings', [AdminOpsController::class, 'settings']);
             Route::patch('/admin/settings', [AdminOpsController::class, 'updateSettings'])
                 ->middleware('step_up:settings.platform');
+            }); // full_admin
         });
     });
 });

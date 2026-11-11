@@ -37,7 +37,7 @@ function bufferToBase64Url(buffer: ArrayBuffer): string {
 
 function base64UrlToBuffer(value: string): ArrayBuffer {
   const pad = '='.repeat((4 - (value.length % 4)) % 4)
-  const b64 = (value + pad).replace(/-/g, '+').replace(/_/g, '/')
+  const b64 = (value + pad).replace(/-/g, '+').replace(/\//g, '/')
   const binary = atob(b64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
@@ -128,10 +128,23 @@ export async function listAdminPasskeys(): Promise<AdminPasskey[]> {
   return raw.passkeys
 }
 
+export async function sendPasskeyEnrollOtp(): Promise<{ emailCount: number; expiresInMinutes: number }> {
+  if (isMockApiEnabled()) return { emailCount: 1, expiresInMinutes: 10 }
+  return httpPost('/api/v1/admin/passkeys/enroll/otp/send')
+}
+
+export async function verifyPasskeyEnrollOtp(code: string): Promise<{ token: string; expiresAt: string }> {
+  if (isMockApiEnabled()) return { token: 'mock-enroll', expiresAt: new Date().toISOString() }
+  return httpPost('/api/v1/admin/passkeys/enroll/otp/verify', { body: { code } })
+}
+
 export async function registerAdminPasskey(
   name: string,
-  stepUpToken?: string,
-  password?: string,
+  opts?: {
+    stepUpToken?: string
+    enrollToken?: string
+    password?: string
+  },
 ): Promise<AdminPasskey> {
   if (isMockApiEnabled()) {
     throw new AuthError('network', 'Passkey non disponibili in modalità mock.')
@@ -140,11 +153,15 @@ export async function registerAdminPasskey(
     throw new AuthError('network', 'Questo dispositivo non supporta le passkey.')
   }
 
+  const headers: Record<string, string> = {}
+  if (opts?.stepUpToken) headers['X-Step-Up-Token'] = opts.stepUpToken
+  if (opts?.enrollToken) headers['X-Passkey-Enroll-Token'] = opts.enrollToken
+
   const begin = await httpPost<{ challengeId: string; options: PublicKeyCredentialJSON }>(
     '/api/v1/admin/passkeys/register/options',
     {
-      body: { name, ...(password ? { password } : {}) },
-      headers: stepUpToken ? { 'X-Step-Up-Token': stepUpToken } : undefined,
+      body: { name, ...(opts?.password ? { password: opts.password } : {}) },
+      headers: Object.keys(headers).length ? headers : undefined,
     },
   )
   const publicKey = parseCreationOptions(begin.options)
@@ -156,6 +173,9 @@ export async function registerAdminPasskey(
       challengeId: begin.challengeId,
       credential: credentialToJSON(credential),
     },
+    headers: opts?.enrollToken
+      ? { 'X-Passkey-Enroll-Token': opts.enrollToken }
+      : undefined,
   })
 }
 

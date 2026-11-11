@@ -1,5 +1,5 @@
 /**
- * Admin security: Sicurezza totale, step-up passkey, login alerts.
+ * Admin security: Sicurezza totale, step-up passkey, login alerts, password toggle, recovery.
  */
 import { HttpError, httpGet, httpPost, httpPut } from './http'
 import { isMockApiEnabled } from './runtimeConfig'
@@ -13,8 +13,12 @@ export type AdminSecuritySettings = {
   securityTotalEnabledAt: string | null
   loginAlertsEnabled: boolean
   loginAlertEmails: string[]
+  passwordLoginEnabled: boolean
   passkeyCount: number
   canEnableSecurityTotal: boolean
+  canDisablePasswordLogin: boolean
+  recoveryCodesRemaining: number
+  recoveryCodesGeneratedAt: string | null
   sensitiveActions: Record<string, string>
   devices: AdminLoginDeviceRow[]
   webauthn?: {
@@ -22,6 +26,8 @@ export type AdminSecuritySettings = {
     allowedOrigins: string[]
     hint: string
   }
+  /** Presente solo subito dopo disattivazione password / rigenerazione. */
+  recoveryCodes?: string[]
 }
 
 export type AdminLoginDeviceRow = {
@@ -33,13 +39,23 @@ export type AdminLoginDeviceRow = {
   trusted: boolean
 }
 
+export type AdminLoginOptions = {
+  passkeyAvailable: boolean
+  passwordAllowed: boolean
+  recoveryAvailable: boolean
+}
+
 const MOCK_SETTINGS: AdminSecuritySettings = {
   securityTotalEnabled: false,
   securityTotalEnabledAt: null,
   loginAlertsEnabled: false,
   loginAlertEmails: [],
+  passwordLoginEnabled: true,
   passkeyCount: 0,
   canEnableSecurityTotal: false,
+  canDisablePasswordLogin: false,
+  recoveryCodesRemaining: 0,
+  recoveryCodesGeneratedAt: null,
   sensitiveActions: {
     'users.mutate': 'Modifica utenti',
     'billing.plans': 'Catalogo piani',
@@ -94,6 +110,8 @@ export async function putAdminSecuritySettings(
     securityTotalEnabled?: boolean
     loginAlertsEnabled?: boolean
     loginAlertEmails?: string[]
+    passwordLoginEnabled?: boolean
+    confirmRecoveryCodesSaved?: boolean
   },
   stepUpToken?: string,
 ): Promise<AdminSecuritySettings> {
@@ -102,12 +120,106 @@ export async function putAdminSecuritySettings(
       ...MOCK_SETTINGS,
       ...patch,
       loginAlertEmails: patch.loginAlertEmails ?? MOCK_SETTINGS.loginAlertEmails,
+      passwordLoginEnabled: patch.passwordLoginEnabled ?? MOCK_SETTINGS.passwordLoginEnabled,
     }
   }
   return httpPut<AdminSecuritySettings>('/api/v1/admin/security/settings', {
     body: patch,
     headers: stepUpToken ? { 'X-Step-Up-Token': stepUpToken } : undefined,
   })
+}
+
+export async function regenerateAdminRecoveryCodes(stepUpToken?: string): Promise<{
+  recoveryCodes: string[]
+  recoveryCodesRemaining: number
+  recoveryCodesGeneratedAt: string
+}> {
+  if (isMockApiEnabled()) {
+    return {
+      recoveryCodes: ['AAAA-BBBB-CCCC'],
+      recoveryCodesRemaining: 1,
+      recoveryCodesGeneratedAt: new Date().toISOString(),
+    }
+  }
+  return httpPost('/api/v1/admin/security/recovery-codes/regenerate', {
+    headers: stepUpToken ? { 'X-Step-Up-Token': stepUpToken } : undefined,
+  })
+}
+
+export async function fetchAdminLoginOptions(email: string): Promise<AdminLoginOptions> {
+  if (isMockApiEnabled()) {
+    return { passkeyAvailable: false, passwordAllowed: true, recoveryAvailable: false }
+  }
+  return httpPost<AdminLoginOptions>('/api/v1/auth/admin/login-options', {
+    body: { email },
+    anonymous: true,
+  })
+}
+
+export async function redeemAdminRecoveryCode(
+  email: string,
+  code: string,
+): Promise<{ token: string; user: unknown; recoverySession: boolean }> {
+  return httpPost('/api/v1/auth/admin/recovery/code', {
+    body: { email, code },
+    anonymous: true,
+  })
+}
+
+export async function requestAdminRecoveryEmail(email: string, turnstileToken?: string | null) {
+  return httpPost('/api/v1/auth/admin/recovery/email/request', {
+    body: { email, turnstileToken: turnstileToken || undefined },
+    anonymous: true,
+  })
+}
+
+export async function redeemAdminRecoveryEmail(
+  email: string,
+  token: string,
+): Promise<{ token: string; user: unknown; recoverySession: boolean }> {
+  return httpPost('/api/v1/auth/admin/recovery/email/verify', {
+    body: { email, token },
+    anonymous: true,
+  })
+}
+
+export async function recoveryRegisterPasskey(name: string): Promise<unknown> {
+  const { parseCreationOptions, passkeysSupported: supported } = await import('./adminPasskeyApi')
+  if (!supported()) throw new Error('Passkey non supportate.')
+  const begin = await httpPost<{ challengeId: string; options: Record<string, unknown> }>(
+    '/api/v1/admin/recovery/passkeys/register/options',
+    { body: { name } },
+  )
+  const publicKey = parseCreationOptions(begin.options)
+  const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null
+  if (!credential) throw new Error('Registrazione annullata.')
+
+  function toJson(cred: PublicKeyCredential): Record<string, unknown> {
+    const anyCred = cred as PublicKeyCredential & {
+      response: AuthenticatorAttestationResponse
+    }
+    const response = anyCred.response
+    return {
+      id: cred.id,
+      rawId: bufferToBase64Url(cred.rawId),
+      type: cred.type,
+      clientExtensionResults: cred.getClientExtensionResults(),
+      response: {
+        clientDataJSON: bufferToBase64Url(response.clientDataJSON),
+        attestationObject: bufferToBase64Url(response.attestationObject),
+        transports:
+          typeof response.getTransports === 'function' ? response.getTransports() : [],
+      },
+    }
+  }
+
+  return httpPost('/api/v1/admin/recovery/passkeys/register/verify', {
+    body: { challengeId: begin.challengeId, credential: toJson(credential) },
+  })
+}
+
+export async function recoveryReenablePassword(): Promise<void> {
+  await httpPost('/api/v1/admin/recovery/reenable-password')
 }
 
 export async function performAdminStepUp(action: string): Promise<string> {

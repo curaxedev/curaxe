@@ -45,6 +45,9 @@ const ForgotPasswordPage = lazy(() =>
   import('./pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
 )
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
+const AdminRecoveryPage = lazy(() =>
+  import('./pages/auth/AdminRecoveryPage').then((m) => ({ default: m.AdminRecoveryPage })),
+)
 const ResetPasswordPage = lazy(() =>
   import('./pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
 )
@@ -301,6 +304,14 @@ export default function App() {
                   element={
                     <ProtectedRoute allowedRoles={['platform_admin']}>
                       <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/accedi/recupero-admin"
+                  element={
+                    <ProtectedRoute allowedRoles={['platform_admin']}>
+                      <AdminRecoveryPage />
                     </ProtectedRoute>
                   }
                 />

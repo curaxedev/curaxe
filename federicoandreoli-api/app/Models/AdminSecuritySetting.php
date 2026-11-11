@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'security_total_enabled_at',
     'login_alerts_enabled',
     'login_alert_emails',
+    'password_login_enabled',
+    'recovery_codes_generated_at',
 ])]
 class AdminSecuritySetting extends Model
 {
@@ -22,6 +24,8 @@ class AdminSecuritySetting extends Model
             'security_total_enabled_at' => 'datetime',
             'login_alerts_enabled' => 'boolean',
             'login_alert_emails' => 'array',
+            'password_login_enabled' => 'boolean',
+            'recovery_codes_generated_at' => 'datetime',
         ];
     }
 
@@ -38,6 +42,7 @@ class AdminSecuritySetting extends Model
                 'security_total_enabled' => false,
                 'login_alerts_enabled' => false,
                 'login_alert_emails' => [],
+                'password_login_enabled' => true,
             ],
         );
     }

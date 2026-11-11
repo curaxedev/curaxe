@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureUserRole::class,
             'turnstile' => \App\Http\Middleware\VerifyTurnstile::class,
             'step_up' => \App\Http\Middleware\EnsureAdminStepUp::class,
+            'full_admin' => \App\Http\Middleware\EnsureFullAdminToken::class,
         ]);
 
         // Cloudflare: IP reale del client per rate-limit / audit (solo se abilitato).

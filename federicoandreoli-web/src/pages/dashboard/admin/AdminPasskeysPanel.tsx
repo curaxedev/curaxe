@@ -6,6 +6,8 @@ import {
   passkeysSupported,
   registerAdminPasskey,
   renameAdminPasskey,
+  sendPasskeyEnrollOtp,
+  verifyPasskeyEnrollOtp,
   type AdminPasskey,
 } from '../../../lib/adminPasskeyApi'
 import { withAdminStepUp } from '../../../lib/adminSecurityApi'
@@ -32,6 +34,10 @@ export function AdminPasskeysPanel({ onChanged }: { onChanged?: () => void }) {
   const [name, setName] = useState('Questo dispositivo')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [enrollStep, setEnrollStep] = useState<'idle' | 'otp' | 'ready'>('idle')
+  const [enrollCode, setEnrollCode] = useState('')
+  const [enrollToken, setEnrollToken] = useState<string | null>(null)
+  const [enrollHint, setEnrollHint] = useState<string | null>(null)
   const supported = passkeysSupported()
 
   const reload = useCallback(async () => {
@@ -62,21 +68,64 @@ export function AdminPasskeysPanel({ onChanged }: { onChanged?: () => void }) {
           setError('Password richiesta per la prima passkey.')
           return
         }
-        await registerAdminPasskey(name.trim() || 'Passkey', undefined, password)
+        await registerAdminPasskey(name.trim() || 'Passkey', { password })
+      } else if (enrollToken) {
+        await registerAdminPasskey(name.trim() || 'Passkey', { enrollToken })
+        setEnrollToken(null)
+        setEnrollStep('idle')
+        setEnrollCode('')
+        setEnrollHint(null)
       } else {
-        await withAdminStepUp('passkey.manage', (token) =>
-          registerAdminPasskey(name.trim() || 'Passkey', token),
-        )
+        setError('Conferma prima il codice inviato alle email di notifica accesso.')
+        setEnrollStep('otp')
+        return
       }
       setName('Questo dispositivo')
       await reload()
       onChanged?.()
     } catch (err) {
-      setError(
-        err instanceof AuthError || err instanceof Error
-          ? err.message
-          : 'Registrazione non riuscita.',
+      if (err instanceof HttpError && err.code === 'enroll_otp_required') {
+        setEnrollStep('otp')
+        setError(err.message)
+      } else {
+        setError(
+          err instanceof AuthError || err instanceof Error
+            ? err.message
+            : 'Registrazione non riuscita.',
+        )
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleSendEnrollOtp() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await sendPasskeyEnrollOtp()
+      setEnrollStep('otp')
+      setEnrollHint(
+        `Codice inviato a ${res.emailCount} email di notifica. Valido ${res.expiresInMinutes} minuti.`,
       )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invio codice non riuscito.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleVerifyEnrollOtp() {
+    if (enrollCode.trim().length < 6) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await verifyPasskeyEnrollOtp(enrollCode.trim())
+      setEnrollToken(res.token)
+      setEnrollStep('ready')
+      setEnrollHint('Codice verificato. Ora registra la passkey su questo dispositivo.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Codice non valido.')
     } finally {
       setBusy(false)
     }
@@ -120,7 +169,8 @@ export function AdminPasskeysPanel({ onChanged }: { onChanged?: () => void }) {
       <h3 className="dash-settings-card__title">Accesso sicuro (Passkey)</h3>
       <p className="dash-section__subtitle">
         Aggiungi una o più passkey (Face ID, Touch ID, iCloud, Google Password Manager, chiavetta USB).
-        L’etichetta ti aiuta a ricordare dove l’hai salvata.
+        Su un nuovo dispositivo conferma un codice alle email di notifica — senza riusare la passkey
+        esistente.
       </p>
       {!supported && (
         <p role="alert" style={{ color: '#D95F5F' }}>
@@ -130,6 +180,11 @@ export function AdminPasskeysPanel({ onChanged }: { onChanged?: () => void }) {
       {error && (
         <p role="alert" style={{ color: '#D95F5F' }}>
           {error}
+        </p>
+      )}
+      {enrollHint && (
+        <p role="status" style={{ color: 'var(--color-text-muted)' }}>
+          {enrollHint}
         </p>
       )}
       {loading ? (
@@ -221,6 +276,55 @@ export function AdminPasskeysPanel({ onChanged }: { onChanged?: () => void }) {
           ))}
         </ul>
       )}
+
+      {passkeys.length > 0 && enrollStep !== 'idle' && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 14,
+            borderRadius: 12,
+            border: '1px solid var(--color-border, #e5e5e5)',
+            display: 'grid',
+            gap: 10,
+          }}
+        >
+          <strong>Verifica email per nuovo dispositivo</strong>
+          {enrollStep === 'otp' && (
+            <>
+              <input
+                className="auth-input"
+                inputMode="numeric"
+                placeholder="Codice a 8 cifre"
+                value={enrollCode}
+                onChange={(e) => setEnrollCode(e.target.value)}
+                disabled={busy}
+              />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="dash-btn dash-btn--ghost"
+                  disabled={busy}
+                  onClick={() => void handleSendEnrollOtp()}
+                >
+                  Invia / reinvia codice
+                </button>
+                <button
+                  type="button"
+                  className="dash-btn dash-btn--primary"
+                  disabled={busy || enrollCode.trim().length < 6}
+                  onClick={() => void handleVerifyEnrollOtp()}
+                >
+                  Verifica codice
+                </button>
+              </div>
+            </>
+          )}
+          {enrollStep === 'ready' && (
+            <p style={{ margin: 0, fontSize: 14 }}>Pronto: scegli etichetta e premi «Aggiungi passkey».</p>
+          )}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <label className="auth-field" style={{ flex: 1, minWidth: 180 }}>
           <span className="auth-field__label">Etichetta</span>
@@ -238,14 +342,29 @@ export function AdminPasskeysPanel({ onChanged }: { onChanged?: () => void }) {
             ))}
           </datalist>
         </label>
-        <button
-          type="button"
-          className="dash-btn dash-btn--primary"
-          disabled={!supported || busy}
-          onClick={() => void handleRegister()}
-        >
-          {busy ? 'Attendi…' : 'Aggiungi passkey'}
-        </button>
+        {passkeys.length > 0 && enrollStep === 'idle' ? (
+          <button
+            type="button"
+            className="dash-btn dash-btn--primary"
+            disabled={!supported || busy}
+            onClick={() => void handleSendEnrollOtp()}
+          >
+            {busy ? 'Attendi…' : 'Aggiungi passkey'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="dash-btn dash-btn--primary"
+            disabled={
+              !supported ||
+              busy ||
+              (passkeys.length > 0 && enrollStep !== 'ready')
+            }
+            onClick={() => void handleRegister()}
+          >
+            {busy ? 'Attendi…' : passkeys.length === 0 ? 'Aggiungi passkey' : 'Registra su questo dispositivo'}
+          </button>
+        )}
       </div>
     </div>
   )

@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\WebauthnCredential;
 use App\Services\Auth\AdminLoginAlertService;
+use App\Services\Auth\AdminRecoveryService;
 use App\Services\Auth\AdminStepUpService;
 use App\Support\AdminSensitiveAction;
 use App\Support\ApiResponse;
@@ -21,6 +22,7 @@ class AdminSecurityController
     public function __construct(
         private readonly AdminStepUpService $stepUp,
         private readonly AdminLoginAlertService $loginAlerts,
+        private readonly AdminRecoveryService $recovery,
     ) {}
 
     public function settings(Request $request): JsonResponse
@@ -41,8 +43,12 @@ class AdminSecurityController
             'securityTotalEnabledAt' => $settings->security_total_enabled_at?->toIso8601String(),
             'loginAlertsEnabled' => $settings->login_alerts_enabled,
             'loginAlertEmails' => $settings->alertEmails(),
+            'passwordLoginEnabled' => $settings->password_login_enabled !== false,
             'passkeyCount' => $passkeyCount,
             'canEnableSecurityTotal' => $passkeyCount >= 1,
+            'canDisablePasswordLogin' => $passkeyCount >= 1 && $settings->alertEmails() !== [],
+            'recoveryCodesRemaining' => $this->recovery->unusedCodeCount($user),
+            'recoveryCodesGeneratedAt' => $settings->recovery_codes_generated_at?->toIso8601String(),
             'sensitiveActions' => AdminSensitiveAction::labels(),
             'devices' => $this->loginAlerts->listDevices($user),
             'webauthn' => [
@@ -65,13 +71,25 @@ class AdminSecurityController
             'loginAlertsEnabled' => ['sometimes', 'boolean'],
             'loginAlertEmails' => ['sometimes', 'array', 'max:5'],
             'loginAlertEmails.*' => ['email:rfc', 'max:120'],
+            'passwordLoginEnabled' => ['sometimes', 'boolean'],
+            'confirmRecoveryCodesSaved' => ['sometimes', 'boolean'],
         ]);
 
         $settings = AdminSecuritySetting::forUser($user);
         $enablingTotal = array_key_exists('securityTotalEnabled', $data)
             && (bool) $data['securityTotalEnabled']
             && ! $settings->security_total_enabled;
-        $needsStepUp = $settings->security_total_enabled || $enablingTotal;
+        $disablingPassword = array_key_exists('passwordLoginEnabled', $data)
+            && $data['passwordLoginEnabled'] === false
+            && $settings->password_login_enabled !== false;
+        $enablingPassword = array_key_exists('passwordLoginEnabled', $data)
+            && $data['passwordLoginEnabled'] === true
+            && $settings->password_login_enabled === false;
+
+        $needsStepUp = $settings->security_total_enabled
+            || $enablingTotal
+            || $disablingPassword
+            || $enablingPassword;
 
         if ($needsStepUp) {
             $token = $request->headers->get('X-Step-Up-Token');
@@ -83,6 +101,8 @@ class AdminSecurityController
                 ], 403);
             }
         }
+
+        $freshCodes = null;
 
         if (array_key_exists('securityTotalEnabled', $data)) {
             $want = (bool) $data['securityTotalEnabled'];
@@ -115,9 +135,70 @@ class AdminSecurityController
             )));
         }
 
+        if (array_key_exists('passwordLoginEnabled', $data)) {
+            $wantPassword = (bool) $data['passwordLoginEnabled'];
+            if (! $wantPassword && $settings->password_login_enabled !== false) {
+                $passkeyCount = $this->stepUp->passkeyCount($user);
+                $emails = $settings->alertEmails();
+                if ($passkeyCount < 1) {
+                    return ApiResponse::error(
+                        'Registra almeno una passkey prima di disattivare l’accesso password.',
+                        422,
+                        [],
+                        'passkey_required',
+                    );
+                }
+                if ($emails === []) {
+                    return ApiResponse::error(
+                        'Aggiungi almeno un’email di notifica accesso prima di disattivare la password.',
+                        422,
+                        [],
+                        'alert_emails_required',
+                    );
+                }
+                $freshCodes = $this->recovery->regenerateCodes($user);
+                $settings->refresh();
+                $settings->password_login_enabled = false;
+                AuditLog::record($user->id, 'security.password_login.disabled', User::class, (string) $user->id);
+            } elseif ($wantPassword && $settings->password_login_enabled === false) {
+                $settings->password_login_enabled = true;
+                AuditLog::record($user->id, 'security.password_login.enabled', User::class, (string) $user->id);
+            }
+        }
+
         $settings->save();
 
-        return $this->settings($request);
+        $response = $this->settings($request);
+        if ($freshCodes !== null) {
+            $payload = $response->getData(true);
+            $payload['recoveryCodes'] = $freshCodes;
+
+            return response()->json($payload);
+        }
+
+        return $response;
+    }
+
+    public function regenerateRecoveryCodes(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $token = $request->headers->get('X-Step-Up-Token');
+        if (! $this->stepUp->consume($user, AdminSensitiveAction::SECURITY_SETTINGS, is_string($token) ? $token : null)) {
+            return response()->json([
+                'message' => 'Conferma con passkey richiesta per questa azione.',
+                'error_code' => 'step_up_required',
+                'action' => AdminSensitiveAction::SECURITY_SETTINGS,
+            ], 403);
+        }
+
+        $codes = $this->recovery->regenerateCodes($user);
+
+        return response()->json([
+            'recoveryCodes' => $codes,
+            'recoveryCodesRemaining' => count($codes),
+            'recoveryCodesGeneratedAt' => now()->toIso8601String(),
+        ]);
     }
 
     public function beginStepUp(Request $request): JsonResponse
@@ -179,8 +260,6 @@ class AdminSecurityController
             )
             ->delete();
 
-        AuditLog::record($user->id, 'security.sessions_revoked', User::class, (string) $user->id);
-
-        return ApiResponse::message('Altre sessioni disconnesse.');
+        return ApiResponse::noContent();
     }
 }

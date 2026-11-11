@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
+import { getAuthSessionSnapshot } from '../../../auth/authSessionStore'
 import { useAuth } from '../../../auth/useAuth'
 import {
   formatAdminKycDate,
@@ -1335,6 +1336,10 @@ const NAV_ITEMS = [
 export function AdminDashboard() {
   const { user } = useAuth()
   const [activeSection, setActiveSection] = useState('overview')
+
+  if (getAuthSessionSnapshot()?.recoverySession) {
+    return <Navigate to="/accedi/recupero-admin" replace />
+  }
 
   const renderSection = () => {
     switch (activeSection) {

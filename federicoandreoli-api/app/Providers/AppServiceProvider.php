@@ -75,5 +75,17 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(12)->by($request->ip().'|'.$userId);
         });
+
+        RateLimiter::for('admin-enroll-otp', function (Request $request) {
+            $userId = $request->user()?->id ?? 'guest';
+
+            return Limit::perMinute(3)->by($request->ip().'|'.$userId);
+        });
+
+        RateLimiter::for('admin-recovery', function (Request $request) {
+            $key = $request->ip().'|'.$request->string('email')->toString();
+
+            return Limit::perMinute(3)->by($key);
+        });
     }
 }

@@ -2,10 +2,18 @@ import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { resolvePostLoginPath } from '../../auth/roleDashboard'
-import type { AuthChannel, AuthPoliciesResponse } from '../../auth/types'
+import type { AuthChannel, AuthPoliciesResponse, AuthUser } from '../../auth/types'
 import { AuthError } from '../../auth/types'
+import { setAuthSession } from '../../auth/authSessionStore'
 import { getPolicies, loginWithPassword, requestOtp, verifyOtp } from '../../lib/authApi'
 import { loginWithPasskey, passkeysSupported } from '../../lib/adminPasskeyApi'
+import {
+  fetchAdminLoginOptions,
+  redeemAdminRecoveryCode,
+  redeemAdminRecoveryEmail,
+  requestAdminRecoveryEmail,
+  type AdminLoginOptions,
+} from '../../lib/adminSecurityApi'
 import { isMockApiEnabled } from '../../lib/runtimeConfig'
 import { findMockAccountByEmail, DEMO_LOGIN_ACCOUNTS, type DemoLoginAccount } from '../../mocks/authFixtures'
 import { AuthShell } from '../../components/AuthShell'
@@ -22,7 +30,7 @@ import {
 } from '../../components/icons/DashboardIcons'
 import './auth-pages.css'
 
-type LoginMethod = 'otp' | 'password' | null
+type LoginMethod = 'otp' | 'password' | 'passkey' | 'recovery' | null
 
 type ChannelHint = {
   channel: AuthChannel
@@ -36,6 +44,7 @@ function channelToLoginMethod(channel: AuthChannel): LoginMethod {
 
 function authErrorMessage(err: unknown): string {
   if (err instanceof AuthError) return err.message
+  if (err instanceof Error) return err.message
   return 'Si è verificato un errore. Riprova.'
 }
 
@@ -54,9 +63,12 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [policies, setPolicies] = useState<AuthPoliciesResponse | null>(null)
-  /** Email "confermata" (blur/submit) da cui derivare il suggerimento canale. */
   const [hintEmail, setHintEmail] = useState<string | null>(null)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [adminOpts, setAdminOpts] = useState<AdminLoginOptions | null>(null)
+  const [recoveryMode, setRecoveryMode] = useState<'code' | 'email'>('code')
+  const [recoveryValue, setRecoveryValue] = useState('')
+  const [recoveryEmailSent, setRecoveryEmailSent] = useState(false)
 
   useEffect(() => {
     void getPolicies().then(setPolicies).catch(() => setPolicies(null))
@@ -64,7 +76,7 @@ export function LoginPage() {
 
   const channelHint = useMemo(
     () => (hintEmail ? resolveChannelHint(hintEmail, policies) : null),
-    [hintEmail, policies]
+    [hintEmail, policies],
   )
 
   const redirectTarget = (() => {
@@ -91,6 +103,9 @@ export function LoginPage() {
     setTotpCode('')
     setTotpNeeded(false)
     setHintEmail(null)
+    setAdminOpts(null)
+    setRecoveryEmailSent(false)
+    setRecoveryValue('')
     clearError()
   }
 
@@ -107,20 +122,33 @@ export function LoginPage() {
     setHintEmail(em || null)
   }
 
-  function submitEmail(e: FormEvent<HTMLFormElement>) {
+  async function submitEmail(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const em = email.trim()
-    if (!em) {
-      return
-    }
+    if (!em) return
     setEmail(em)
-    const hint = resolveChannelHint(em, policies)
     setHintEmail(em)
     setStep(2)
-    setMethod(hint ? channelToLoginMethod(hint.channel) : null)
     setOtpSent(false)
     setOtpCode('')
     clearError()
+    setBusy(true)
+    try {
+      const opts = await fetchAdminLoginOptions(em)
+      setAdminOpts(opts)
+      if (opts.passkeyAvailable && passkeysSupported() && !isMockApiEnabled()) {
+        setMethod('passkey')
+      } else {
+        const hint = resolveChannelHint(em, policies)
+        setMethod(hint ? channelToLoginMethod(hint.channel) : null)
+      }
+    } catch {
+      setAdminOpts(null)
+      const hint = resolveChannelHint(em, policies)
+      setMethod(hint ? channelToLoginMethod(hint.channel) : null)
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function handleSendOtp() {
@@ -162,6 +190,9 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof AuthError && err.code === 'totp_required') {
         setTotpNeeded(true)
+      } else if (err instanceof AuthError && err.code === 'password_login_disabled') {
+        setError(err.message)
+        setMethod(adminOpts?.passkeyAvailable ? 'passkey' : 'recovery')
       } else {
         setError(authErrorMessage(err))
       }
@@ -177,6 +208,42 @@ export function LoginPage() {
     try {
       const user = await loginWithPasskey(email.trim())
       await finishLogin(user.role)
+    } catch (err) {
+      setError(authErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRecoveryRedeem() {
+    if (busy || !email.trim() || !recoveryValue.trim()) return
+    clearError()
+    setBusy(true)
+    try {
+      const res =
+        recoveryMode === 'code'
+          ? await redeemAdminRecoveryCode(email.trim(), recoveryValue.trim())
+          : await redeemAdminRecoveryEmail(email.trim(), recoveryValue.trim())
+      setAuthSession({
+        user: res.user as AuthUser,
+        token: res.token,
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        recoverySession: true,
+      })
+      navigate('/accedi/recupero-admin', { replace: true })
+    } catch (err) {
+      setError(authErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRecoveryEmailRequest() {
+    clearError()
+    setBusy(true)
+    try {
+      await requestAdminRecoveryEmail(email.trim(), turnstileToken)
+      setRecoveryEmailSent(true)
     } catch (err) {
       setError(authErrorMessage(err))
     } finally {
@@ -204,6 +271,9 @@ export function LoginPage() {
     }
   }
 
+  const passwordAllowed = adminOpts?.passwordAllowed !== false
+  const recoveryAvailable = Boolean(adminOpts?.recoveryAvailable)
+
   return (
     <AuthShell className="auth-page auth-page--login" hideBrandBar>
       <main className="auth-login-main">
@@ -227,7 +297,7 @@ export function LoginPage() {
               <h1 className="auth-title">Accedi</h1>
               <p className="auth-subtitle">Inserisci l’email del tuo account per continuare.</p>
 
-              <form className="auth-form" onSubmit={submitEmail}>
+              <form className="auth-form" onSubmit={(e) => void submitEmail(e)}>
                 <label className="auth-field">
                   <span className="auth-field__label">Email</span>
                   <div className="auth-input-wrap">
@@ -250,8 +320,6 @@ export function LoginPage() {
                   </div>
                 </label>
 
-                {/* Sempre renderizzato con altezza minima: se comparisse solo al blur,
-                    il layout shift tra mousedown e mouseup farebbe perdere il click su «Avanti». */}
                 <p className="auth-channel-hint auth-channel-hint--reserved" role="status">
                   {channelHint ? (
                     <>
@@ -260,8 +328,8 @@ export function LoginPage() {
                   ) : null}
                 </p>
 
-                <button type="submit" className="auth-btn-primary auth-btn-primary--block">
-                  Avanti
+                <button type="submit" className="auth-btn-primary auth-btn-primary--block" disabled={busy}>
+                  {busy ? '…' : 'Avanti'}
                 </button>
               </form>
             </>
@@ -298,6 +366,135 @@ export function LoginPage() {
                   <span className="auth-login-choice__desc">Per account con password e secondo fattore (es. strutture, admin).</span>
                 </button>
               </div>
+            </>
+          )}
+
+          {step === 2 && method === 'passkey' && (
+            <>
+              <h1 className="auth-title">Accesso con passkey</h1>
+              <p className="auth-subtitle">
+                Account <strong className="auth-email-emphasis">{email}</strong> — conferma Face ID,
+                Touch ID o la tua chiavetta.
+              </p>
+              <button type="button" className="auth-change-email" onClick={goStep1}>
+                Modifica email
+              </button>
+              <button
+                type="button"
+                className="auth-btn-primary auth-btn-primary--block"
+                disabled={busy || !passkeysSupported()}
+                onClick={() => void handlePasskeyLogin()}
+              >
+                {busy ? 'Verifica…' : 'Continua con passkey'}
+              </button>
+              {!passkeysSupported() && (
+                <p className="auth-error">Questo browser non supporta le passkey.</p>
+              )}
+              {passwordAllowed ? (
+                <button
+                  type="button"
+                  className="auth-link-resend"
+                  disabled={busy}
+                  onClick={() => {
+                    clearError()
+                    setMethod('password')
+                  }}
+                >
+                  Non riesco con la passkey — usa password
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="auth-link-resend"
+                  disabled={busy}
+                  onClick={() => {
+                    clearError()
+                    setMethod('recovery')
+                  }}
+                >
+                  Recupero accesso
+                </button>
+              )}
+              {passwordAllowed && recoveryAvailable ? (
+                <button
+                  type="button"
+                  className="auth-link-resend"
+                  disabled={busy}
+                  onClick={() => setMethod('recovery')}
+                >
+                  Recupero accesso
+                </button>
+              ) : null}
+            </>
+          )}
+
+          {step === 2 && method === 'recovery' && (
+            <>
+              <h1 className="auth-title">Recupero accesso</h1>
+              <p className="auth-subtitle">
+                Usa un codice di ripristino salvato oppure richiedi un codice lungo alle email di
+                notifica.
+              </p>
+              <button
+                type="button"
+                className="auth-change-email"
+                onClick={() => setMethod(adminOpts?.passkeyAvailable ? 'passkey' : null)}
+              >
+                <IconChevronLeft size={14} aria-hidden />
+                Indietro
+              </button>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <button
+                  type="button"
+                  className={`dash-btn ${recoveryMode === 'code' ? 'dash-btn--primary' : 'dash-btn--ghost'}`}
+                  onClick={() => setRecoveryMode('code')}
+                >
+                  Codice ripristino
+                </button>
+                <button
+                  type="button"
+                  className={`dash-btn ${recoveryMode === 'email' ? 'dash-btn--primary' : 'dash-btn--ghost'}`}
+                  onClick={() => setRecoveryMode('email')}
+                >
+                  Email break-glass
+                </button>
+              </div>
+              {recoveryMode === 'email' && !recoveryEmailSent ? (
+                <>
+                  <TurnstileWidget onToken={setTurnstileToken} />
+                  <button
+                    type="button"
+                    className="auth-btn-primary auth-btn-primary--block"
+                    disabled={busy}
+                    onClick={() => void handleRecoveryEmailRequest()}
+                  >
+                    {busy ? 'Invio…' : 'Invia codice alle email di notifica'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <label className="auth-field">
+                    <span className="auth-field__label">
+                      {recoveryMode === 'code' ? 'Codice (XXXX-XXXX-XXXX)' : 'Codice ricevuto via email'}
+                    </span>
+                    <input
+                      className="auth-input"
+                      value={recoveryValue}
+                      onChange={(e) => setRecoveryValue(e.target.value)}
+                      disabled={busy}
+                      autoComplete="one-time-code"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="auth-btn-primary auth-btn-primary--block"
+                    disabled={busy || !recoveryValue.trim()}
+                    onClick={() => void handleRecoveryRedeem()}
+                  >
+                    {busy ? 'Verifica…' : 'Continua'}
+                  </button>
+                </>
+              )}
             </>
           )}
 
@@ -365,9 +562,13 @@ export function LoginPage() {
             <>
               <h1 className="auth-title">Password</h1>
               <p className="auth-subtitle">Account {email}</p>
-              <button type="button" className="auth-change-email" onClick={() => setMethod(null)}>
+              <button
+                type="button"
+                className="auth-change-email"
+                onClick={() => setMethod(adminOpts?.passkeyAvailable ? 'passkey' : null)}
+              >
                 <IconChevronLeft size={14} aria-hidden />
-                Torna alla scelta
+                {adminOpts?.passkeyAvailable ? 'Torna alla passkey' : 'Torna alla scelta'}
               </button>
 
               <form className="auth-form" onSubmit={(e) => void handlePasswordLogin(e)}>
@@ -423,24 +624,6 @@ export function LoginPage() {
                   {busy ? 'Accesso…' : 'Accedi'}
                 </button>
               </form>
-
-              {passkeysSupported() && !isMockApiEnabled() && (
-                <>
-                  <div className="auth-divider">
-                    <span>Oppure</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="auth-btn-social auth-btn-social--block"
-                    style={{ width: '100%' }}
-                    disabled={busy}
-                    onClick={() => void handlePasskeyLogin()}
-                  >
-                    Accedi con passkey
-                  </button>
-                </>
-              )}
-
             </>
           )}
 
@@ -452,47 +635,45 @@ export function LoginPage() {
           )}
 
           {isMockApiEnabled() && (
-          <section className="auth-demo-panel" aria-labelledby="auth-demo-title">
-            <div className="auth-demo-panel__head">
-              <h2 id="auth-demo-title" className="auth-demo-panel__title">
-                Accesso demo
-              </h2>
-              <span className="auth-demo-badge">Demo</span>
-            </div>
-            <p className="auth-demo-panel__lead">
-              Accedi con un account precaricato per esplorare la piattaforma.
-            </p>
-            <ul className="auth-demo-list">
-              {DEMO_LOGIN_ACCOUNTS.map((account) => (
-                <li key={account.email} className="auth-demo-row">
-                  <div className="auth-demo-row__body">
-                    <span className="auth-demo-row__label">{account.label}</span>
-                    <span className="auth-demo-row__cred">
-                      <span className="auth-demo-row__cred-key">Email</span>
-                      <code>{account.email}</code>
-                    </span>
-                    <span className="auth-demo-row__cred">
-                      <span className="auth-demo-row__cred-key">
-                        {account.method === 'otp' ? 'Codice OTP' : 'Password'}
+            <section className="auth-demo-panel" aria-labelledby="auth-demo-title">
+              <div className="auth-demo-panel__head">
+                <h2 id="auth-demo-title" className="auth-demo-panel__title">
+                  Accesso demo
+                </h2>
+                <span className="auth-demo-badge">Demo</span>
+              </div>
+              <p className="auth-demo-panel__lead">
+                Accedi con un account precaricato per esplorare la piattaforma.
+              </p>
+              <ul className="auth-demo-list">
+                {DEMO_LOGIN_ACCOUNTS.map((account) => (
+                  <li key={account.email} className="auth-demo-row">
+                    <div className="auth-demo-row__body">
+                      <span className="auth-demo-row__label">{account.label}</span>
+                      <span className="auth-demo-row__cred">
+                        <span className="auth-demo-row__cred-key">Email</span>
+                        <code>{account.email}</code>
                       </span>
-                      <code>{account.secret}</code>
-                    </span>
-                    <span className="auth-demo-row__dest">
-                      → {account.dashboardPath}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="auth-btn-outline auth-demo-row__btn"
-                    disabled={busy}
-                    onClick={() => void handleDemoLogin(account)}
-                  >
-                    {busy ? 'Accesso…' : 'Accedi'}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+                      <span className="auth-demo-row__cred">
+                        <span className="auth-demo-row__cred-key">
+                          {account.method === 'otp' ? 'Codice OTP' : 'Password'}
+                        </span>
+                        <code>{account.secret}</code>
+                      </span>
+                      <span className="auth-demo-row__dest">→ {account.dashboardPath}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="auth-btn-outline auth-demo-row__btn"
+                      disabled={busy}
+                      onClick={() => void handleDemoLogin(account)}
+                    >
+                      {busy ? 'Accesso…' : 'Accedi'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
 
           <p className="auth-switch">

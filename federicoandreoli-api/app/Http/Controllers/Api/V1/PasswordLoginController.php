@@ -9,6 +9,7 @@ use App\Domains\Auth\Services\Totp;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Auth\AdminLoginAlertService;
+use App\Services\Auth\AdminRecoveryService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class PasswordLoginController
         AuthChannelResolver $resolver,
         Totp $totp,
         AdminLoginAlertService $loginAlerts,
+        AdminRecoveryService $recovery,
     ): JsonResponse {
         $data = $request->validate([
             'email' => ['required', 'email:rfc'],
@@ -37,6 +39,21 @@ class PasswordLoginController
                 422,
                 [],
                 'otp_only',
+            );
+        }
+
+        if (
+            $user !== null
+            && $user->role === UserRole::PlatformAdmin
+            && ! $recovery->passwordLoginEnabled($user)
+        ) {
+            $loginAlerts->recordFailedAttempt($user, $request, 'password', 'password_login_disabled');
+
+            return ApiResponse::error(
+                'Per questo account l’accesso password è disattivato. Usa una passkey o il recupero accesso.',
+                422,
+                [],
+                'password_login_disabled',
             );
         }
 

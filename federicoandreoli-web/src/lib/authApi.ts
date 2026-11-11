@@ -32,6 +32,7 @@ const ERROR_CODE_MAP: Record<string, AuthErrorCode> = {
   otp_invalid: 'otp_invalid',
   otp_expired: 'otp_expired',
   password_invalid: 'password_invalid',
+  password_login_disabled: 'password_login_disabled',
   password_required: 'email_not_found',
   otp_only: 'password_invalid',
   totp_required: 'totp_required',
