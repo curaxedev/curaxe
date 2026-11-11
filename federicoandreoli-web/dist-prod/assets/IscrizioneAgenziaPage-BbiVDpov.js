@@ -1,0 +1,1 @@
+import{n as e,t}from"./SignupLandingPage-B9cdyP91.js";import{t as n}from"./jsx-runtime-DY8GvGXq.js";var r=n();function i(){return(0,r.jsx)(t,{config:e.agenzia})}export{i as IscrizioneAgenziaPage};

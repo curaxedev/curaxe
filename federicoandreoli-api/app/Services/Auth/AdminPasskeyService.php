@@ -57,15 +57,7 @@ final class AdminPasskeyService
 
         $challenge = random_bytes(32);
         $challengeId = Str::random(32);
-        $exclude = WebauthnCredential::query()
-            ->where('user_id', $user->id)
-            ->get()
-            ->map(fn (WebauthnCredential $c) => new PublicKeyCredentialDescriptor(
-                'public-key',
-                $this->base64UrlDecode($c->credential_id),
-                $c->transports ?? [],
-            ))
-            ->all();
+        $exclude = $this->descriptorsForUser($user->id);
 
         $options = new PublicKeyCredentialCreationOptions(
             rp: $rpEntity,
@@ -195,16 +187,11 @@ final class AdminPasskeyService
             return ['challengeId' => $challengeId, 'options' => $this->serializeToArray($options)];
         }
 
-        $passkeys = WebauthnCredential::query()->where('user_id', $user->id)->get();
         $rpId = $this->getRpId();
         $origin = $this->getOrigin();
         $challenge = random_bytes(32);
         $challengeId = Str::random(32);
-        $allow = $passkeys->map(fn (WebauthnCredential $c) => new PublicKeyCredentialDescriptor(
-            'public-key',
-            $this->base64UrlDecode($c->credential_id),
-            $c->transports ?? [],
-        ))->all();
+        $allow = $this->descriptorsForUser($user->id);
         if ($allow === []) {
             $allow[] = new PublicKeyCredentialDescriptor('public-key', random_bytes(32), []);
         }
@@ -322,8 +309,8 @@ final class AdminPasskeyService
     public function beginAssertionForUser(User $user): array
     {
         $this->assertAdmin($user);
-        $passkeys = WebauthnCredential::query()->where('user_id', $user->id)->get();
-        if ($passkeys->isEmpty()) {
+        $allow = $this->descriptorsForUser($user->id);
+        if ($allow === []) {
             throw new InvalidArgumentException('Nessuna passkey registrata.');
         }
 
@@ -331,11 +318,6 @@ final class AdminPasskeyService
         $origin = $this->getOrigin();
         $challenge = random_bytes(32);
         $challengeId = Str::random(32);
-        $allow = $passkeys->map(fn (WebauthnCredential $c) => new PublicKeyCredentialDescriptor(
-            'public-key',
-            $this->base64UrlDecode($c->credential_id),
-            $c->transports ?? [],
-        ))->all();
 
         $options = new PublicKeyCredentialRequestOptions(
             challenge: $challenge,
@@ -601,6 +583,27 @@ final class AdminPasskeyService
         return $factory;
     }
 
+    /**
+     * @return list<PublicKeyCredentialDescriptor>
+     */
+    private function descriptorsForUser(int $userId): array
+    {
+        $out = [];
+        foreach (WebauthnCredential::query()->where('user_id', $userId)->get() as $cred) {
+            try {
+                $out[] = new PublicKeyCredentialDescriptor(
+                    'public-key',
+                    $this->base64UrlDecode((string) $cred->credential_id),
+                    is_array($cred->transports) ? $cred->transports : [],
+                );
+            } catch (\Throwable) {
+                // Credential ID corrotto: salta.
+            }
+        }
+
+        return $out;
+    }
+
     private function base64UrlEncode(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
@@ -632,6 +635,27 @@ final class AdminPasskeyService
             throw new InvalidArgumentException('Payload WebAuthn non serializzabile.');
         }
 
-        return $decoded;
+        $cleaned = $this->stripNulls($decoded);
+        if (! is_array($cleaned) || ! isset($cleaned['challenge']) || ! is_string($cleaned['challenge']) || $cleaned['challenge'] === '') {
+            throw new InvalidArgumentException('Payload WebAuthn senza challenge.');
+        }
+
+        return $cleaned;
+    }
+
+    private function stripNulls(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        $out = [];
+        foreach ($value as $k => $v) {
+            if ($v === null) {
+                continue;
+            }
+            $out[$k] = $this->stripNulls($v);
+        }
+
+        return $out;
     }
 }
